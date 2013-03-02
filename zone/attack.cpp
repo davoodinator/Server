@@ -4011,7 +4011,7 @@ void Mob::TryCriticalHit(Mob *defender, uint16 skill, int32 &damage)
 	float critChance = 0.0f;
 
 	//1: Try Slay Undead 
-	if(defender && defender->GetBodyType() == BT_Undead || defender->GetBodyType() == BT_SummonedUndead || defender->GetBodyType() == BT_Vampire){
+	if(defender && (GetClass() == PALADIN) && defender->GetBodyType() == BT_Undead || defender->GetBodyType() == BT_SummonedUndead || defender->GetBodyType() == BT_Vampire){
 		
 		int16 SlayRateBonus = aabonuses.SlayUndead[0] + itembonuses.SlayUndead[0] + spellbonuses.SlayUndead[0];
 
@@ -4022,13 +4022,12 @@ void Mob::TryCriticalHit(Mob *defender, uint16 skill, int32 &damage)
 
 			if(MakeRandomFloat(0, 1) < critChance){
 				int16 SlayDmgBonus = aabonuses.SlayUndead[1] + itembonuses.SlayUndead[1] + spellbonuses.SlayUndead[1];
-				damage = (damage*SlayDmgBonus*2.25)/100;
+				damage = (damage*SlayDmgBonus*2.85)/100;
 				entity_list.MessageClose(this, false, 200, MT_CritMelee, "%s cleanses %s target!(%d)", GetCleanName(), this->GetGender() == 0 ? "his" : this->GetGender() == 1 ? "her" : "its", damage);
 				return;
 			}
 		}
 	}	
-
 	//2: Try Melee Critical
 
 	//Base critical rate for all classes is dervived from DEX stat, this rate is then augmented

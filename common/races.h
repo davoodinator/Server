@@ -54,7 +54,42 @@
 #define EMU_RACE_NPC	131069 // was 65533
 #define EMU_RACE_PET	131070 // was 65534
 #define EMU_RACE_UNKNOWN 131071 // was 65535
-
+#define ALAKAMIN_DRAGON 530
+#define ALAKAMIN_BIXIE 520
+#define ALAKAMIN_PYRILEN 408
+#define ALAKAMIN_GELIDRAN 417
+#define ALAKAMIN_WEREWOLF 545
+#define ALAKAMIN_SHILLISKIN 467
+#define ALAKAMIN_BEHOLDER 469
+#define ALAKAMIN_HARPYR 527
+#define ALAKAMIN_SATYR 529
+#define ALAKAMIN_AVIAK 558
+#define ALAKAMIN_SIREN 564
+#define ALAKAMIN_MINOTAUR 574
+#define ALAKAMIN_FUNGOID 456
+#define ALAKAMIN_KOBOLD 455
+#define ALAKAMIN_GOBLIN 433
+#define ALAKAMIN_ORC 458
+#define ALAKAMIN_ULTRATAUR 470
+#define ALAKAMIN_BAZU 409
+#define ALAKAMIN_FAERIE 473
+#define ALAKAMIN_GARGOYLE 464
+#define ALAKAMIN_KERRAN 562
+#define ALAKAMIN_BROWNIE 568
+#define ALAKAMIN_ZOMBIE 471
+#define ALAKAMIN_BANSHEE 488
+#define ALAKAMIN_GNOLL 524
+#define ALAKAMIN_TROLL_PIRATE 331
+#define ALAKAMIN_GNOME_PIRATE 338
+#define ALAKAMIN_DARK_ELF_PIRATE 339
+#define ALAKAMIN_OGRE_PIRATE 340
+#define ALAKAMIN_HUMAN_PIRATE 341
+#define ALAKAMIN_ERUDITE_PIRATE 342
+#define ALAKAMIN_IMP 46
+#define ALAKAMIN_DRAKE 89
+#define ALAKAMIN_SCRYKIN 495
+#define ALAKAMIN_GNOMEWORK 457
+#define ALAKAMIN_GOLEM 374
 
 #define human_1			1
 #define barbarian_1		2
@@ -72,6 +107,7 @@
 #define vahshir_1		8192
 #define rall_1			16384 //froglok?
 #define drakkin_1		32768
+#define shroud_1		65536
 
 const char* GetRaceName(uint16 race);
 
@@ -97,8 +133,9 @@ inline uint32 GetRaceBitmask(uint16 race) { return uint32(pow(2.0f, float(GetArr
 #define Array_Race_DRAKKIN		16
 #define Array_Race_NPC			17
 #define Array_Race_PET			18
+#define Array_Race_SHROUD		69 //lets see if this works (Davood)
 #define Count_Array_Race		19 // used for array defines, must be the max + 1
-#define PLAYER_RACE_COUNT		16 // The count of all player races
+#define PLAYER_RACE_COUNT		17 // The count of all player races
 
 /*
 

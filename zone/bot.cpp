@@ -2131,10 +2131,13 @@ bool Bot::IsValidRaceClassCombo() {
 				case 7: // Monk
 				case 8: // Bard
 				case 9: // Rogue
+				case 10: // Shaman
 				case 11: // Necromancer
 				case 12: // Wizard
 				case 13: // Magician
 				case 14: // Enchanter
+				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
@@ -2142,8 +2145,19 @@ bool Bot::IsValidRaceClassCombo() {
 		case 2: // Barbarian
 			switch(GetClass()) {
 				case 1: // Warrior
+				case 2: // Cleric
+				case 3: // Paladin
+				case 4: // Ranger
+				case 5: // Shadowknight
+				case 6: // Druid
+				case 7: // Monk
+				case 8: // Bard
 				case 9: // Rogue
 				case 10: // Shaman
+				case 11: // Necromancer
+				case 12: // Wizard
+				case 13: // Magician
+				case 14: // Enchanter
 				case 15: // Beastlord
 				case 16: // Berserker
 					Result = true;
@@ -2152,13 +2166,22 @@ bool Bot::IsValidRaceClassCombo() {
 			break;
 		case 3: // Erudite
 			switch(GetClass()) {
+				case 1: // Warrior
 				case 2: // Cleric
 				case 3: // Paladin
+				case 4: // Ranger
 				case 5: // Shadowknight
+				case 6: // Druid
+				case 7: // Monk
+				case 8: // Bard
+				case 9: // Rogue
+				case 10: // Shaman
 				case 11: // Necromancer
 				case 12: // Wizard
 				case 13: // Magician
 				case 14: // Enchanter
+				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
@@ -2166,21 +2189,43 @@ bool Bot::IsValidRaceClassCombo() {
 		case 4: // Wood Elf
 			switch(GetClass()) {
 				case 1: // Warrior
+				case 2: // Cleric
+				case 3: // Paladin
 				case 4: // Ranger
+				case 5: // Shadowknight
 				case 6: // Druid
+				case 7: // Monk
 				case 8: // Bard
 				case 9: // Rogue
+				case 10: // Shaman
+				case 11: // Necromancer
+				case 12: // Wizard
+				case 13: // Magician
+				case 14: // Enchanter
+				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
 			break;
 		case 5: // High Elf
 			switch(GetClass()) {
+				case 1: // Warrior
 				case 2: // Cleric
 				case 3: // Paladin
+				case 4: // Ranger
+				case 5: // Shadowknight
+				case 6: // Druid
+				case 7: // Monk
+				case 8: // Bard
+				case 9: // Rogue
+				case 10: // Shaman
+				case 11: // Necromancer
 				case 12: // Wizard
 				case 13: // Magician
 				case 14: // Enchanter
+				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
@@ -2189,12 +2234,20 @@ bool Bot::IsValidRaceClassCombo() {
 			switch(GetClass()) {
 				case 1: // Warrior
 				case 2: // Cleric
+				case 3: // Paladin
+				case 4: // Ranger
 				case 5: // Shadowknight
+				case 6: // Druid
+				case 7: // Monk
+				case 8: // Bard
 				case 9: // Rogue
+				case 10: // Shaman
 				case 11: // Necromancer
 				case 12: // Wizard
 				case 13: // Magician
 				case 14: // Enchanter
+				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
@@ -2202,11 +2255,21 @@ bool Bot::IsValidRaceClassCombo() {
 		case 7: // Half Elf
 			switch(GetClass()) {
 				case 1: // Warrior
+				case 2: // Cleric
 				case 3: // Paladin
 				case 4: // Ranger
+				case 5: // Shadowknight
 				case 6: // Druid
+				case 7: // Monk
 				case 8: // Bard
 				case 9: // Rogue
+				case 10: // Shaman
+				case 11: // Necromancer
+				case 12: // Wizard
+				case 13: // Magician
+				case 14: // Enchanter
+				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
@@ -2216,7 +2279,18 @@ bool Bot::IsValidRaceClassCombo() {
 				case 1: // Warrior
 				case 2: // Cleric
 				case 3: // Paladin
+				case 4: // Ranger
+				case 5: // Shadowknight
+				case 6: // Druid
+				case 7: // Monk
+				case 8: // Bard
 				case 9: // Rogue
+				case 10: // Shaman
+				case 11: // Necromancer
+				case 12: // Wizard
+				case 13: // Magician
+				case 14: // Enchanter
+				case 15: // Beastlord
 				case 16: // Berserker
 					Result = true;
 					break;
@@ -2225,8 +2299,19 @@ bool Bot::IsValidRaceClassCombo() {
 		case 9: // Troll
 			switch(GetClass()) {
 				case 1: // Warrior
+				case 2: // Cleric
+				case 3: // Paladin
+				case 4: // Ranger
 				case 5: // Shadowknight
+				case 6: // Druid
+				case 7: // Monk
+				case 8: // Bard
+				case 9: // Rogue
 				case 10: // Shaman
+				case 11: // Necromancer
+				case 12: // Wizard
+				case 13: // Magician
+				case 14: // Enchanter
 				case 15: // Beastlord
 				case 16: // Berserker
 					Result = true;
@@ -2236,8 +2321,19 @@ bool Bot::IsValidRaceClassCombo() {
 		case 10: // Ogre
 			switch(GetClass()) {
 				case 1: // Warrior
+				case 2: // Cleric
+				case 3: // Paladin
+				case 4: // Ranger
 				case 5: // Shadowknight
+				case 6: // Druid
+				case 7: // Monk
+				case 8: // Bard
+				case 9: // Rogue
 				case 10: // Shaman
+				case 11: // Necromancer
+				case 12: // Wizard
+				case 13: // Magician
+				case 14: // Enchanter
 				case 15: // Beastlord
 				case 16: // Berserker
 					Result = true;
@@ -2250,8 +2346,18 @@ bool Bot::IsValidRaceClassCombo() {
 				case 2: // Cleric
 				case 3: // Paladin
 				case 4: // Ranger
+				case 5: // Shadowknight
 				case 6: // Druid
+				case 7: // Monk
+				case 8: // Bard
 				case 9: // Rogue
+				case 10: // Shaman
+				case 11: // Necromancer
+				case 12: // Wizard
+				case 13: // Magician
+				case 14: // Enchanter
+				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
@@ -2261,12 +2367,19 @@ bool Bot::IsValidRaceClassCombo() {
 				case 1: // Warrior
 				case 2: // Cleric
 				case 3: // Paladin
+				case 4: // Ranger
 				case 5: // Shadowknight
+				case 6: // Druid
+				case 7: // Monk
+				case 8: // Bard
 				case 9: // Rogue
+				case 10: // Shaman
 				case 11: // Necromancer
 				case 12: // Wizard
 				case 13: // Magician
 				case 14: // Enchanter
+				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
@@ -2274,11 +2387,21 @@ bool Bot::IsValidRaceClassCombo() {
 		case 128: // Iksar
 			switch(GetClass()) {
 				case 1: // Warrior
+				case 2: // Cleric
+				case 3: // Paladin
+				case 4: // Ranger
 				case 5: // Shadowknight
+				case 6: // Druid
 				case 7: // Monk
+				case 8: // Bard
+				case 9: // Rogue
 				case 10: // Shaman
 				case 11: // Necromancer
+				case 12: // Wizard
+				case 13: // Magician
+				case 14: // Enchanter
 				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
@@ -2286,9 +2409,19 @@ bool Bot::IsValidRaceClassCombo() {
 		case 130: // Vah Shir
 			switch(GetClass()) {
 				case 1: // Warrior
+				case 2: // Cleric
+				case 3: // Paladin
+				case 4: // Ranger
+				case 5: // Shadowknight
+				case 6: // Druid
+				case 7: // Monk
 				case 8: // Bard
 				case 9: // Rogue
 				case 10: // Shaman
+				case 11: // Necromancer
+				case 12: // Wizard
+				case 13: // Magician
+				case 14: // Enchanter
 				case 15: // Beastlord
 				case 16: // Berserker
 					Result = true;
@@ -2300,11 +2433,19 @@ bool Bot::IsValidRaceClassCombo() {
 				case 1: // Warrior
 				case 2: // Cleric
 				case 3: // Paladin
+				case 4: // Ranger
 				case 5: // Shadowknight
+				case 6: // Druid
+				case 7: // Monk
+				case 8: // Bard
 				case 9: // Rogue
 				case 10: // Shaman
 				case 11: // Necromancer
 				case 12: // Wizard
+				case 13: // Magician
+				case 14: // Enchanter
+				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
@@ -2320,10 +2461,13 @@ bool Bot::IsValidRaceClassCombo() {
 				case 7: // Monk
 				case 8: // Bard
 				case 9: // Rogue
+				case 10: // Shaman
 				case 11: // Necromancer
 				case 12: // Wizard
 				case 13: // Magician
 				case 14: // Enchanter
+				case 15: // Beastlord
+				case 16: // Berserker
 					Result = true;
 					break;
 			}
@@ -5385,6 +5529,42 @@ std::string Bot::RaceIdToString(uint16 raceId) {
 			case 522:
 				Result = std::string("Drakkin");
 				break;
+case 530:Result = std::string("Dragon");break;
+case 520:Result = std::string("Bixie");break;
+case 408:Result = std::string("Pyrilen");break;
+case 417:Result = std::string("Gelidran");break;
+case 545:Result = std::string("Werewolf");break;
+case 467:Result = std::string("Shilliskin");break;
+case 469:Result = std::string("Beholder");break;
+case 527:Result = std::string("Harpyr");break;
+case 529:Result = std::string("Satyr");break;
+case 558:Result = std::string("Aviak");break;
+case 564:Result = std::string("Siren");break;
+case 574:Result = std::string("Minotaur");break;
+case 456:Result = std::string("Fungoid");break;
+case 455:Result = std::string("Kobold");break;
+case 433:Result = std::string("Goblin");break;
+case 458:Result = std::string("Orc");break;
+case 470:Result = std::string("Ultrataur");break;
+case 409:Result = std::string("Bazu");break;
+case 473:Result = std::string("Faerie");break;
+case 464:Result = std::string("Gargoyle");break;
+case 562:Result = std::string("Kerran");break;
+case 568:Result = std::string("Brownie");break;
+case 471:Result = std::string("Zombie");break;
+case 488:Result = std::string("Banshee");break;
+case 524:Result = std::string("Gnoll");break;
+case 331:Result = std::string("Troll_Pirate");break;
+case 338:Result = std::string("Gnome_Pirate");break;
+case 339:Result = std::string("Dark_Elf_Pirate");break;
+case 340:Result = std::string("Ogre_Pirate");break;
+case 341:Result = std::string("Human_Pirate");break;
+case 342:Result = std::string("Erudite_Pirate");break;
+case 46:Result = std::string("Imp");break;
+case 89:Result = std::string("Drake");break;
+case 495:Result = std::string("Scrykin");break;
+case 457:Result = std::string("Gnomework");break;
+case 374:Result = std::string("Golem");break;
 		}
 	}
 

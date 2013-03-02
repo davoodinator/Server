@@ -6213,7 +6213,7 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 	
 	if(GetClass() < 17 && GetClass() > 0) { class_Name = class_List[GetClass()-1]; }
 	
-	// Race
+// Race
 	std::string race_Name = itoa(GetRace());
 	switch(GetRace()) 
 	{
@@ -6233,9 +6233,45 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 		case 130: race_Name = "Vah Shir";	break;
 		case 330: race_Name = "Froglok";	break;
 		case 522: race_Name = "Drakkin";	break;
+		case 530: race_Name = "Dragon"; break;
+		case 520: race_Name = "Bixie"; break;
+		case 408: race_Name = "Pyrilen"; break;
+		case 417: race_Name = "Gelidran"; break;
+		case 545: race_Name = "Werewolf"; break;
+		case 467: race_Name = "Shilliskin"; break;
+		case 469: race_Name = "Beholder"; break;
+		case 527: race_Name = "Harpyr"; break;
+		case 529: race_Name = "Satyr"; break;
+		case 558: race_Name = "Aviak"; break;
+		case 564: race_Name = "Siren"; break;
+		case 574: race_Name = "Minotaur"; break;
+		case 456: race_Name = "Fungoid"; break;
+		case 455: race_Name = "Kobold"; break;
+		case 433: race_Name = "Goblin"; break;
+		case 458: race_Name = "Orc"; break;
+		case 470: race_Name = "Ultrataur"; break;
+		case 409: race_Name = "Bazu"; break;
+		case 473: race_Name = "Faerie"; break;
+		case 464: race_Name = "Gargoyle"; break;
+		case 562: race_Name = "Kerran"; break;
+		case 568: race_Name = "Brownie"; break;
+		case 471: race_Name = "Zombie"; break;
+		case 488: race_Name = "Banshee"; break;
+		case 524: race_Name = "Gnoll"; break;
+		case 331: race_Name = "Troll_Pirate"; break;
+		case 338: race_Name = "Gnome_Pirate"; break;
+		case 339: race_Name = "Dark_Elf_Pirate"; break;
+		case 340: race_Name = "Ogre_Pirate"; break;
+		case 341: race_Name = "Human_Pirate"; break;
+		case 342: race_Name = "Erudite_Pirate"; break;
+		case 46: race_Name = "Imp"; break;
+		case 89: race_Name = "Drake"; break;
+		case 495: race_Name = "Scrykin"; break;
+		case 457: race_Name = "Gnomework"; break;
+		case 374: race_Name = "Golem"; break;
 		default: break;
 	}
-  /*##########################################################
+/*##########################################################
 	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 	  H/M/E String
 	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  
@@ -7067,6 +7103,43 @@ char* Client::GetRacePlural(Client* client) {
 			return "Frogloks"; break;
 		case DRAKKIN:
 			return "Drakkin"; break;
+		case ALAKAMIN_DRAGON: return "Dragon";
+		case ALAKAMIN_BIXIE: return "Bixie";
+		case ALAKAMIN_PYRILEN: return "Pyrilen";
+		case ALAKAMIN_GELIDRAN: return "Gelidran";
+		case ALAKAMIN_WEREWOLF: return "Werewolf";
+		case ALAKAMIN_SHILLISKIN: return "Shilliskin";
+		case ALAKAMIN_BEHOLDER: return "Beholder";
+		case ALAKAMIN_HARPYR: return "Harpyr";
+		case ALAKAMIN_SATYR: return "Satyr";
+		case ALAKAMIN_AVIAK: return "Aviak";
+		case ALAKAMIN_SIREN: return "Siren";
+		case ALAKAMIN_MINOTAUR: return "Minotaur";
+		case ALAKAMIN_FUNGOID: return "Fungoid";
+		case ALAKAMIN_KOBOLD: return "Kobold";
+		case ALAKAMIN_GOBLIN: return "Goblin";
+		case ALAKAMIN_ORC: return "Orc";
+		case ALAKAMIN_ULTRATAUR: return "Ultrataur";
+		case ALAKAMIN_BAZU: return "Bazu";
+		case ALAKAMIN_FAERIE: return "Faerie";
+		case ALAKAMIN_GARGOYLE: return "Gargoyle";
+		case ALAKAMIN_KERRAN: return "Kerran";
+		case ALAKAMIN_BROWNIE: return "Brownie";
+		case ALAKAMIN_ZOMBIE: return "Zombie";
+		case ALAKAMIN_BANSHEE: return "Banshee";
+		case ALAKAMIN_GNOLL: return "Gnoll";
+		case ALAKAMIN_TROLL_PIRATE: return "Troll_Pirate";
+		case ALAKAMIN_GNOME_PIRATE: return "Gnome_Pirate";
+		case ALAKAMIN_DARK_ELF_PIRATE: return "Dark_Elf_Pirate";
+		case ALAKAMIN_OGRE_PIRATE: return "Ogre_Pirate";
+		case ALAKAMIN_HUMAN_PIRATE: return "Human_Pirate";
+		case ALAKAMIN_ERUDITE_PIRATE: return "Erudite_Pirate";
+		case ALAKAMIN_IMP: return "Imp";
+		case ALAKAMIN_DRAKE: return "Drake";
+		case ALAKAMIN_SCRYKIN: return "Scrykin";
+		case ALAKAMIN_GNOMEWORK: return "Gnomework";
+		case ALAKAMIN_GOLEM: return "Golem";
+
 		default:
 			return "Races"; break;
 	}

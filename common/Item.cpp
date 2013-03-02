@@ -1918,7 +1918,7 @@ bool Item_Struct::IsEquipable(uint16 Race, uint16 Class_) const
 
 	uint32 Races_ = Races;
 
-	uint32 Race_ = GetArrayRace(Race);
+	int32 Race_ = GetArrayRace(Race);
 
 	for (int CurrentClass = 1; CurrentClass <= PLAYER_CLASS_COUNT; ++CurrentClass)
 	{
@@ -1947,5 +1947,6 @@ bool Item_Struct::IsEquipable(uint16 Race, uint16 Class_) const
 		}
 		Races_ >>= 1;
 	}
+	if (Race_ == 69) {IsRace = true;}
 	return (IsRace && IsClass);
 }
