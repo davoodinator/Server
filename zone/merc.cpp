@@ -1812,7 +1812,7 @@ void Merc::AI_Process() {
 				//now off hand
 				if(GetTarget() && attack_dw_timer.Check() && CanThisClassDualWield()) {
 
-						int weapontype = NULL;
+						int weapontype = 0; // No weapon type
 						bool bIsFist = true;
 
 						if(bIsFist || ((weapontype != ItemType2HS) && (weapontype != ItemType2HPierce) && (weapontype != ItemType2HB))) {
@@ -2362,8 +2362,8 @@ bool Merc::AICastSpell(int8 iChance, int32 iSpellTypes) {
 								if(!castedSpell && tar->GetPet()) {
 
 									//don't cast group spells on pets
-									if(IsGroupSpell(selectedMercSpell.spellid)  
-											|| spells[selectedMercSpell.spellid].targettype == ST_Group 
+									if(IsGroupSpell(selectedMercSpell.spellid)
+											|| spells[selectedMercSpell.spellid].targettype == ST_Group
 											|| spells[selectedMercSpell.spellid].targettype == ST_GroupTeleport ) {
 										continue;
 									}
@@ -5103,7 +5103,7 @@ bool Merc::Unsuspend(bool setMaxStats) {
 		uint32 suspendedTime = 0;
 
 		SetSuspended(false);
-		
+
 		mercOwner->GetMercInfo().mercid = GetMercID();
 		mercOwner->GetMercInfo().IsSuspended = false;
 		mercOwner->GetMercInfo().SuspendedTime = 0;
@@ -5165,12 +5165,9 @@ bool Merc::Unsuspend(bool setMaxStats) {
 	return true;
 }
 
-bool Merc::Dismiss() {
-	Client* mercOwner;
+bool Merc::Dismiss(){
 
-	if(GetMercOwner()) {
-		mercOwner = GetMercOwner();
-	}
+	Client* mercOwner = GetMercOwner();
 
 	if(!mercOwner)
 		return false;
@@ -5453,7 +5450,7 @@ void NPC::LoadMercTypes(){
 		mysql_free_result(DatasetResult);
 	}
 
-	safe_delete(Query);
+	safe_delete_array(Query);
 	Query = 0;
 
 	if(!errorMessage.empty()) {
@@ -5489,7 +5486,7 @@ void NPC::LoadMercs(){
 		mysql_free_result(DatasetResult);
 	}
 
-	safe_delete(Query);
+	safe_delete_array(Query);
 	Query = 0;
 
 	if(!errorMessage.empty()) {
