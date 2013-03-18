@@ -1630,7 +1630,8 @@ bool ZoneDatabase::LoadMercInfo(Client *c) {
 				c->GetMercInfo(slot).IsSuspended = atoi(DataRow[5]) == 1 ? true : false;
 				c->GetMercInfo(slot).MercTimerRemaining = atoi(DataRow[6]);
 				c->GetMercInfo(slot).Gender = atoi(DataRow[7]);
-				c->GetMercInfo(slot).State = atoi(DataRow[8]);
+				c->GetMercInfo(slot).State = 5;
+				c->GetMercInfo(slot).Stance = atoi(DataRow[8]);
 				c->GetMercInfo(slot).hp = atoi(DataRow[9]);
 				c->GetMercInfo(slot).mana = atoi(DataRow[10]);
 				c->GetMercInfo(slot).endurance = atoi(DataRow[11]);
@@ -1747,7 +1748,7 @@ bool ZoneDatabase::SaveMerc(Merc *merc) {
 		}
 	}
 
-	safe_delete(Query);
+	safe_delete_array(Query);
 
 	if(!errorMessage.empty() || (Result && affectedRows != 1)) {
 		if(owner && !errorMessage.empty())
@@ -1883,15 +1884,14 @@ void ZoneDatabase::LoadMercBuffs(Merc *merc) {
 		BuffsLoaded = true;
 	}
 
-	safe_delete(Query);
+	safe_delete_array(Query);
 	Query = 0;
 
 	if(errorMessage.empty() && BuffsLoaded) {
 		if(!database.RunQuery(Query, MakeAnyLenString(&Query, "DELETE FROM merc_buffs WHERE MercId = %u", merc->GetMercID()), TempErrorMessageBuffer)) {
 			errorMessage = std::string(TempErrorMessageBuffer);
-			safe_delete(Query);
-			Query = 0;
 		}
+		safe_delete_array(Query);
 	}
 
 	if(!errorMessage.empty()) {
@@ -1916,11 +1916,15 @@ bool ZoneDatabase::DeleteMerc(uint32 merc_id) {
 		else
 			TempCounter++;
 
+		safe_delete_array(Query);
+
 		if(!database.RunQuery(Query, MakeAnyLenString(&Query, "DELETE FROM mercs WHERE MercID = '%u'", merc_id), TempErrorMessageBuffer)) {
 			errorMessage = std::string(TempErrorMessageBuffer);
 		}
 		else
 			TempCounter++;
+
+		safe_delete_array(Query);
 
 		if(TempCounter == 2)
 			Result = true;
@@ -2201,7 +2205,7 @@ uint8 ZoneDatabase::GetZoneWeather(uint32 zoneid, uint32 version) {
     MYSQL_RES *result;
     MYSQL_ROW row;
 	
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT weather FROM zone WHERE zoneidnumber=%i AND (version=%i OR version=0) ORDER BY version DESC", zoneid), errbuf, &result))
+	if (RunQuery(query, MakeAnyLenString(&query, "SELECT weather FROM zone WHERE zoneidnumber=%i AND (version=%i OR version=0) ORDER BY version DESC", zoneid, version), errbuf, &result))
 	{
 		safe_delete_array(query);
 		if (mysql_num_rows(result) > 0) {
