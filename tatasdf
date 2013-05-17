@@ -1,0 +1,1957 @@
+[33mcommit 92282da4d5ad4ac20fe24323de83d0466905e60a[m
+Merge: 5de491f b9a3218
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Tue May 14 13:00:08 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit b9a32185d7f0d76b0f21a36f8a6fb72e4d88184d[m
+Merge: 73a4e87 0f88017
+Author: josheb <uberneen@yahoo.com>
+Date:   Sun May 12 19:44:07 2013 -0700
+
+    Merge pull request #60 from josheb/master
+    
+    CHA scribe logic fix.
+
+[33mcommit 0f880177e4bc22a5c1fc74aeacd934ded9045a49[m
+Merge: 7683252 3a31ad5
+Author: root <root@Tabasco-VM.(none)>
+Date:   Sun May 12 21:36:13 2013 -0500
+
+    Merge branch 'master' of https://github.com/josheb/Server
+
+[33mcommit 768325289681267470c1afcd6af1370c6ee937eb[m
+Author: root <root@Tabasco-VM.(none)>
+Date:   Sun May 12 21:35:21 2013 -0500
+
+    CHA scribe rule logic fix
+
+[33mcommit 73a4e8737913528569fecb72a21301c3b0dce254[m
+Author: Michael Cook <mcook@mackal.net>
+Date:   Sat May 11 14:32:14 2013 -0400
+
+    FreeBSD support and clean up of unnecessary ifdef FREEBSD
+
+[33mcommit 3a31ad55fb310a29649a48888e84b9746d582ffa[m
+Merge: 56b15f5 9ea71dd
+Author: josheb <uberneen@yahoo.com>
+Date:   Sat May 11 07:03:50 2013 -0700
+
+    Merge pull request #5 from EQEmu/master
+    
+    sync
+
+[33mcommit 5de491fe665977ac741bbd309832b1549e863b17[m
+Merge: 47b20c7 9ea71dd
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sat May 11 00:36:30 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 9ea71dd94f7fb2f6f36214abb5ece55626459b35[m
+Merge: 7a93966 7a4cac8
+Author: Uleat <uleat.charismata@gmail.com>
+Date:   Fri May 10 19:38:14 2013 -0700
+
+    Merge pull request #58 from EQEmu/botproc
+    
+    -- Added Bot primary weapon proc (secondary and ranged already exist)
+
+[33mcommit 7a4cac84ac93c39d27920a1951a79a630665c144[m
+Author: Uleat <uleat.charismata@gmail.com>
+Date:   Fri May 10 22:24:56 2013 -0400
+
+    -- Added missing wrapper to bot update message
+    -- Added notes to AESpell() update
+
+[33mcommit c98c115cb65ff73051ec9e191a904fd607525ad3[m
+Author: Uleat <uleat.charismata@gmail.com>
+Date:   Thu May 9 20:57:02 2013 -0400
+
+    -- Added Bot primary weapon proc (secondary and ranged already exist)
+    -- Added Bard Bot Instrumentation bonuses
+    -- Added checks to avoid AE Buff casting on enemy mobs
+    -- Fixed a few typos in 'Vah Shir'-related code
+
+[33mcommit 56b15f558ca9857ef70cc4970a1e80e6fcd86004[m
+Merge: a0a9258 7a93966
+Author: josheb <uberneen@yahoo.com>
+Date:   Thu May 9 06:19:29 2013 -0700
+
+    Merge pull request #4 from EQEmu/master
+    
+    sync
+
+[33mcommit 47b20c7097f34a2a316e9a7e6af90cedc15b5250[m
+Merge: 17de00d 7a93966
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Thu May 9 01:38:11 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 7a9396615858264f1f18538f7d520dc559128ddf[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Wed May 8 21:03:35 2013 -0700
+
+    VS2012 fix + return 0 fix
+
+[33mcommit f6100ed83406dcef6ea2c6166acef1654883e9a8[m
+Author: mackal <mcook@mackal.net>
+Date:   Wed May 8 17:07:49 2013 -0400
+
+    Fixed NPC::GetScore and XS_NPC_GetScore
+
+[33mcommit 21a9434f89e3e5a9856024c92be9bf730ffb7d45[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Wed May 8 20:02:55 2013 +0100
+
+    Changed dummy strings written into the TaskSelector packet from nullptr to ABCD since the packet size calculation was based on the strings being 4 characters long.
+
+[33mcommit 17de00d58117dc603acf127c2352bcb102633b37[m
+Merge: b12a5b4 ea6e239
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Wed May 8 12:11:46 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit ea6e239d58a526a1a749af1df7ee5eae6effc533[m
+Merge: 059ecdb 4ee4992
+Author: josheb <uberneen@yahoo.com>
+Date:   Wed May 8 05:46:49 2013 -0700
+
+    Merge pull request #54 from af4t/master
+    
+    VS2010 compatibility adjusts
+
+[33mcommit 4ee499233061b58c2ae56785f4ee828b42cfd01e[m
+Merge: 5cda797 059ecdb
+Author: af4t <kemmler.irreverent@gmail.com>
+Date:   Wed May 8 06:07:11 2013 -0400
+
+    Merge branch 'master' of git://github.com/EQEmu/Server
+
+[33mcommit b12a5b4cbf8be4aa500880fc93a3eb96e02150ee[m
+Merge: f4320d6 059ecdb
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Tue May 7 18:29:37 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 059ecdb50b6373b1def84827efb09d8d45e9c7a6[m
+Author: Michael Cook <mcook@mackal.net>
+Date:   Tue May 7 18:20:09 2013 -0400
+
+    Fix NULL to nullptr for SQL queries take 2
+
+[33mcommit 0838d4507a2f423bde4f2ceffcc809694196bde8[m
+Author: Michael Cook <mcook@mackal.net>
+Date:   Tue May 7 17:41:05 2013 -0400
+
+    Fix NULL to nullptr for SQL queries
+
+[33mcommit 5cda797531393f9b5d4a0f6ab03afd59cf924e82[m
+Author: af4t <kemmler.irreverent@gmail.com>
+Date:   Tue May 7 15:19:27 2013 -0400
+
+    VS2010 compatibility
+
+[33mcommit 308a21e0e27792515afbdebc02e6d6cfef3f63e9[m
+Merge: 90c7fab a0a9258
+Author: josheb <uberneen@yahoo.com>
+Date:   Tue May 7 05:44:07 2013 -0700
+
+    Merge pull request #51 from josheb/master
+    
+    Quest events and customizations
+
+[33mcommit a0a92587b4beec1d2d42ff78ea3853ac8ffe9301[m
+Author: tabasco <tabasco@tabasco.(none)>
+Date:   Mon May 6 16:24:44 2013 -0500
+
+    Fixing some regressions
+
+[33mcommit 8e49ab91799b8714fc34d8cb1e1249d71cc220b3[m
+Merge: 05d7c12 90c7fab
+Author: josheb <uberneen@yahoo.com>
+Date:   Mon May 6 14:16:46 2013 -0700
+
+    Merge pull request #3 from EQEmu/master
+    
+    sync
+
+[33mcommit f4320d6200305ec4c64d90d4b88a84bc2751d4d1[m
+Merge: 9e0d901 90c7fab
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Mon May 6 09:58:03 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 90c7fab452023bdc7dac318da042520e94703608[m
+Merge: a4b985c 4a0749f
+Author: Alex <KLS@peqtgc.com>
+Date:   Sun May 5 23:42:14 2013 -0700
+
+    Merge pull request #50 from j883376/master
+    
+    Fix Auto XTargets not clearing on death
+
+[33mcommit a4b985cd96a31e4b464a9f1d89e00ecca99dd729[m
+Merge: e1c2657 7560b6b
+Author: Alex <KLS@peqtgc.com>
+Date:   Sun May 5 23:41:47 2013 -0700
+
+    Merge pull request #49 from addtheice/master
+    
+    NULL to nullptr
+
+[33mcommit 05d7c12d387bb1677406f10a3f09823735f0222a[m
+Author: Tabasco <uberneen@yahoo.com>
+Date:   Sun May 5 18:20:22 2013 -0500
+
+    Various customizations from DungeonCrawl
+
+[33mcommit f983d19e01deadbc9641c6ba937d8beeca357c4d[m
+Author: Tabasco <uberneen@yahoo.com>
+Date:   Sun May 5 17:53:34 2013 -0500
+
+    Removed my bookmark comments and cleaned up itemtick for cases where there are no tick items.
+
+[33mcommit 4a0749f811a82709728928c818d68645c9a3fa35[m
+Author: j883376 <j883376@gmail.com>
+Date:   Sun May 5 18:51:20 2013 -0400
+
+    Change NULL to nullptr in RemoveAutoXTargets()
+
+[33mcommit e2fd78b51063d4d38a065bddeddfc25b30fda373[m
+Author: j883376 <j883376@gmail.com>
+Date:   Sun May 5 06:47:53 2013 -0400
+
+    Fix Auto XTargets not clearing on death
+
+[33mcommit 7560b6b0a72c19c9e86b1b0bb5e4128413f813b2[m
+Author: Arthur Ice <addtheice@gmail.com>
+Date:   Sat May 4 18:06:58 2013 -0700
+
+    NULL to nullptr
+
+[33mcommit 824b101831987e47ac3c23643de52983f41b417b[m
+Merge: 43b91b5 e1c2657
+Author: josheb <uberneen@yahoo.com>
+Date:   Sat May 4 07:30:46 2013 -0700
+
+    Merge pull request #2 from EQEmu/master
+    
+    sync
+
+[33mcommit e1c2657b115f61420dd3a9b7be9630e8cd0cd3f3[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Fri May 3 09:36:16 2013 +0100
+
+    NULL check in Merc::CalcItemBonuses
+
+[33mcommit d3588d2c95d0543db2bfbe34f21d92d6367ea98a[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Thu May 2 23:24:52 2013 -0700
+
+    PERL ON BY DEFAULT - THANKS DALAYA
+
+[33mcommit c5c945f0c3d5df14f1dd171bbacd7ced1b6cbe61[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Thu May 2 23:21:04 2013 -0700
+
+    Make perl truely optional (Dalaya)
+
+[33mcommit 9e0d90158346807e2baadcb6da038630bea72582[m
+Merge: d95d151 0227139
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sun Apr 28 21:06:35 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 022713996a85226755d3b72ef8dc6c8b64c5091d[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Apr 28 18:57:08 2013 +0100
+
+    Changed return type of CRC16 to uint16
+
+[33mcommit d2c7f23ec9303328f3ad2c20d68063f061f992f7[m
+Author: PiB <pixelbound@gmail.com>
+Date:   Sat Apr 27 19:13:34 2013 +0100
+
+    Implement CRC16 using CRC32.
+
+[33mcommit d95d1511d7ca146c9ea152e7d49fd7d6cc3ba6a1[m
+Merge: c388a03 232d1e2
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sun Apr 28 10:21:46 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 232d1e2ca888f491f6ab1d45fc07f9c0dc906bf9[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Apr 27 16:22:29 2013 +0100
+
+    Verify minimum size of OP_Packet, OP_Fragment and OP_OutOfOrderAck
+
+[33mcommit 401e897019f0172366f0dd0a8da524cdf1a4bc99[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Apr 27 15:45:24 2013 +0100
+
+    Verify OP_Ack size & fix crash in BasePacket::build_raw_header_dump due to uninitialised timestamp
+
+[33mcommit c388a03fd45ff4b95d564af9b4a95395e6a7b5b4[m
+Merge: 2aa3067 61f7009
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Fri Apr 26 01:36:10 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 61f70093780d3a58349cf72a223487289f409d16[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Thu Apr 25 19:04:33 2013 +0100
+
+    EQExtractor2 SQL gen support for current client.
+
+[33mcommit 43b91b59389afcb2ec7797a5a4f93d692e5761aa[m
+Merge: 5649040 e2f25d1
+Author: josheb <uberneen@yahoo.com>
+Date:   Thu Apr 25 05:34:17 2013 -0700
+
+    Merge pull request #1 from EQEmu/master
+    
+    Sync
+
+[33mcommit e2f25d1c92ca031a8d9248036bbb67bcc70179de[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Thu Apr 25 00:42:52 2013 -0400
+
+    Fixed a couple of merc stat issues and a few bot aggro issues, removed unneeded bot pet AI.
+
+[33mcommit 56490400ca271690470f7b0496256d417805fe90[m
+Author: Tabasco <uberneen@yahoo.com>
+Date:   Wed Apr 24 15:58:51 2013 -0500
+
+    Dungeon Crawl custom code merge
+    Added numerous modding hooks.
+    Added rules:
+    	Character:KeepLevelOverMax - Don't delevel a character if they are found to be over max level rule.
+    	Spells:UseCHAScribeHack - Optionally omit spells with CHA in effect12 when using scribespells and traindiscs
+    	Combat:MonkACBonusWeight - Adjust the weight threshold for monk AC bonus
+    	Combat:ClientStunLevel - Adjust the level clients kicks and bashes start to roll for stuns
+    	Combat;QuiverWRHasteDiv - Adjust the divisor applied to weight reduction for haste calcs
+    	Combat:UseArcheryBonusRoll - Make archery stationary bonus a roll
+    	Combat:ArcheryBonusChance - Archery stationary bonus chance
+    
+    Added account flags and associated perl wrappers
+    Added EVENT_ITEM_TICK for interactive items
+    Added EVENT_DUEL_WIN and EVENT_DUEL_LOSE, which exports $enemyname and $enemyid
+    Added timer and interval to console worldshutdown command
+    Added EQW interface for worldshutdown and server-wide messages
+
+[33mcommit b15cb08f549172f4f996be65af911888a5ce5c95[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Wed Apr 24 19:31:13 2013 +0100
+
+    EQExtractor2 update.
+
+[33mcommit 9b015a29754acc455461b895c5c9827a5469f49f[m
+Merge: a7ce668 b09a384
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Tue Apr 23 13:16:25 2013 -0700
+
+    Merge pull request #48 from addtheice/master
+    
+    Cleaned up Packet Handling in world/Client
+
+[33mcommit b09a3840eb226e5585ef6e685e8e6fa7aef9ee79[m
+Author: Arthur Dene Ice <arthuri@predator-software.com>
+Date:   Mon Apr 22 23:22:13 2013 -0700
+
+    Turn HandleZoneChangePacket into method.
+
+[33mcommit 495510a02ec0a66240257175ff68d8135388cf7d[m
+Author: Arthur Dene Ice <arthuri@predator-software.com>
+Date:   Mon Apr 22 23:18:40 2013 -0700
+
+    Reorganized handling of Packets to be a bit cleaner.
+
+[33mcommit ea606ef80dc958a09234d6131462cf21b6e200f6[m
+Author: Arthur Dene Ice <arthuri@predator-software.com>
+Date:   Mon Apr 22 23:14:00 2013 -0700
+
+    Turn DeleteCharacterPacket handling into a method.
+
+[33mcommit 27493c3d751f5a52012fc696aedcb69282e65951[m
+Author: Arthur Dene Ice <arthuri@predator-software.com>
+Date:   Mon Apr 22 23:10:57 2013 -0700
+
+    Turn EnterWorldPacket handling into a method.
+
+[33mcommit cc07d511a51a47d5e9894c177d1e092aa1a43473[m
+Author: Arthur Dene Ice <arthuri@predator-software.com>
+Date:   Mon Apr 22 23:00:44 2013 -0700
+
+    Turn CharacterCreatePacket handling into a method.
+
+[33mcommit 5b3ec4fb7ce20abf35a712e9188cce4f6b2994eb[m
+Author: Arthur Dene Ice <arthuri@predator-software.com>
+Date:   Mon Apr 22 22:56:55 2013 -0700
+
+    Turn CharacterCreateRequestPacket handling into a method.
+
+[33mcommit 18da8fe44d7e4ec659d1fed1c84b09d9774168eb[m
+Author: Arthur Dene Ice <arthuri@predator-software.com>
+Date:   Mon Apr 22 22:52:29 2013 -0700
+
+    Turn GenerateRandomNamePacket handling into a method.
+
+[33mcommit 211248b50ed37110b356fda59c488e1a624155a0[m
+Author: Arthur Dene Ice <arthuri@predator-software.com>
+Date:   Mon Apr 22 22:47:19 2013 -0700
+
+    Turn SendLoginInfoPacket handling into a method.
+
+[33mcommit 969f0c535e9a6e3ca20b25c036089aee347d2b77[m
+Author: Arthur Dene Ice <arthuri@predator-software.com>
+Date:   Mon Apr 22 22:44:29 2013 -0700
+
+    Turn NameApprovalPacket handling into a method.
+
+[33mcommit 2aa30676032b3166c7d6eeb48e3729790545da12[m
+Merge: 5f0cbf9 a7ce668
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sun Apr 21 11:19:22 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit a7ce66856b6425f7236102419528e5760958f33e[m
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Sat Apr 20 14:04:08 2013 -0400
+
+    Fix rare case where heals from buffs could be negative.
+
+[33mcommit 5f0cbf97fa141c11dd7455ce3671df116028be14[m
+Merge: 9efe713 3b42f29
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Fri Apr 12 17:04:23 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 3b42f295d6414efdf98e333b4b153ef665d32832[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Fri Apr 12 19:20:43 2013 +0100
+
+    Moved entity_list.Clear() prior to destruction of Perl objects in zone shutdown
+
+[33mcommit 9efe7134a98a31a58a5bcf23a436302469a64959[m
+Merge: bd7a423 b8febdd
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Thu Apr 11 13:02:56 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit b8febdd44059d09b4705c4e8fbba198f6cd22b17[m
+Author: mackal <mcook@mackal.net>
+Date:   Tue Apr 9 14:50:51 2013 -0400
+
+    Realized there was a better way to do the DB entries for salvage, so I changed the script.
+    Run the optional 2013_04_09_SalvageCleanOld.sql if you ran the old script.
+
+[33mcommit bd7a42388f92e53cc0545b38b85b95ae5eada88f[m
+Merge: e2d47c1 f8795bc
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Tue Apr 9 02:14:15 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit f8795bcd72d04bd8be9ab24423a8c7eb33bfb33d[m
+Author: mackal <mcook@mackal.net>
+Date:   Mon Apr 8 22:33:19 2013 -0400
+
+    Implemented Salvage AA.
+    Added a new coloumn to tradeskill_recipe_entires called salvagecount that works much in the same way to fail/success/componentcount
+    The code will default to the component list if nothing is found with a salvagecount
+    New script: generate_salvage.py will generate the entries for recipes with a failcount (make sure your config is vaild XML as well, it complains if it isn't)
+
+[33mcommit 53301289f5e6b657343d3d5174c1b96599fcea8e[m
+Merge: 5189605 81ca7a1
+Author: mackal <mcook@mackal.net>
+Date:   Mon Apr 8 17:30:22 2013 -0400
+
+    Merge branch 'salvage'
+
+[33mcommit 51896050ed23079bf1f6e550154c90dbf900513a[m
+Author: mackal <mcook@mackal.net>
+Date:   Mon Apr 8 17:20:03 2013 -0400
+
+    Fix XML Type Declaration in example configs
+
+[33mcommit 81ca7a1bfdfbc4b770511dfadf7a022b0f590ee0[m
+Author: mackal <mcook@mackal.net>
+Date:   Mon Apr 8 14:16:08 2013 -0400
+
+    More work on salvage, added some extra checks and won't return stacks of items
+
+[33mcommit 91c817d9ddfc6c75dc44519c7d9bf84c11bf5bc1[m
+Author: mackal <mcook@mackal.net>
+Date:   Sun Apr 7 22:38:43 2013 -0400
+
+    Work on implementing salvage
+
+[33mcommit e2d47c1aecce5e8d8226fc87795d54d1a4b9f909[m
+Merge: 120e994 88b9f96
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sat Apr 6 12:11:38 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 88b9f96b9196ea3da7b36fec500b0e452a3df5b2[m
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Sat Apr 6 08:23:09 2013 -0400
+
+    Attempting manual merge for Nature's Bounty
+
+[33mcommit 120e99482828248b426314e70420cddabba38745[m
+Merge: 775f62c b2d5ad6
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sat Apr 6 08:10:33 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit b2d5ad6904f113f422e051c0564600ca04f8f881[m
+Merge: 6fa93f2 20f086d
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Fri Apr 5 17:16:19 2013 -0700
+
+    Merge pull request #46 from mackal/pet_fixes_again
+    
+    Switched rest of pet messages to MT_PetResponse
+
+[33mcommit 20f086dc37bea83c7f476d80434e1028c1576177[m
+Author: mackal <mcook@mackal.net>
+Date:   Wed Apr 3 16:09:44 2013 -0400
+
+    Switched rest of pet messages to MT_PetResponse
+    Overloaded Mob::Say_StringID with a version that takes a message type
+
+[33mcommit 775f62c03f564a8b1e7c0df2e2398838d16f1a0e[m
+Merge: 96a5ad7 6fa93f2
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Tue Apr 2 20:56:18 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 6fa93f243f738e8c6a46a823e783d49781f68f2c[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Tue Apr 2 19:17:28 2013 -0400
+
+    Merged from Master & changelog.
+
+[33mcommit 15e31d1c03372fb5d2e421e7e84cd3dbbc6d4d16[m
+Merge: a787a7c 989d132
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Tue Apr 2 19:10:18 2013 -0400
+
+    Merge branch 'master' of https://github.com/EQEmu/Server
+
+[33mcommit a787a7ce727a34064cc54b9813e56b2420bcadd0[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Tue Apr 2 19:09:32 2013 -0400
+
+    Fixed Merc lack of use of heal over time spells (causing excessive healing), fixed pet mitigation/AC issues.
+
+[33mcommit 989d132423e023fc7451989016d8635984d4dd7e[m
+Merge: 757fc01 353d7ce
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Mon Apr 1 15:49:19 2013 -0700
+
+    Merge pull request #45 from mackal/aa_fix
+    
+    Bards can now use instant cast AAs while singing (Fading Memories, Boast...
+
+[33mcommit 757fc01b781d1ca9370fb086d39ae22a0fba0485[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Mon Apr 1 14:23:54 2013 -0700
+
+    Patch for:
+    -Perl blessing of exported variables is causing the SVs to be overwritten but never freed by the Perl GC.  I'm not sure if this is a feature or a bug in Perl as the documentation sucks.
+    
+    Addressed by setting the blessed SVs in question to be undefined at the end of every script.  Caused a noticeable drop in memory for zones with a lot of quest events firing but it's probably not perfect.
+
+[33mcommit 353d7cede0173c50026e594cbd4a8cc114490dc0[m
+Author: mackal <mcook@mackal.net>
+Date:   Mon Apr 1 17:19:45 2013 -0400
+
+    Bards can now use instant cast AAs while singing (Fading Memories, Boastful Bellow)
+    AA reuse timers now start before the spell is cast and reset upon failure or canceling
+
+[33mcommit 96a5ad7fa3900e1970fea2c8ffd5439b1d9588c7[m
+Merge: 7e059e1 fb0add0
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Mon Apr 1 00:49:37 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit fb0add070b86bb82efc3f92289f34ba973da4053[m
+Merge: 2dde4dc 96b42ed
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Mar 31 04:06:16 2013 -0700
+
+    Merge pull request #43 from mackal/pet_fixes
+    
+    Fix pet message to use StringIDs, most should be correct related to pet ...
+
+[33mcommit 96b42ed86f4c38ee43ca15b7335b772f78172bc4[m
+Author: mackal <mcook@mackal.net>
+Date:   Sat Mar 30 22:57:20 2013 -0400
+
+    Fix pet message to use StringIDs, most should be correct related to pet "saying" or just the client getting a message
+    Added the pet taunting message
+
+[33mcommit 7e059e1d7a8a7fd3d7dacbc525e0fec62c2700bd[m
+Merge: 49ddd82 2dde4dc
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sat Mar 30 08:56:32 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 2dde4dce12ec5e5eff547473e055dd50a1dd7aab[m
+Merge: 24d4eaf c7ff207
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Tue Mar 26 18:15:50 2013 -0700
+
+    Merge pull request #42 from SecretsOTheP/master
+    
+    Potential fix for a Merc deconstructor crash.
+
+[33mcommit c7ff207017a6c882e2578aa55aded886cb90b024[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Mon Mar 25 13:07:58 2013 -0400
+
+    Made Merc::AddMercToGroup handle cleaning up old groups as opposed to doing it in each location before AddMercToGroup. This should fix cases where the Merc's owner is invalid and being referenced, which causes the crash located in:
+    
+    http://www.eqemulator.org/forums/showthread.php?t=36670&page=2
+
+[33mcommit 23820a369e32fac92d44bedf8de73151127612e3[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sun Mar 24 18:08:03 2013 -0400
+
+    Moved around some data in Mercs to help prevent another crash... dunno if it actually will fix it but it can't hurt >_<
+
+[33mcommit 24d4eaf65d4c1f32b2a88d833fe467b144939fc9[m
+Merge: e2b9efa e0b05e5
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Sun Mar 24 11:56:06 2013 -0700
+
+    Merge pull request #41 from SecretsOTheP/master
+    
+    Merc Group Crash Fix
+
+[33mcommit e0b05e573e52659d70b500e09b9c4cfa5e6de532[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sun Mar 24 14:31:03 2013 -0400
+
+    Merc group/depop crash fixes.
+
+[33mcommit e2b9efaf4981ef5595ba0135e6f4fbf911691e1c[m
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Sun Mar 24 08:36:53 2013 -0400
+
+    Fixed SQL
+
+[33mcommit 349eb371c626b1ab92aa12d1de9771802d042f7d[m
+Merge: 5e618a1 afe3ba4
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Sun Mar 24 05:20:29 2013 -0700
+
+    Merge pull request #40 from af4t/master
+    
+    Fix typos in utils/sql/git/required/2013_03_23_Escape_FadingMemories.sql
+
+[33mcommit afe3ba40cf7a1baca82cea85a803d83e483348f8[m
+Author: af4t <kemmler.irreverent@gmail.com>
+Date:   Sun Mar 24 08:14:50 2013 -0400
+
+    Fix typos
+
+[33mcommit 5e618a1ca460db18cb464273ad4bd497e5d5f63e[m
+Merge: d011332 2073ca8
+Author: Alex <KLS@peqtgc.com>
+Date:   Sun Mar 24 01:13:54 2013 -0700
+
+    Merge pull request #39 from mackal/Fade_Escape_Fix
+    
+    Fixed and cleaned up Client::Escape()
+
+[33mcommit d0113326477ce7f1e22544f1e7ff82e837bac868[m
+Merge: ac040b5 bc73e9c
+Author: Alex <KLS@peqtgc.com>
+Date:   Sun Mar 24 01:13:14 2013 -0700
+
+    Merge pull request #38 from SecretsOTheP/master
+    
+    Merc Fixes Again
+
+[33mcommit bc73e9c4e3b565bdfaf37d8c988840bf3d557ccb[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sun Mar 24 04:02:47 2013 -0400
+
+    Whoops. Fixed a small change I did.
+
+[33mcommit e609ec1df61e5f4fdd73f0375f98a1107c519658[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sun Mar 24 04:01:49 2013 -0400
+
+    Fix for a crash issue related to groups that both PEQ and Armm reported on the forums.
+
+[33mcommit 2073ca8d380e2c5a2056fafe9cf2361c3769f840[m
+Author: mackal <mcook@mackal.net>
+Date:   Sat Mar 23 18:34:06 2013 -0400
+
+    Fixed and cleaned up Client::Escape()
+    Fixed SE_FadingMemories to use Client::Escape()
+    Rogue AA Escape now uses a spell instead of AA Action
+    Bard AA Fading Memories now only uses the AA Action to eat mana
+
+[33mcommit 49ddd8263f15c852e50eb1971bb6e66f24a89aab[m
+Merge: 11e65ef ac040b5
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sat Mar 23 14:38:29 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit a6f2c1be8a427734f47ef0c5dd53be9d6c070f49[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sat Mar 23 10:13:29 2013 -0400
+
+    Syntax error, better place for entity list removal
+
+[33mcommit 18e97142737c9f9a71f897f1cbb9af4a320a2d29[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sat Mar 23 10:10:03 2013 -0400
+
+    Another safeguard against a dangling pointer.
+
+[33mcommit fa18991917e3a9ac0c5a2116133981503c60bbc9[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sat Mar 23 10:04:49 2013 -0400
+
+    Added a few checks to resolve dangling pointers involving Mercs. Similar to the AIYellForHelp crash fixed years ago by Rogean.
+
+[33mcommit b0b342a020612fecbd31964022f3ca53f9ac7f14[m
+Merge: abaad22 8e604fd
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sat Mar 23 05:05:16 2013 -0400
+
+    Merge branch 'master' of https://github.com/SecretsOTheP/Server
+    
+    Conflicts:
+    	common/patches/RoF.cpp
+
+[33mcommit 8e604fd3db3b432d041084c5a69a6300ef29ea28[m
+Merge: 2124b63 ac040b5
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sat Mar 23 05:02:27 2013 -0400
+
+    Merge branch 'master' of https://github.com/EQEmu/Server
+    
+    Conflicts:
+    	zone/client_packet.cpp
+    	zone/merc.cpp
+    	zone/npc.cpp
+
+[33mcommit abaad22eb495491f29b4044b71689e21f379aea8[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sat Mar 23 04:58:03 2013 -0400
+
+    -Merc upkeep timers fixed to display properly. They now persist through zones as well as save to the database properly.
+    -Merc unsuspend timers should now be more reliable across zone shutdown.
+
+[33mcommit ac040b519748aa44e985a1d99baf2d0787bdc36e[m
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Fri Mar 22 21:48:57 2013 -0400
+
+    Added some pointer checks as discussed in issue #36
+
+[33mcommit 11e65ef09897f02a2cfdda877c1982fabafc970c[m
+Merge: 9976639 9b1a18d
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Fri Mar 22 01:21:02 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 9b1a18d9a3ab59feac2a43740df1bae405368b4a[m
+Merge: a20c773 c94822a
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Fri Mar 22 00:07:22 2013 -0400
+
+    Merge branch 'master' of https://github.com/EQEmu/Server
+    
+    Conflicts:
+    	changelog.txt
+
+[33mcommit a20c7735e8314ef6a8476216c735f2502fe3c584[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Fri Mar 22 00:03:50 2013 -0400
+
+    Fixed merc buffing bugs, added checks before dismissing merc to prevent possible bugged mercs, merged in Secret's merc memory leak fixes.
+
+[33mcommit c94822a2a1f36c0020488631e46749efb0c98c36[m
+Merge: 6ae8fbc 886c7bf
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Thu Mar 21 13:13:14 2013 -0700
+
+    Merge pull request #37 from mackal/stacking_SE_Limits
+    
+    Fixed stacking issues with SE_Limit* (ex. Unholy Aura Discipline and Aur...
+
+[33mcommit 2124b6398293ab8eeb2fccfb27821528ae561a75[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Thu Mar 21 00:40:59 2013 -0400
+
+    -Fixed a memleak in inviting mercs to group.
+    -Fixed a duplicate merc in window bug.
+
+[33mcommit 886c7bf634fe2643e883fefd7bb83fa26fde682f[m
+Author: mackal <mcook@mackal.net>
+Date:   Wed Mar 20 23:29:00 2013 -0400
+
+    Fixed stacking issues with SE_Limit* (ex. Unholy Aura Discipline and Aura of Reverence)
+
+[33mcommit 997663988d409baf91981528953444ebf85b9494[m
+Merge: 0a15b8d 6ae8fbc
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Wed Mar 20 13:44:06 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 56825e9ed0bbb460da0ea8ceca4f223ee70db104[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Wed Mar 20 10:46:09 2013 -0400
+
+    Two crash fixes reported on the forums are hopefully fixed.
+
+[33mcommit 925ba2199edee6716103b36a9dc12a15636c59a9[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Wed Mar 20 07:19:20 2013 -0400
+
+    Whoops, forgot CMakeLists.txt
+
+[33mcommit fd8650b8a0c1789437afc544699684d773bed154[m
+Merge: 549455b f90a5b5
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Wed Mar 20 04:25:34 2013 -0400
+
+    Merge branch 'master' of https://github.com/SecretsOTheP/Server
+
+[33mcommit 549455b3df08212a9fee96717ebcdf33c7e204f2[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Wed Mar 20 04:02:33 2013 -0400
+
+    Merc message removed.
+    
+    VLD removed, oops.
+
+[33mcommit f90a5b5b71b20d71320cd3bd275822bb5b9ef67c[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Wed Mar 20 04:02:33 2013 -0400
+
+    Merc message removed.
+
+[33mcommit 5c76297e5f444bb99eae4d650cbcb17188825382[m
+Merge: cabf863 6ae8fbc
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Wed Mar 20 04:01:44 2013 -0400
+
+    Merge branch 'master' of https://github.com/EQEmu/Server
+
+[33mcommit cabf8631d449e5c523932f306f54df3be101e7cc[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Wed Mar 20 04:00:08 2013 -0400
+
+    Fixed mercenary memleaks in AI_Start and Unsuspend.
+
+[33mcommit 6ae8fbc0e4915309aa839184b4f8e20f98ee5a9c[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Tue Mar 19 20:44:22 2013 +0000
+
+    Initialised some data in Mob/Merc constructors to stop valgrind complaining.
+
+[33mcommit f32a277643fb4c92429a09e19df8422029b8d57e[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Tue Mar 19 19:22:16 2013 +0000
+
+    Fixed memory leak in OP_VeteranRewardsAvailable
+
+[33mcommit 09df77b56e52f38fb4bbdfea681a651f7ebeb0ae[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Tue Mar 19 01:03:15 2013 -0400
+
+    Changelog fix.
+
+[33mcommit f5e58e0125e532441b7179cb27109d39e0556fb6[m
+Merge: 660ab53 5c9f2c0
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Tue Mar 19 00:57:15 2013 -0400
+
+    Merge branch 'master' of https://github.com/EQEmu/Server into Mercs
+    
+    Conflicts:
+    	changelog.txt
+
+[33mcommit 660ab53476b9477c808618d228b153aaca83ed6c[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Tue Mar 19 00:53:01 2013 -0400
+
+    Fixed zone crash due to merc focus effects & tribute, merc aggro issues when client in melee range, spell recast timers. Added melee DPS spells/disciplines & support.
+
+[33mcommit 0a15b8da1d9d225b3d22e93bdee32b0889bd2a39[m
+Merge: a0b092f 5c9f2c0
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Mon Mar 18 17:42:41 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 5c9f2c0d50ca6920305999d9d3e1127be44238a4[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Mon Mar 18 21:09:23 2013 +0000
+
+    Fixed a couple of memory leaks.
+
+[33mcommit d036afee5b997fe236d7a13b57e83d7ffecfb4d0[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Mar 17 15:52:48 2013 +0000
+
+    Fixed missing version parameter in DB select in GetZoneWeather.
+
+[33mcommit 4ab7786828276e139be7b432c021701e3d21d231[m
+Merge: 9fbf9ab 981cabe
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sun Mar 17 10:14:25 2013 -0400
+
+    Merge branch 'master' of https://github.com/EQEmu/Server
+    
+    Conflicts:
+    	zone/client_packet.cpp
+
+[33mcommit 981cabe85768b4384eaf4ee7c6b26d3652d2e054[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Mar 17 13:52:43 2013 +0000
+
+    Fixed a couple of merc memory leaks and removed some commented out DumpPacket calls.
+
+[33mcommit 8eef122cec55e25cf15603d0c2f69a9602df893f[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sun Mar 17 06:20:12 2013 -0400
+
+    Forgot changelog :x
+
+[33mcommit 1dc16558914925ba5f9d5376bafe739f50b47b02[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sun Mar 17 06:18:32 2013 -0400
+
+    Hopefully fixed that pesky merc memleak and cleaned up mercs a tad.
+
+[33mcommit 0bc942f4d56ef16945a64de5de86e7258b7d308c[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Fri Mar 15 03:27:45 2013 -0400
+
+    Test
+
+[33mcommit 9fbf9abd47c66d84274aa19b78f1fc8ec394002f[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sun Mar 17 06:20:12 2013 -0400
+
+    Forgot changelog :x
+
+[33mcommit b8170df4986b983673a843c7217a7ecd9139bb2f[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sun Mar 17 06:18:32 2013 -0400
+
+    Hopefully fixed that pesky merc memleak and cleaned up mercs a tad.
+
+[33mcommit d76a8bd34ac9899d8d90dc0594b09190ac04f315[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Mar 17 10:09:13 2013 +0000
+
+    EQExtractor2: Added SQL generation support for current Live client decoder.
+
+[33mcommit 021faf68b3d082af9ee814c04984f59e70d0edca[m
+Merge: c301b30 7c264ad
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Sun Mar 17 04:52:52 2013 -0400
+
+    Merge branch 'master' of https://github.com/EQEmu/Server
+
+[33mcommit 7c264ad0974329e980dc030f38bdbd8ba67fefa2[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Mar 16 19:56:09 2013 +0000
+
+    EQExtractor2 update.
+
+[33mcommit 810fdf3ccac7aec22200ada95cd893ac85a48163[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Fri Mar 15 19:37:29 2013 +0000
+
+    Resurrection - Fix for RoF + fixed a couple of memory leaks.
+
+[33mcommit c301b30c3a62cda73c81354da51090405d6cd16d[m
+Merge: 735b418 a14feca
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Fri Mar 15 03:32:43 2013 -0400
+
+    Merge branch 'master' of https://github.com/EQEmu/Server
+    
+    Conflicts:
+    	zone/client_packet.cpp
+
+[33mcommit 735b4181facad352f845dc15ed3ef3bdc786d241[m
+Author: SecretsOTheP <espause0703@gmail.com>
+Date:   Fri Mar 15 03:27:45 2013 -0400
+
+    Test
+
+[33mcommit a14fecaf785393c9f16c2230dea4831b31772342[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Thu Mar 14 23:13:49 2013 -0400
+
+    Forgot to remove debugging.
+
+[33mcommit e12b06a9ad0bd55664f92c0e377b108bca012b77[m
+Merge: 9a82875 0b0ee92
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Thu Mar 14 23:03:39 2013 -0400
+
+    Merge branch 'master' of https://github.com/EQEmu/Server
+
+[33mcommit 9a82875ad44b11a77399b3627b2cf23a81472bfa[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Thu Mar 14 22:56:45 2013 -0400
+
+    Forgot changelog.
+
+[33mcommit 0b0ee921a53b7bf72bc558d5663661b138d1ad53[m
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Thu Mar 14 20:42:02 2013 -0400
+
+    Fix for hatelist random missing last member on hatelist.
+
+[33mcommit 7109a4063754cc0c5dde789960a2809fb75d5671[m
+Merge: 0a805fe 9fdb686
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Thu Mar 14 20:03:48 2013 -0400
+
+    Merge branch 'master' of https://github.com/EQEmu/Server
+
+[33mcommit 0a805feeec2caff7d78f04e7b94c10e805b688f4[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Thu Mar 14 19:51:29 2013 -0400
+
+    Fixed Merc spell recast timers, changed how Mercs add mobs to their hate lists (should prevent IsEngaged() issues), initial Caster DPS Merc spell casting AI, initial Merc stance implementation, Mercs now suspend when their owner dies to prevent them being bugged (until it can be fixed), added 2 seconds between spell casts to be live-like.
+
+[33mcommit a0b092f5d863b58ee57923665446f957f096d43c[m
+Merge: 8256d70 9fdb686
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Mon Mar 11 21:01:58 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 9fdb6862f811c3afd4d4b05d6060dbd1e14f2c9b[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Mar 10 20:41:09 2013 +0000
+
+    Updated comment in Handle_OP_ItemPreview
+
+[33mcommit e53ae5f6d536963758393202e54741cc074973c9[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Mar 10 18:55:18 2013 +0000
+
+    More compiler warning fixes.
+
+[33mcommit 8256d7025b32f110938b9b23471211e2455cb6de[m
+Merge: b6b1a2c 0ad1044
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sun Mar 10 10:12:08 2013 -0400
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit 0ad1044b2ede68e5e0e1b7073cb7f12974b6a7ed[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Mar 9 20:13:11 2013 +0000
+
+    Added some error logging into ZoneDatabase::NPCSpawnDB for #npcspawn create
+
+[33mcommit 64c53fe37bf7e697d346343b4fb1b9b36e2fcba9[m
+Merge: 0e6272e faa93c3
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Mar 9 11:55:11 2013 -0800
+
+    Merge pull request #29 from addtheice/master
+    
+    consts on char*'s to remove the deprecation of const string to char* warning
+
+[33mcommit faa93c3739ad9aa73385d972e8403d533af8cb0e[m
+Author: Arthur Ice <addtheice@gmail.com>
+Date:   Sat Mar 9 10:52:25 2013 -0800
+
+    Added some consts to remove 'deprecated string to char*' warnings.
+
+[33mcommit 0e6272e6d810ff8cd96c71867862de787c1ece37[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Mar 9 13:21:06 2013 +0000
+
+    Removed _log message from zone/CatchSignal on Linux as it can deadlock on shutdown if another signal is received while the _log call is being processed.
+
+[33mcommit c363261d00719ea3092cf658421780064699b44c[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Mar 9 13:18:36 2013 +0000
+
+    Fix from Zaela_S to stop mobs aggroing on dead players when using RespawnFromHover.
+
+[33mcommit a2500ff81409e590667243453f7f86afd404b5d8[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Fri Mar 8 18:07:28 2013 -0800
+
+    Fix for DBCore crash
+
+[33mcommit 2af6e8cd16f71dfabb3017c98eb2f24f41f3a1af[m
+Merge: adf42c8 eb1e88b
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Fri Mar 8 08:42:54 2013 -0800
+
+    Merge pull request #28 from af4t/master
+    
+    Melee tomes named "Skill:  ", again
+
+[33mcommit eb1e88b38c486f2fc71a501f79e154bd595c8d5b[m
+Author: af4t <kemmler.irreverent@gmail.com>
+Date:   Thu Mar 7 23:33:21 2013 -0500
+
+    Reword blurbs in changelog.txt.
+
+[33mcommit b6b1a2cb680722337ea9999c7868089ee0efd020[m
+Merge: 0f1e5e7 adf42c8
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Thu Mar 7 20:36:17 2013 -0500
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit c81549a441e509d1991892af917df3270f7feed6[m
+Author: af4t <kemmler.irreverent@gmail.com>
+Date:   Thu Mar 7 09:42:16 2013 -0500
+
+    Melee tomes named "Skill: ...": had overlooked learn-by-right-click, updated.
+
+[33mcommit adf42c875041d6860e785a899b483abdb391df01[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Wed Mar 6 11:19:44 2013 -0800
+
+    Changed some stuff to keep it consistent with old behavior: was seeing crashes related to ptimers on peq.
+
+[33mcommit 2ee8e17ac062508ef47d06287ba4c8d3c3204be3[m
+Merge: f746941 55a72c8
+Author: Alex <KLS@peqtgc.com>
+Date:   Tue Mar 5 23:06:52 2013 -0800
+
+    Merge pull request #27 from af4t/master
+    
+    Fix NPCs aggro each other from beneficial spells
+
+[33mcommit f7469412f194f3ea202b5bb2e24f935716b53ccd[m
+Merge: 7af51ff 0c6eee6
+Author: Alex <KLS@peqtgc.com>
+Date:   Tue Mar 5 23:05:27 2013 -0800
+
+    Merge pull request #23 from addtheice/master
+    
+    Fixed missing include that blocked compile on linux.
+
+[33mcommit 55a72c86cf2f035aa1dc4422a92f5e9ec3a1af7e[m
+Merge: a80eb39 7926362
+Author: af4t <kemmler.irreverent@gmail.com>
+Date:   Tue Mar 5 16:22:01 2013 -0500
+
+    Merge branch 'master' of https://github.com/af4t/Server
+    
+    Conflicts:
+    	zone/spells.cpp
+
+[33mcommit a80eb397d59aed9ced93fb401c8b6122c86c0ba6[m
+Author: af4t <kemmler.irreverent@gmail.com>
+Date:   Tue Mar 5 15:44:05 2013 -0500
+
+    Stop NPCs from aggroing each other with buffs/beneficial spells.
+
+[33mcommit 7926362ab5c4dd0931b2246ac2e546144cce3273[m
+Author: af4t <kemmler.irreverent@gmail.com>
+Date:   Tue Mar 5 15:44:05 2013 -0500
+
+    Stop NPCs from aggroing each other with buffs/beneficial spells.
+
+[33mcommit 7af51ff34670474f98bf42ea6fc737983bf5d542[m
+Merge: c8ca362 4964c17
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Mon Mar 4 12:56:32 2013 -0800
+
+    Merge pull request #24 from af4t/master
+    
+    Forgot to update changelog.txt earlier
+
+[33mcommit c8ca362eba0cb8fc5875c017d2af713a095f6c99[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Mon Mar 4 19:15:07 2013 +0000
+
+    Few minor issues highlighted by cppcheck/valgrind.
+
+[33mcommit 4964c17abb651ff734d6f58b6fe3d09540a5e005[m
+Author: af4t <kemmler.irreverent@gmail.com>
+Date:   Mon Mar 4 13:08:53 2013 -0500
+
+    Forgot to update changelog.txt earlier
+
+[33mcommit 0c6eee6d81548eed03be42395403d28bd5f9019a[m
+Author: Arthur Ice <addtheice@gmail.com>
+Date:   Sun Mar 3 21:45:46 2013 -0800
+
+    More warning clean ups (NULL to 0 on int, sprintf flags, typedef on enum)
+
+[33mcommit 950f00fae6c4d5103282551e7b158d32c18219f5[m
+Author: Arthur Ice <addtheice@gmail.com>
+Date:   Sun Mar 3 16:17:06 2013 -0800
+
+    Fixed some warnings, like sprintf %i warnings (converted to %lu), fals vs NULL, etc
+
+[33mcommit d8628170b5d22bd6baa030c2bec35d37b9ce045d[m
+Author: Arthur Ice <addtheice@gmail.com>
+Date:   Sun Mar 3 15:26:40 2013 -0800
+
+    Fixed missing include that blocked compile on linux.
+
+[33mcommit 68338dace1e92120e7d4ff56f5ea5e2eefba8a46[m
+Merge: e0887d8 af1f87a
+Author: Arthur Ice <addtheice@gmail.com>
+Date:   Sun Mar 3 15:22:52 2013 -0800
+
+    Merge branch 'master' of git://github.com/EQEmu/Server
+
+[33mcommit af1f87a00f27a6f2fc65396b62dd323748d877aa[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Mar 3 22:26:57 2013 +0000
+
+    Fixed uninitialised variabled tempBot in #bot stance command (cppcheck)
+
+[33mcommit 9a47e79e8e4e218e673f181ad601e508110f56c0[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Mar 3 22:22:04 2013 +0000
+
+    Fixed memleak in Client::Handle_OP_MercenaryDataRequest (cppcheck)
+
+[33mcommit aceaba0fb0b3321b237e6ba4e0320cb5802762c1[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Mar 3 22:12:14 2013 +0000
+
+    Fixed uninitialised mercOwner highlighted by cppcheck.
+
+[33mcommit e0887d81aa5ea2ebb90a174f382e0eafdbf5cd8e[m
+Merge: 6a4f61d ff9e4e0
+Author: Arthur Ice <addtheice@gmail.com>
+Date:   Sun Mar 3 13:02:36 2013 -0800
+
+    Merge branch 'master' of git://github.com/EQEmu/Server
+
+[33mcommit 0f1e5e79ca148156ab053bb036dbae20e429a108[m
+Merge: 364d092 ff9e4e0
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sat Mar 2 22:10:12 2013 -0500
+
+    Merge https://github.com/EQEmu/Server
+
+[33mcommit ff9e4e07801424e48fea84611b999d2dff6fd412[m
+Merge: 7c34a89 c8da17c
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Mar 2 12:30:26 2013 -0800
+
+    Merge pull request #22 from addtheice/master
+    
+    just removed a duplicate GNU License in test main
+
+[33mcommit 6a4f61d3a337a7e2d78f59050dc1e4f4f80c6454[m
+Merge: c8da17c 7c34a89
+Author: Arthur Ice <addtheice@gmail.com>
+Date:   Sat Mar 2 12:01:01 2013 -0800
+
+    Merge branch 'master' of git://github.com/EQEmu/Server
+
+[33mcommit c8da17c6649ea4961d185fc04f5d6e097a68863d[m
+Author: Arthur Ice <addtheice@gmail.com>
+Date:   Sat Mar 2 11:58:39 2013 -0800
+
+    Deleted the old and duplicated GNU license text
+
+[33mcommit 364d0925fdb45ee896b6f966caac7c09ae34edbe[m
+Author: Davoodinator <davoodatwork@hotmail.com>
+Date:   Sat Mar 2 02:40:45 2013 -0500
+
+    Initial Alakamin Code Update
+    
+    Paladins only slay undead
+    all races classes bots
+    updates so monster players can use equipment.
+
+[33mcommit 7c34a89ec5f0505dde770061850b2ce691b7fbe8[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Sat Mar 2 01:07:18 2013 -0500
+
+    Fixed Merc depop bug, added merc rest regen, fixed merc group spell casting bug where mercs would continue to try to cast group buffs on pets of caster who didn't have Pet Affinity AA.
+
+[33mcommit da4cddf1efa3cd93f19cb3f9c511a3e625aeac45[m
+Author: Alex <KLS@peqtgc.com>
+Date:   Fri Mar 1 16:45:10 2013 -0800
+
+    Update README.md
+
+[33mcommit 9262c0895fc65410fb5dd5a3ca8d0b5497bbd9ce[m
+Merge: b5405c3 0137a27
+Author: KimLS <KLS@peqtgc.com>
+Date:   Thu Feb 28 22:33:31 2013 -0800
+
+    Merge branch 'master' of https://github.com/EQEmu/Server
+
+[33mcommit b5405c35e234eac2a18ef91adfe3e8a1e1fa50c0[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Thu Feb 28 22:33:20 2013 -0800
+
+    Tests fix + fix for certain factions not loading
+
+[33mcommit 0137a271ccf98b0b449f7c41aa3e9bca97748ddc[m
+Merge: 5d8af58 c054cb3
+Author: Ludwig <cavedude@peqtgc.com>
+Date:   Thu Feb 28 21:47:07 2013 -0800
+
+    Merge pull request #21 from af4t/master
+    
+    Undo MAG pet targeting change.
+
+[33mcommit 5d8af58e57a91245669002ceea249e2b1208a27d[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Fri Mar 1 00:34:25 2013 -0500
+
+    Oops, it's not a leap year.
+
+[33mcommit c054cb3dd08229a97f3ec199e0e3bf57e9636a19[m
+Merge: 8640a89 ea72975
+Author: af4t <af4t@comcast.net>
+Date:   Fri Mar 1 00:27:20 2013 -0500
+
+    Merge branch 'master' of git://github.com/EQEmu/Server
+
+[33mcommit 8640a89323861d94f5d86a4c53f7f269726aa346[m
+Author: af4t <af4t@comcast.net>
+Date:   Fri Mar 1 00:23:21 2013 -0500
+
+    Undo MAG pet targeting change
+
+[33mcommit ea72975e6909dd21f3eac19714928820b96fee0a[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Fri Mar 1 00:01:27 2013 -0500
+
+    Fixed Merc duplicate save bug, focus items, spell_scale and heal_scale now work implemented, new merc equipment (with focus items), added checks during merc hire, unsuspend, & timer update for states where a merc can't be hired, unsuspended, or can't be retained due to insufficient funds, no room in group, in raid, invalid merc data, etc, and give appropriate feedback, added rules for charging of merc purchase and upkeep costs.
+
+[33mcommit 7237c1f54cbcf744d8fcc61db1781d18cb799d9b[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Wed Feb 27 16:16:20 2013 -0800
+
+    Shared Memory changelog + something with CMake to support rvalue refs
+
+[33mcommit 92ed7e694f2f916535d0445a12041d94ac948d12[m
+Merge: aff4d53 ffe24cd
+Author: KimLS <KLS@peqtgc.com>
+Date:   Tue Feb 26 21:29:34 2013 -0800
+
+    Merge branch 'master' into shared_mem
+
+[33mcommit ffe24cdfaabdc08369811b3454263fca1aefc50c[m
+Merge: a952059 04dfe45
+Author: Alex <KLS@peqtgc.com>
+Date:   Tue Feb 26 21:29:01 2013 -0800
+
+    Merge pull request #19 from af4t/IHT_LT
+    
+    Enhancement: Improved Harm Touch & Leech Touch
+
+[33mcommit 04dfe4512f8354e5aeb62c25083a0ed19661b58c[m
+Author: af4t <af4t@comcast.net>
+Date:   Tue Feb 26 09:48:36 2013 -0500
+
+    SK AA Touch of the Wicked should reduce reuse timers for Improved Harm Touch & Leech Touch as well as regular HT.  Add to aa_actions with same redux rate as regular HT
+
+[33mcommit a95205905ee8a323d188203990faae35a37eaa21[m
+Merge: 55347ae e48d59b
+Author: Alex <KLS@peqtgc.com>
+Date:   Tue Feb 26 01:09:33 2013 -0800
+
+    Merge pull request #16 from af4t/TomeFix
+    
+    Melee tomes named "Skill: ..." can be handed to guildmasters and memoriz...
+
+[33mcommit 55347aeab63d9fee799410f7ad34510996222ac9[m
+Merge: 34a4b2a 945db17
+Author: Alex <KLS@peqtgc.com>
+Date:   Tue Feb 26 01:08:44 2013 -0800
+
+    Merge pull request #17 from af4t/SummonedPetTarget
+    
+    Fix targeting for summoned pets in Mob::DetermineSpellTargets
+
+[33mcommit 945db17cb828bf9c5acfe5e74e1ea7412604bf14[m
+Author: af4t <af4t@comcast.net>
+Date:   Mon Feb 25 10:33:53 2013 -0500
+
+    Fix targeting for summoned pets in Mob::DetermineSpellTargets
+
+[33mcommit e48d59b07b2de28ff56ca5e3e7b3da5408a9f529[m
+Author: af4t <af4t@comcast.net>
+Date:   Mon Feb 25 09:19:07 2013 -0500
+
+    Melee tomes named "Skill: ..." can be handed to guildmasters and memorized.
+
+[33mcommit aff4d53d7effcb709bb62dffca97d5b44c392b85[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 24 22:08:10 2013 -0800
+
+    Fix for sdrawkcab index in skill_caps
+
+[33mcommit 5bb604248f4599520c72cbaa7fac5246e3475a9f[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 24 10:52:52 2013 -0800
+
+    Removed obsolete cleanipc program
+
+[33mcommit 7e63135a3d890722ee940b2c6fe85c5f0f5139d0[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 24 10:51:04 2013 -0800
+
+    Fix for linux ipc mutex
+
+[33mcommit 3092286604db11c3778f66ab689aa208ed270864[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 24 10:33:07 2013 -0800
+
+    Fix for bad data on factions
+
+[33mcommit d42ff6ce1968742f39f465f5e2f1472735e9ed41[m
+Merge: 26f965e 34a4b2a
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 22:43:24 2013 -0800
+
+    Merge branch 'master' into shared_mem
+
+[33mcommit 26f965e251fe041ec8db1a686ddf6bd3018edc59[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 22:42:40 2013 -0800
+
+    Fix for shared memory loot: both the inconsistent tables and the not loading of tables with no items
+
+[33mcommit 34a4b2ab37578e471cc141073d03bcef179f6c87[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Feb 23 23:12:10 2013 +0000
+
+    Misc fizes.
+
+[33mcommit 9c1159837ac316e3da7ad716712f94301f53f1e8[m
+Merge: 147c969 e7e1b46
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 15:04:16 2013 -0800
+
+    Merge branch 'master' into shared_mem
+
+[33mcommit 147c96970c89b5ef312e70973ca48ce3eb435c1d[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 15:03:15 2013 -0800
+
+    Moved faction stuff around, removed stupid external item status stuff
+
+[33mcommit e7e1b46b36bc26d766cc2e18b32b6dd1f6b6d655[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Feb 23 22:17:19 2013 +0000
+
+    Set #reloadlevelmods to status 255
+
+[33mcommit 299dc525d0db46382e1305097dae565df1f75774[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sat Feb 23 22:00:43 2013 +0000
+
+    Set #reloadworld to 255 status
+
+[33mcommit 5a69f41f4ded55578c433d79675d4fef2dc80cf4[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 13:48:05 2013 -0800
+
+    Missing EOL
+
+[33mcommit c31b2b65c1f934b229e3900c8b317d56e6e1607d[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 13:45:19 2013 -0800
+
+    NPC Faction lists to new shared memory scheme
+
+[33mcommit 8937c5be863eab16c1c5385550399330598797e9[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 01:32:05 2013 -0800
+
+    Fix for mmf failing on linux (relies on size_ which wasn't init properly on one of the constructors, now is)
+
+[33mcommit 54883b0795342861b3b225773a61bb61f0e949b8[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 00:48:16 2013 -0800
+
+    mmf wont lock - programmer can handle that
+
+[33mcommit 39a77a855ebef725564412adcb1b4e052dbad93e[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 00:37:12 2013 -0800
+
+    Stupid design choice in cppunit fixt -.-
+
+[33mcommit 4c10d4dd2f709ab3f04dfdc5a72532a9dba7fd17[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 00:07:47 2013 -0800
+
+    c++11 linux compile conflicts with perl more
+
+[33mcommit f32048808acf7f94523726b1c5a23604f1bd7e77[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 23 00:06:03 2013 -0800
+
+    c++11 linux compile conflicts with perl
+
+[33mcommit 86c8b11102b05892c4191692e56e7201287c1578[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Fri Feb 22 23:40:16 2013 -0800
+
+    IPCMutex needed to be rewritten for Linux due to an annoying limitation of posix semaphores that makes encapping them moronic
+
+[33mcommit 8c425ff9d812c197b8efc8df5b89aeed86897ef1[m
+Merge: 9eaa986 1b44123
+Author: KimLS <KLS@peqtgc.com>
+Date:   Fri Feb 22 22:36:30 2013 -0800
+
+    Merge branch 'master' into shared_mem
+
+[33mcommit 1b4412355182d13cb7433a0f1659b23f7f65b635[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Fri Feb 22 22:31:07 2013 -0800
+
+    Slight cleanup on recent pull req + changing versions up
+
+[33mcommit 306cf7a5f56940353c5b52751b87be9eb968b06d[m
+Merge: 60172a7 dd913de
+Author: Alex <KLS@peqtgc.com>
+Date:   Fri Feb 22 22:27:54 2013 -0800
+
+    Merge pull request #14 from mackal/xtarget_feign_clear
+    
+    Mobs will now be removed from XTarget when they clear their feign memory
+
+[33mcommit dd913de1a2b057ccb5bdbe3a782ca00fb5d4cb07[m
+Author: mackal <mcook@mackal.net>
+Date:   Fri Feb 22 22:27:03 2013 -0500
+
+    Mobs will now be removed from XTarget when they clear their feign memory aggro
+
+[33mcommit 9eaa98675b2279d86d7ad3b63708b1fb5b603c74[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Fri Feb 22 18:25:17 2013 -0800
+
+    Shared Memory Loot works
+
+[33mcommit 6f13d0cfbc4bd61c93170ce35c78be4bf6529dc2[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Thu Feb 21 22:13:33 2013 -0800
+
+    Partial work on loot tables (non-compiling)
+
+[33mcommit 543ef3fb321d86917c11d2e8fc7c696bc88335ca[m
+Merge: 3e9c2a0 60172a7
+Author: KimLS <KLS@peqtgc.com>
+Date:   Thu Feb 21 08:58:53 2013 -0800
+
+    Merge branch 'master' into shared_mem
+
+[33mcommit 60172a780157cb4fbd19ef19f101391e5847fcb1[m
+Merge: e0b38cf 998cfb6
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Thu Feb 21 02:28:31 2013 -0800
+
+    Merge pull request #10 from addtheice/master
+    
+    Addtheice: Spelling fixes
+
+[33mcommit 998cfb6528b86c7241d38a81cde4ce1af0f3a7ee[m
+Author: Arthur Ice <addtheice@gmail.com>
+Date:   Thu Feb 21 00:07:49 2013 -0800
+
+    fixed miss spelling of 'recieved' to 'received' in ServerStats and in log messages.
+
+[33mcommit 3e9c2a06a39b2426c3cd81909e06373a2e2f253f[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Wed Feb 20 22:36:30 2013 -0800
+
+    Items in shared memory
+
+[33mcommit 0115b18e6703bc448619a587529fb04e23a493de[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Wed Feb 20 15:36:36 2013 -0800
+
+    Delete some pointless files
+
+[33mcommit ef9498b03a58f1740aaf9e7f753f1aeaa2ff97a7[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Wed Feb 20 15:35:46 2013 -0800
+
+    Got rid of rules global (ugh) and gonna start work on items loading next
+
+[33mcommit 8eb7d0aaa89888c30eb193bd08acf9a993c9e0f5[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Wed Feb 20 13:54:26 2013 -0800
+
+    Skill caps load with new smem scheme
+
+[33mcommit 12bde7434a67add7f77d2d79ea01649b70379141[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Wed Feb 20 11:26:23 2013 -0800
+
+    Starting on skill caps today
+
+[33mcommit 23dbd00d409608d21aa9a8ad2831152449c0cc6d[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Tue Feb 19 23:06:00 2013 -0800
+
+    Style + compile option for rvalue-move
+
+[33mcommit f8bae86082a1072908a3b692aab0a0d3b4cd5ed4[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Tue Feb 19 22:20:30 2013 -0800
+
+    Spells via shared memory work, removal of blah, general fixes
+
+[33mcommit acecff23f47dc85f853e8aee102755e9bd906a4c[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Tue Feb 19 16:50:05 2013 -0800
+
+    Almost have spells loaded
+
+[33mcommit 7ce6f4de0d2a2d4753ec41550ad4dbcfce11ac44[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Tue Feb 19 15:33:21 2013 -0800
+
+    More shared memory work + moved spdat from zone to common
+
+[33mcommit 78b238578504a8c616b7543e9f03ac8cc236a99e[m
+Merge: d4dbf00 e0b38cf
+Author: KimLS <KLS@peqtgc.com>
+Date:   Tue Feb 19 13:38:12 2013 -0800
+
+    Merge branch 'master' into shared_mem
+
+[33mcommit e0b38cf3cc107e873658e844d07efaabbb3da761[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Tue Feb 19 20:07:53 2013 +0000
+
+    World should no longer crash if the start_zone query fails at character creation.
+
+[33mcommit 74194cd38c97aac66f3322f91366d1dfacebab05[m
+Author: Alex <KLS@peqtgc.com>
+Date:   Mon Feb 18 23:07:32 2013 -0800
+
+    Update .gitignore
+
+[33mcommit d4dbf0042e092bfca5e9edc876c83f15b8169640[m
+Merge: 0d16361 e36eefc
+Author: KimLS <KLS@peqtgc.com>
+Date:   Mon Feb 18 19:26:11 2013 -0800
+
+    Merge branch 'master' into shared_mem
+
+[33mcommit e36eefc0602fbb6a2152422aff14e25e44474da0[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Mon Feb 18 19:23:27 2013 -0800
+
+    EVENT_DEATH changelog
+
+[33mcommit cb01d245e6b6e06c013a11036255bbc7e521b1d7[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Mon Feb 18 19:22:07 2013 -0800
+
+    EVENT_DEATH for PlayerQuests
+
+[33mcommit 0d16361a4001ac3252702abacc17ac144987be6c[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Mon Feb 18 19:00:07 2013 -0800
+
+    Working on shared memory stuff - removed some stuff dealing with older code and loading spells from the non-database
+
+[33mcommit 70543c2b8ae7ad5dde56ede4ba89ac0abb2fe44c[m
+Merge: a5ad05f 04bad15
+Author: KimLS <KLS@peqtgc.com>
+Date:   Mon Feb 18 12:40:27 2013 -0800
+
+    Merge branch 'master' into shared_mem
+
+[33mcommit 04bad157f518f63a1f805c11bfa24908b244e3bc[m
+Merge: 9680c03 3576464
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Mon Feb 18 11:35:52 2013 -0800
+
+    Merge pull request #5 from mackal/potionbelt
+    
+    Potionbelt Tooltip
+
+[33mcommit 357646466ad08f1b03b7e2a083a4cc3af2e2c7b7[m
+Author: mackal <mcook@mackal.net>
+Date:   Mon Feb 18 14:22:09 2013 -0500
+
+    Changelog udpated
+
+[33mcommit 11d9838faa52a2526982c8ecc931c408461a2360[m
+Author: mackal <mcook@mackal.net>
+Date:   Mon Feb 18 14:19:20 2013 -0500
+
+    Added the item_name field to potionbelt to give the user the Tool Tip
+
+[33mcommit 9680c039f096cc2bf599f6b7d102876c7e0121c5[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Mon Feb 18 18:58:26 2013 +0000
+
+    Charmed pets should no longer be targettable with F8. Charmed pets no longer get a surname of Soandso's Pet.
+
+[33mcommit 9f63498a6449b9f15f86c02d7fbe81da30f38324[m
+Author: KLS <KLS@peqtgc.com>
+Date:   Mon Feb 18 09:12:14 2013 -0800
+
+    Quest Interface wont attempt to keep loading GlobalQuest sub over and over and over...
+
+[33mcommit aa20e5b5e35f7d768397cf3b0073ecd63d950a07[m
+Author: Alex <golgie.cheeseopia@gmail.com>
+Date:   Mon Feb 18 09:01:49 2013 -0800
+
+    Issue where not having a global npc quest file may cause the server to crash on bootup
+
+[33mcommit c9d4816a884f8f2d00c35de2d9fec7509240092a[m
+Merge: 3feeced edc4b40
+Author: JJ <jeremiah.oligario@gmail.com>
+Date:   Mon Feb 18 02:05:59 2013 -0500
+
+    Garble text for drunk characters.
+
+[33mcommit 3feeced884abe8b4a9b6e31b52147c6c2de8e49d[m
+Author: joligario <jeremiah.oligario@gmail.com>
+Date:   Sun Feb 17 23:38:51 2013 -0500
+
+    Chat garbled for drunk characters.
+
+[33mcommit edc4b4039bdb6c85ce436b8f24ec7066cc15603c[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 22:57:15 2013 -0800
+
+    Optional Merc Spells fix for violation of commit rules.
+
+[33mcommit a5ad05f2748257acb02ef35fe516115063dac45e[m
+Merge: 53d6e40 a41874b
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 22:02:45 2013 -0800
+
+    Merge branch 'master' into shared_mem
+
+[33mcommit a41874b6a7e4f0a66942be9a4b3ac943f013aed7[m
+Author: badcaptain <bad_captain@yahoo.com>
+Date:   Mon Feb 18 00:50:19 2013 -0500
+
+    Moved merc save data from extended player profile to new merc table, save merc buffs, added cure and rez spells to healer merc.
+
+[33mcommit a37211cb83e317b4381372ac9cf906074f9f8644[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 15:40:29 2013 -0800
+
+    Forgot to take out my comment code - doh
+
+[33mcommit 4e802921a51fef0d40900c10724c94ce67530d32[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 15:36:53 2013 -0800
+
+    Fix for sub checking on global npc quests
+
+[33mcommit c6d8895b70f1121b018980472dd51f062c5aff64[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 15:22:35 2013 -0800
+
+    One fix to QuestParserCollection for global npc quests, HasSub is not working at all right with it.  Need to check it out later tonight
+
+[33mcommit 53d6e4000c9ad032f1ae514f09607e1059112a92[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 13:36:39 2013 -0800
+
+    Unit tests + cleanup
+
+[33mcommit a192e726d44f359e9ea0d995f28cf74a3b4652d7[m
+Merge: 886fe5c 23b2b59
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 12:32:13 2013 -0800
+
+    Merge branch 'master' into shared_mem
+
+[33mcommit 886fe5cc31dddbeeffc0ab9eadcbe877d34b20f4[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 12:31:18 2013 -0800
+
+    Working on tests, not there yet, added licensing stuff
+
+[33mcommit 23b2b599a7c670258d928085e748ab34ee49082a[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Feb 17 20:23:34 2013 +0000
+
+    Fixed bug where BecomeTrader packets were only being sent to the Trader, not all other clients in the bazaar.
+
+[33mcommit c734708809ad0372d150c943fdcb7ec20fef5e8a[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 11:51:32 2013 -0800
+
+    MMFs + a scaled down hash set to use them with
+
+[33mcommit 1c0f35a9453037a2375c9f517b31ba9374cdb0fc[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 11:35:50 2013 -0800
+
+    Way to miss two files KLS - doh
+
+[33mcommit 06a3873c9ba012af18493e902ec4dbc6eea78461[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 11:35:03 2013 -0800
+
+    IPC mutex
+
+[33mcommit 7a2be102aa41820ae62a655bbeef85e00f3c7e70[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sun Feb 17 11:27:43 2013 -0800
+
+    Exception classes & required C++11 stuff from GCC(still needs to be fixed)
+
+[33mcommit 07979ce2de6248a6a6aa10e4a2c426271aaa3c36[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Feb 17 18:09:31 2013 +0000
+
+    Client version is now returned by the stream proxy as a number.
+
+[33mcommit d1afad47aa70bbcdfa740ba01941216baf5c48f5[m
+Author: Derision <DerisionEQ@gmail.com>
+Date:   Sun Feb 17 10:19:12 2013 +0000
+
+    Added optional guildid and minstatus parameters to quest::gmsay(<messsage>, [color], [toworld], [guildid], [minstatus])
+
+[33mcommit 15dc9cfaf4c3d71b27fd38041745aa6b3aa42f53[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 16 22:07:32 2013 -0800
+
+    Some warning fixes, unreferenced local variables.
+
+[33mcommit 7c706d9871edf42cce34a769ebcbce83f5b8afcb[m
+Merge: 0a9642e 20fb899
+Author: Alex <KLS@peqtgc.com>
+Date:   Sat Feb 16 20:56:09 2013 -0800
+
+    Merge pull request #1 from mackal/master
+    
+    AA reuse timer fix and Update filter system
+
+[33mcommit 0a9642e77603fe0c91890765f9f8633e67d50718[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 16 18:05:41 2013 -0800
+
+    utils/sql/git added
+
+[33mcommit 20fb899d5dc3053fc041fc561aaaa5e39ad9645b[m
+Merge: 38d4fbc b6010af
+Author: mackal <mcook@mackal.net>
+Date:   Sat Feb 16 20:21:53 2013 -0500
+
+    Merge branch 'master' of https://github.com/EQEmu/Server.git
+
+[33mcommit 38d4fbc8630b756965b7d9e80e8be87ae0467070[m
+Author: mackal <mcook@mackal.net>
+Date:   Sat Feb 16 20:14:07 2013 -0500
+
+    Remove old filters and change all remaining old to new (Also fix Auction filtering out OOC as well due to incorrect define)
+
+[33mcommit b6010afa9c748f199ff998c80fb10bbdeffd95d8[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 16 16:55:04 2013 -0800
+
+    Ignore all files in dependencies.
+
+[33mcommit 234cd0c4ff266eb9294ad4478a7ad0a2c0f2c084[m
+Merge: a510d25 0aa958d
+Author: mackal <mcook@mackal.net>
+Date:   Sat Feb 16 19:53:51 2013 -0500
+
+    Merge remote-tracking branch 'upstream/master'
+
+[33mcommit a510d2593f5c62adbd4873f998f5c17b15687e92[m
+Author: mackal <mcook@mackal.net>
+Date:   Sat Feb 16 19:50:19 2013 -0500
+
+    Update change log
+
+[33mcommit 0aa958de8f30347e3408ed87ae3c987460145c0b[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 16 16:47:28 2013 -0800
+
+    Moved queryserv sql to svn so I can more easily have a git section without confusion
+
+[33mcommit 07950b7a5805164490aae5de216991c11e2f3bcf[m
+Author: mackal <mcook@mackal.net>
+Date:   Sat Feb 16 19:47:12 2013 -0500
+
+    Fix calc of resuse timers on multi-rank AAs
+
+[33mcommit 710554efcdb4053c532b66713e7b757a1cc1721a[m
+Author: Alex <KLS@peqtgc.com>
+Date:   Sat Feb 16 16:37:14 2013 -0800
+
+    Update .gitignore
+
+[33mcommit b14519b1f500046929f0aa76380bd4092d4b6eab[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 16 16:25:57 2013 -0800
+
+    Derision's revert from svn I missed.
+
+[33mcommit da7347f76fa13917e6af9aeb1f823e07fdc5ab5a[m
+Author: KimLS <KLS@peqtgc.com>
+Date:   Sat Feb 16 16:14:39 2013 -0800
+
+    svn -> git Migration
+
+[33mcommit 88c9715fb0c5e0509a7f17e97c94aeb09313b21f[m
+Author: Alex <KLS@peqtgc.com>
+Date:   Sat Feb 16 15:00:23 2013 -0800
+
+    Create .gitattributes
+
+[33mcommit bf990504b04d59c08078fe3f37a567e8363b6eb8[m
+Author: Alex <KLS@peqtgc.com>
+Date:   Sat Feb 16 12:16:58 2013 -0800
+
+    Create LICENSE.md
+
+[33mcommit 9175ad64ffae4c40b0896fb51ef1b63b434e5369[m
+Author: Alex <KLS@peqtgc.com>
+Date:   Sat Feb 16 12:16:31 2013 -0800
+
+    Create .gitignore
+
+[33mcommit 45a694b64f0dde00b33014a98d43dd2bd4c39f64[m
+Author: Alex <KLS@peqtgc.com>
+Date:   Sat Feb 16 12:14:37 2013 -0800
+
+    Create README.md
