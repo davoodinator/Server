@@ -6217,13 +6217,8 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 	std::string class_List[] = { "WAR", "CLR", "PAL", "RNG", "SK", "DRU", "MNK", "BRD", "ROG", "SHM", "NEC", "WIZ", "MAG", "ENC", "BST", "BER" };
 
 	if(GetClass() < 17 && GetClass() > 0) { class_Name = class_List[GetClass()-1]; }
-<<<<<<< HEAD
-	
-// Race
-=======
 
 	// Race
->>>>>>> 312100e1c60c69e286f2ba99d8bf423f7e160787
 	std::string race_Name = itoa(GetRace());
 	switch(GetRace())
 	{
@@ -6280,14 +6275,10 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 		case 457: race_Name = "Gnomework"; break;
 		case 374: race_Name = "Golem"; break;
 		default: break;
-	}
-<<<<<<< HEAD
-/*##########################################################
-=======
-	/*##########################################################
-	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+	}	/*##########################################################
+	^
+	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 		H/M/E String
->>>>>>> 312100e1c60c69e286f2ba99d8bf423f7e160787
 	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 	##########################################################*/
 	std::string HME_row = "";
