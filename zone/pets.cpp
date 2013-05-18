@@ -325,11 +325,11 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower, c
 	}
 
 	//handle beastlord pet appearance
+		//handle beastlord pet appearance
 	if(record.petnaming == 2)
 	{
 		switch(GetBaseRace())
 		{
-<<<<<<< HEAD
 		case VAHSHIR: 
 			npc_type->race = 439; //super cats
 			npc_type->texture = MakeRandomInt(0,7);
@@ -405,7 +405,6 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower, c
 		default: 
 			npc_type->race = 348; 
 			npc_type->texture = MakeRandomInt(0,3);
-=======
 		case VAHSHIR:
 			npc_type->race = TIGER;
 			npc_type->size *= 0.8f;
@@ -433,7 +432,6 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower, c
 		default:
 			npc_type->race = WOLF;
 			npc_type->texture = 0;
->>>>>>> 312100e1c60c69e286f2ba99d8bf423f7e160787
 		}
 	}
 
