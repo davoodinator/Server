@@ -36,9 +36,6 @@
 	#include <windows.h>
 
 	#define snprintf	_snprintf
-#if (_MSC_VER < 1500)
-	#define vsnprintf	_vsnprintf
-#endif
 	#define strncasecmp	_strnicmp
 	#define strcasecmp	_stricmp
 #else
@@ -55,10 +52,6 @@
 	#include <unistd.h>
 	#include <netdb.h>
 	#include <errno.h>
-#endif
-
-#ifndef va_copy
-	#define va_copy(d,s) ((d) = (s))
 #endif
 
 static bool WELLRNG_init = false;
@@ -88,6 +81,7 @@ void CoutTimestamp(bool ms) {
 	if (ms)
 		std::cout << "." << std::setw(3) << std::setfill('0') << (read_time.tv_usec / 1000);
 	std::cout << " GMT";
+<<<<<<< HEAD
 }
 
 // normal strncpy doesnt put a null term on copied strings, this one does
@@ -230,61 +224,10 @@ uint32 hextoi(char* num) {
 		mul *= 16;
 	}
 	return ret;
+=======
+>>>>>>> 815c3dc73f1b021953d5b8abdf413281e000651a
 }
 
-uint64 hextoi64(char* num) {
-	int len = strlen(num);
-	if (len < 3)
-		return 0;
-
-	if (num[0] != '0' || (num[1] != 'x' && num[1] != 'X'))
-		return 0;
-
-	uint64 ret = 0;
-	int mul = 1;
-	for (int i=len-1; i>=2; i--) {
-		if (num[i] >= 'A' && num[i] <= 'F')
-			ret += ((num[i] - 'A') + 10) * mul;
-		else if (num[i] >= 'a' && num[i] <= 'f')
-			ret += ((num[i] - 'a') + 10) * mul;
-		else if (num[i] >= '0' && num[i] <= '9')
-			ret += (num[i] - '0') * mul;
-		else
-			return 0;
-		mul *= 16;
-	}
-	return ret;
-}
-
-bool atobool(char* iBool) {
-	if (!strcasecmp(iBool, "true"))
-		return true;
-	if (!strcasecmp(iBool, "false"))
-		return false;
-	if (!strcasecmp(iBool, "yes"))
-		return true;
-	if (!strcasecmp(iBool, "no"))
-		return false;
-	if (!strcasecmp(iBool, "on"))
-		return true;
-	if (!strcasecmp(iBool, "off"))
-		return false;
-	if (!strcasecmp(iBool, "enable"))
-		return true;
-	if (!strcasecmp(iBool, "disable"))
-		return false;
-	if (!strcasecmp(iBool, "enabled"))
-		return true;
-	if (!strcasecmp(iBool, "disabled"))
-		return false;
-	if (!strcasecmp(iBool, "y"))
-		return true;
-	if (!strcasecmp(iBool, "n"))
-		return false;
-	if (atoi(iBool))
-		return true;
-	return false;
-}
 
 int32 filesize(FILE* fp) {
 #ifdef _WINDOWS
@@ -547,40 +490,6 @@ static unsigned int case_6 (void){
 
 // end WELL RNG code
 
-// solar: removes the crap and turns the underscores into spaces.
-char *CleanMobName(const char *in, char *out)
-{
-	unsigned i, j;
-
-	for(i = j = 0; i < strlen(in); i++)
-	{
-		// convert _ to space.. any other conversions like this? I *think* this
-		// is the only non alpha char that's not stripped but converted.
-		if(in[i] == '_')
-		{
-			out[j++] = ' ';
-		}
-		else
-		{
-			if(isalpha(in[i]) || (in[i] == '`'))	// numbers, #, or any other crap just gets skipped
-				out[j++] = in[i];
-		}
-	}
-	out[j] = 0;	// terimnate the string before returning it
-	return out;
-}
-
-const char *ConvertArray(int input, char *returnchar)
-{
-	sprintf(returnchar, "%i" ,input);
-	return returnchar;
-}
-
-const char *ConvertArrayF(float input, char *returnchar)
-{
-	sprintf(returnchar, "%0.2f", input);
-	return returnchar;
-}
 
 float EQ13toFloat(int d)
 {
@@ -625,24 +534,3 @@ float EQHtoFloat(int d)
 {
 	return(360.0f - float((d * 360) >> 11));
 }
-
-void RemoveApostrophes(std::string &s)
-{
-	for(unsigned int i = 0; i < s.length(); ++i)
-		if(s[i] == '\'')
-			s[i] = '_';
-}
-
-char *RemoveApostrophes(const char *s)
-{
-	char *NewString = new char[strlen(s) + 1];
-
-	strcpy(NewString, s);
-
-	for(unsigned int i = 0 ; i < strlen(NewString); ++i)
-		if(NewString[i] == '\'')
-			NewString[i] = '_';
-
-	return NewString;
-}
-
