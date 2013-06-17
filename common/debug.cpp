@@ -1,9 +1,6 @@
 #include <iostream>
-<<<<<<< HEAD
-=======
 #include <string>
 #include <cstdarg>
->>>>>>> 815c3dc73f1b021953d5b8abdf413281e000651a
 #include <time.h>
 
 #ifdef _WINDOWS
