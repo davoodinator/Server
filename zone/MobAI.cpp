@@ -26,7 +26,6 @@
 #include "NpcAI.h"
 #include "map.h"
 #include "../common/moremath.h"
-#include "parser.h"
 #include "StringIDs.h"
 #include "../common/MiscFunctions.h"
 #include "../common/StringUtil.h"
@@ -359,7 +358,7 @@ bool EntityList::AICheckCloseBeneficialSpells(NPC* caster, uint8 iChance, float 
 	if(caster->AI_HasSpells() == false)
 		return false;
 
-	if(caster->SpecAttacks[NPC_NO_BUFFHEAL_FRIENDS])
+	if(caster->GetSpecialAbility(NPC_NO_BUFFHEAL_FRIENDS))
 		return false;
 
 	if (iChance < 100) {
@@ -523,7 +522,7 @@ void NPC::AI_Start(uint32 iMoveDelay) {
 
 	if (NPCTypedata) {
 		AI_AddNPCSpells(NPCTypedata->npc_spells_id);
-		NPCSpecialAttacks(NPCTypedata->npc_attacks,0);
+		ProcessSpecialAbilities(NPCTypedata->special_abilities);
 	}
 
 	SendTo(GetX(), GetY(), GetZ());
@@ -824,7 +823,7 @@ void Client::AI_Process()
 							if(GetTarget()) {
 								bool triple_attack_success = false;
 								if((((GetClass() == MONK || GetClass() == WARRIOR || GetClass() == RANGER || GetClass() == BERSERKER)
-									&& GetLevel() >= 60) || SpecAttacks[SPECATK_TRIPLE])
+									&& GetLevel() >= 60) || GetSpecialAbility(SPECATK_TRIPLE))
 									&& CheckDoubleAttack(true))
 								{
 									Attack(GetTarget(), 13, true);
@@ -1096,26 +1095,27 @@ void Mob::AI_Process() {
 		if(DivineAura())
 			return;
 
-		if(SpecAttacks[TETHER] || SpecAttacks[LEASH]) {
-			if(DistNoRootNoZ(CastToNPC()->GetSpawnPointX(), CastToNPC()->GetSpawnPointY()) > pAggroRange*pAggroRange) {
+		if(GetSpecialAbility(TETHER)) {
+			float aggro_range = static_cast<float>(GetSpecialAbilityParam(TETHER, 0));
+			aggro_range = aggro_range > 0.0f ? aggro_range : pAggroRange * pAggroRange;
+
+			if(DistNoRootNoZ(CastToNPC()->GetSpawnPointX(), CastToNPC()->GetSpawnPointY()) > aggro_range) {
 				GMMove(CastToNPC()->GetSpawnPointX(), CastToNPC()->GetSpawnPointY(), CastToNPC()->GetSpawnPointZ(), CastToNPC()->GetSpawnPointH());
-				if(SpecAttacks[LEASH]) {
-					SetHP(GetMaxHP());
-					BuffFadeAll();
-					WipeHateList();
-					return;
-				}
+			}
+		} else if(GetSpecialAbility(LEASH)) {
+			float aggro_range = static_cast<float>(GetSpecialAbilityParam(LEASH, 0));
+			aggro_range = aggro_range > 0.0f ? aggro_range : pAggroRange * pAggroRange;
+
+			if(DistNoRootNoZ(CastToNPC()->GetSpawnPointX(), CastToNPC()->GetSpawnPointY()) > aggro_range) {
+				GMMove(CastToNPC()->GetSpawnPointX(), CastToNPC()->GetSpawnPointY(), CastToNPC()->GetSpawnPointZ(), CastToNPC()->GetSpawnPointH());
+				SetHP(GetMaxHP());
+				BuffFadeAll();
+				WipeHateList();
+				return;
 			}
 		}
 
-		if (GetHPRatio() < (RuleI(NPC, StartEnrageValue)+1) &&
-			(!RuleB(NPC, LiveLikeEnrage) ||
-			(RuleB(NPC, LiveLikeEnrage) &&
-			((IsPet() && !IsCharmed() && GetOwner() && GetOwner()->IsClient()) ||
-			(CastToNPC()->GetSwarmOwner() && entity_list.GetMob(CastToNPC()->GetSwarmOwner())->IsClient())))))
-		{
-			StartEnrage();
-		}
+		StartEnrage();
 
 		bool is_combat_range = CombatRange(target);
 
@@ -1165,34 +1165,61 @@ void Mob::AI_Process() {
 							//check double attack, this is NOT the same rules that clients use...
 							&& RandRoll < (GetLevel() + NPCDualAttackModifier))
 						{
-							if (Attack(target, 13))
+							Attack(target, 13);
+							// lets see if we can do a triple attack with the main hand
+							//pets are excluded from triple and quads...
+							if (GetSpecialAbility(SPECATK_TRIPLE)
+								&& !IsPet() && RandRoll < (GetLevel()+NPCTripleAttackModifier))
 							{
-								// lets see if we can do a triple attack with the main hand
-								//pets are excluded from triple and quads...
-								if (SpecAttacks[SPECATK_TRIPLE]
-									&& !IsPet() && RandRoll < (GetLevel()+NPCTripleAttackModifier))
+								Attack(target, 13);
+								// now lets check the quad attack
+								if (GetSpecialAbility(SPECATK_QUAD)
+									&& RandRoll < (GetLevel() + NPCQuadAttackModifier))
 								{
-									if (Attack(target, 13))
-									{	// now lets check the quad attack
-										if (SpecAttacks[SPECATK_QUAD]
-											&& RandRoll < (GetLevel() + NPCQuadAttackModifier))
-										{
-											Attack(target, 13);
-										}
-									}
+									Attack(target, 13);
 								}
+								
 							}
 						}
 					}
 
-					if (SpecAttacks[SPECATK_FLURRY]) {
+					if (GetSpecialAbility(SPECATK_FLURRY)) {
+						int flurry_chance = GetSpecialAbilityParam(SPECATK_FLURRY, 0);
+						flurry_chance = flurry_chance > 0 ? flurry_chance : RuleI(Combat, NPCFlurryChance); 
 
-						uint8 npc_flurry = RuleI(Combat, NPCFlurryChance);
-						if (GetFlurryChance())
-							npc_flurry = GetFlurryChance();
+						ExtraAttackOptions opts;
+						int cur = GetSpecialAbilityParam(SPECATK_FLURRY, 2);
+						if(cur > 0) {
+							opts.damage_percent = cur / 100.0f;
+						}
 
-						if (MakeRandomInt(0, 99) < npc_flurry)
-							Flurry();
+						cur = GetSpecialAbilityParam(SPECATK_FLURRY, 3);
+						if(cur > 0) {
+							opts.damage_flat = cur;
+						}
+
+						cur = GetSpecialAbilityParam(SPECATK_FLURRY, 4);
+						if(cur > 0) {
+							opts.armor_pen_percent = cur / 100.0f;
+						}
+
+						cur = GetSpecialAbilityParam(SPECATK_FLURRY, 5);
+						if(cur > 0) {
+							opts.armor_pen_flat = cur;
+						}
+
+						cur = GetSpecialAbilityParam(SPECATK_FLURRY, 6);
+						if(cur > 0) {
+							opts.crit_percent = cur / 100.0f;
+						}
+
+						cur = GetSpecialAbilityParam(SPECATK_FLURRY, 7);
+						if(cur > 0) {
+							opts.crit_flat = cur;
+						}
+
+						if (MakeRandomInt(0, 99) < flurry_chance)
+							Flurry(&opts);
 					}
 
 					if (IsPet()) {
@@ -1203,23 +1230,87 @@ void Mob::AI_Process() {
 						int16 flurry_chance = owner->aabonuses.PetFlurry + owner->spellbonuses.PetFlurry + owner->itembonuses.PetFlurry;
 
 							if (flurry_chance && (MakeRandomInt(0, 99) < flurry_chance))
-								Flurry();
+								Flurry(nullptr);
 						}
 					}
 
-					if (SpecAttacks[SPECATK_RAMPAGE])
+					if (GetSpecialAbility(SPECATK_RAMPAGE))
 					{
-						//simply based off dex for now, probably a better calc
-						if(MakeRandomInt(0, 100) < ((int)(GetDEX() / ((GetLevel() * 0.760) + 10.0)) + 5))
-							Rampage();
+						int rampage_chance = GetSpecialAbilityParam(SPECATK_RAMPAGE, 0);
+						rampage_chance = rampage_chance > 0 ? rampage_chance : 20;
+						if(MakeRandomInt(0, 99) < rampage_chance) {
+							ExtraAttackOptions opts;
+							int cur = GetSpecialAbilityParam(SPECATK_RAMPAGE, 2);
+							if(cur > 0) {
+								opts.damage_percent = cur / 100.0f;
+							}
+
+							cur = GetSpecialAbilityParam(SPECATK_RAMPAGE, 3);
+							if(cur > 0) {
+								opts.damage_flat = cur;
+							}
+
+							cur = GetSpecialAbilityParam(SPECATK_RAMPAGE, 4);
+							if(cur > 0) {
+								opts.armor_pen_percent = cur / 100.0f;
+							}
+
+							cur = GetSpecialAbilityParam(SPECATK_RAMPAGE, 5);
+							if(cur > 0) {
+								opts.armor_pen_flat = cur;
+							}
+
+							cur = GetSpecialAbilityParam(SPECATK_RAMPAGE, 6);
+							if(cur > 0) {
+								opts.crit_percent = cur / 100.0f;
+							}
+
+							cur = GetSpecialAbilityParam(SPECATK_RAMPAGE, 7);
+							if(cur > 0) {
+								opts.crit_flat = cur;
+							}
+							Rampage(&opts);
+						}
 					}
 
-					if (SpecAttacks[SPECATK_AREA_RAMPAGE])
+					if (GetSpecialAbility(SPECATK_AREA_RAMPAGE))
 					{
+						int rampage_chance = GetSpecialAbilityParam(SPECATK_AREA_RAMPAGE, 0);
+						rampage_chance = rampage_chance > 0 ? rampage_chance : 20;
+						if(MakeRandomInt(0, 99) < rampage_chance) {
+							ExtraAttackOptions opts;
+							int cur = GetSpecialAbilityParam(SPECATK_AREA_RAMPAGE, 2);
+							if(cur > 0) {
+								opts.damage_percent = cur / 100.0f;
+							}
 
-						//simply based off dex for now, probably a better calc
-						if(MakeRandomInt(0, 100) < ((int)(GetDEX() / ((GetLevel() * 0.760) + 10.0)) + 5))
-							AreaRampage();
+							cur = GetSpecialAbilityParam(SPECATK_AREA_RAMPAGE, 3);
+							if(cur > 0) {
+								opts.damage_flat = cur;
+							}
+
+							cur = GetSpecialAbilityParam(SPECATK_AREA_RAMPAGE, 4);
+							if(cur > 0) {
+								opts.armor_pen_percent = cur / 100.0f;
+							}
+
+							cur = GetSpecialAbilityParam(SPECATK_AREA_RAMPAGE, 5);
+							if(cur > 0) {
+								opts.armor_pen_flat = cur;
+							}
+
+							cur = GetSpecialAbilityParam(SPECATK_AREA_RAMPAGE, 6);
+							if(cur > 0) {
+								opts.crit_percent = cur / 100.0f;
+							}
+
+							cur = GetSpecialAbilityParam(SPECATK_AREA_RAMPAGE, 7);
+							if(cur > 0) {
+								opts.crit_flat = cur;
+							}
+							
+							AreaRampage(&opts);
+						}
 					}
 				}
 
@@ -1228,7 +1319,7 @@ void Mob::AI_Process() {
 				{
 					int myclass = GetClass();
 					//can only dual wield without a weapon if your a monk
-					if(SpecAttacks[SPECATK_INNATE_DW] || (GetEquipment(MATERIAL_SECONDARY) != 0 && GetLevel() > 29) || myclass == MONK || myclass == MONKGM) {
+					if(GetSpecialAbility(SPECATK_INNATE_DW) || (GetEquipment(MATERIAL_SECONDARY) != 0 && GetLevel() > 29) || myclass == MONK || myclass == MONKGM) {
 						float DualWieldProbability = (GetSkill(DUAL_WIELD) + GetLevel()) / 400.0f;
 						if(MakeRandomFloat(0.0, 1.0) < DualWieldProbability)
 						{
@@ -1238,7 +1329,7 @@ void Mob::AI_Process() {
 								int32 RandRoll = MakeRandomInt(0, 99);
 								if (RandRoll < (GetLevel() + 20))
 								{
-									if (Attack(target, 14));
+									Attack(target, 14);
 								}
 							}
 						}
@@ -1275,7 +1366,7 @@ void Mob::AI_Process() {
 			if (!HateSummon())
 			{
 				//could not summon them, check ranged...
-				if(SpecAttacks[SPECATK_RANGED_ATK])
+				if(GetSpecialAbility(SPECATK_RANGED_ATK))
 					doranged = true;
 
 				// Now pursue
@@ -1491,7 +1582,11 @@ void Mob::AI_Process() {
 	//Do Ranged attack here
 	if(doranged)
 	{
-		RangedAttack(target);
+		int attacks = GetSpecialAbilityParam(SPECATK_RANGED_ATK, 0);
+		attacks = attacks > 0 ? attacks : 1;
+		for(int i = 0; i < attacks; ++i) {
+			RangedAttack(target);
+		}
 	}
 }
 
@@ -1864,33 +1959,43 @@ void Mob::StartEnrage()
 	// dont continue if already enraged
 	if (bEnraged)
 		return;
-	if (SpecAttackTimers[SPECATK_ENRAGE] && !SpecAttackTimers[SPECATK_ENRAGE]->Check())
+
+	if(!GetSpecialAbility(SPECATK_ENRAGE))
 		return;
-	// see if NPC has possibility to enrage
-	if (!SpecAttacks[SPECATK_ENRAGE])
+
+	int hp_ratio = GetSpecialAbilityParam(SPECATK_ENRAGE, 0);
+	hp_ratio = hp_ratio > 0 ? hp_ratio : RuleI(NPC, StartEnrageValue);
+	if(GetHPRatio() > static_cast<float>(hp_ratio)) {
 		return;
-	// check if timer exists (should be true at all times)
-	if (SpecAttackTimers[SPECATK_ENRAGE])
-	{
-		safe_delete(SpecAttackTimers[SPECATK_ENRAGE]);
-		SpecAttackTimers[SPECATK_ENRAGE] = nullptr;
 	}
 
-	if (!SpecAttackTimers[SPECATK_ENRAGE])
-	{
-		SpecAttackTimers[SPECATK_ENRAGE] = new Timer(EnragedDurationTimer);
+	if(RuleB(NPC, LiveLikeEnrage) && !((IsPet() && !IsCharmed() && GetOwner() && GetOwner()->IsClient()) ||
+		(CastToNPC()->GetSwarmOwner() && entity_list.GetMob(CastToNPC()->GetSwarmOwner())->IsClient()))) {
+		return;
 	}
+
+	Timer *timer = GetSpecialAbilityTimer(SPECATK_ENRAGE);
+	if (timer && !timer->Check())
+		return;
+
+	int enraged_duration = GetSpecialAbilityParam(SPECATK_ENRAGE, 1);
+	enraged_duration = enraged_duration > 0 ? enraged_duration : EnragedDurationTimer;
+	StartSpecialAbilityTimer(SPECATK_ENRAGE, enraged_duration);
+
 	// start the timer. need to call IsEnraged frequently since we dont have callback timers :-/
-	SpecAttackTimers[SPECATK_ENRAGE]->Start();
 	bEnraged = true;
 	entity_list.MessageClose_StringID(this, true, 200, MT_NPCEnrage, NPC_ENRAGE_START, GetCleanName());
 }
 
 void Mob::ProcessEnrage(){
 	if(IsEnraged()){
-		if(SpecAttackTimers[SPECATK_ENRAGE] && SpecAttackTimers[SPECATK_ENRAGE]->Check()){
+		Timer *timer = GetSpecialAbilityTimer(SPECATK_ENRAGE);
+		if(timer && timer->Check()){
 			entity_list.MessageClose_StringID(this, true, 200, MT_NPCEnrage, NPC_ENRAGE_END, GetCleanName());
-			SpecAttackTimers[SPECATK_ENRAGE]->Start(EnragedTimer);
+
+			int enraged_cooldown = GetSpecialAbilityParam(SPECATK_ENRAGE, 2);
+			enraged_cooldown = enraged_cooldown > 0 ? enraged_cooldown : EnragedTimer;
+			StartSpecialAbilityTimer(SPECATK_ENRAGE, enraged_cooldown);
 			bEnraged = false;
 		}
 	}
@@ -1901,7 +2006,7 @@ bool Mob::IsEnraged()
 	return bEnraged;
 }
 
-bool Mob::Flurry()
+bool Mob::Flurry(ExtraAttackOptions *opts)
 {
 	// this is wrong, flurry is extra attacks on the current target
 	Mob *target = GetTarget();
@@ -1911,8 +2016,11 @@ bool Mob::Flurry()
 		} else {
 			entity_list.MessageClose_StringID(this, true, 200, MT_PetFlurry, NPC_FLURRY, GetCleanName(), target->GetCleanName());
 		}
-		for (int i = 0; i < RuleI(Combat, MaxFlurryHits); i++)
-			Attack(target);
+
+		int num_attacks = GetSpecialAbilityParam(SPECATK_FLURRY, 1);
+		num_attacks = num_attacks > 0 ? num_attacks : RuleI(Combat, MaxFlurryHits);
+		for (int i = 0; i < num_attacks; i++)
+			Attack(target, 13, false, false, false, opts);
 	}
 	return true;
 }
@@ -1922,7 +2030,7 @@ bool Mob::AddRampage(Mob *mob)
 	if(!mob)
 		return false;
 
-	if (!SpecAttacks[SPECATK_RAMPAGE])
+	if (!GetSpecialAbility(SPECATK_RAMPAGE))
 		return false;
 
 	for (int i = 0; i < RampageArray.size(); i++)
@@ -1940,7 +2048,7 @@ void Mob::ClearRampage(){
 	RampageArray.clear();
 }
 
-bool Mob::Rampage()
+bool Mob::Rampage(ExtraAttackOptions *opts)
 {
 	int index_hit = 0;
 	if (!IsPet()) {
@@ -1948,9 +2056,12 @@ bool Mob::Rampage()
 	} else {
 		entity_list.MessageClose_StringID(this, true, 200, MT_PetFlurry, NPC_RAMPAGE, GetCleanName());
 	}
+
+	int rampage_targets = GetSpecialAbilityParam(SPECATK_RAMPAGE, 1);
+	rampage_targets = rampage_targets > 0 ? rampage_targets : RuleI(Combat, MaxRampageTargets);
 	for (int i = 0; i < RampageArray.size(); i++)
 	{
-		if(index_hit >= RuleI(Combat, MaxRampageTargets))
+		if(index_hit >= rampage_targets)
 			break;
 		// range is important
 		Mob *m_target = entity_list.GetMob(RampageArray[i].c_str());
@@ -1960,17 +2071,19 @@ bool Mob::Rampage()
 				continue;
 			if (CombatRange(m_target))
 			{
-				Attack(m_target);
+				Attack(m_target, 13, false, false, false, opts);
 				index_hit++;
 			}
 		}
 	}
-	if(index_hit < RuleI(Combat, MaxRampageTargets))
-		Attack(GetTarget());
+	
+	if(index_hit < rampage_targets) {
+		Attack(GetTarget(), 13, false, false, false, opts);
+	}
 	return true;
 }
 
-void Mob::AreaRampage()
+void Mob::AreaRampage(ExtraAttackOptions *opts)
 {
 	int index_hit = 0;
 	if (!IsPet()) { // do not know every pet AA so thought it safer to add this
@@ -1978,10 +2091,14 @@ void Mob::AreaRampage()
 	} else {
 		entity_list.MessageClose_StringID(this, true, 200, MT_PetFlurry, AE_RAMPAGE, GetCleanName());
 	}
-	index_hit = hate_list.AreaRampage(this, GetTarget());
 
-	if(index_hit == 0)
-		Attack(GetTarget());
+	int rampage_targets = GetSpecialAbilityParam(SPECATK_AREA_RAMPAGE, 1);
+	rampage_targets = rampage_targets > 0 ? rampage_targets : 1;
+	index_hit = hate_list.AreaRampage(this, GetTarget(), rampage_targets, opts);
+
+	if(index_hit == 0) {
+		Attack(GetTarget(), 13, false, false, false, opts);
+	}
 }
 
 uint32 Mob::GetLevelCon(uint8 mylevel, uint8 iOtherLevel) {

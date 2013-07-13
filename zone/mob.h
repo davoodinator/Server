@@ -29,6 +29,8 @@
 
 char* strn0cpy(char* dest, const char* source, uint32 size);
 
+#define MAX_SPECIAL_ATTACK_PARAMS 8
+
 class EGNode;
 class MobFearState;
 class Mob : public Entity {
@@ -36,6 +38,12 @@ public:
 	enum CLIENT_CONN_STATUS { CLIENT_CONNECTING, CLIENT_CONNECTED, CLIENT_LINKDEAD,
 						CLIENT_KICKED, DISCONNECTED, CLIENT_ERROR, CLIENT_CONNECTINGALL };
 	enum eStandingPetOrder { SPO_Follow, SPO_Sit, SPO_Guard };
+
+	struct SpecialAbility {
+		int level;
+		Timer *timer;
+		int params[MAX_SPECIAL_ATTACK_PARAMS];
+	};
 
 	Mob(const char*	in_name,
 		const char*	in_lastname,
@@ -104,19 +112,19 @@ public:
 	uint16 GetThrownDamage(int16 wDmg, int32& TotalDmg, int& minDmg);
 	// 13 = Primary (default), 14 = secondary
 	virtual bool Attack(Mob* other, int Hand = 13, bool FromRiposte = false, bool IsStrikethrough = false,
-		bool IsFromSpell = false) = 0;
+		bool IsFromSpell = false, ExtraAttackOptions *opts = nullptr) = 0;
 	int MonkSpecialAttack(Mob* other, uint8 skill_used);
 	virtual void TryBackstab(Mob *other,int ReuseTime = 10);
 	void TriggerDefensiveProcs(const ItemInst* weapon, Mob *on, uint16 hand = 13, int damage = 0);
 	virtual bool AvoidDamage(Mob* attacker, int32 &damage, bool CanRiposte = true);
 	virtual bool CheckHitChance(Mob* attacker, SkillType skillinuse, int Hand, int16 chance_mod = 0);
-	virtual void TryCriticalHit(Mob *defender, uint16 skill, int32 &damage);
+	virtual void TryCriticalHit(Mob *defender, uint16 skill, int32 &damage, ExtraAttackOptions *opts = nullptr);
 	void TryPetCriticalHit(Mob *defender, uint16 skill, int32 &damage);
 	virtual bool TryFinishingBlow(Mob *defender, SkillType skillinuse);
 	virtual bool TryHeadShot(Mob* defender, SkillType skillInUse);
 	virtual void DoRiposte(Mob* defender);
 	void ApplyMeleeDamageBonus(uint16 skill, int32 &damage);
-	virtual void MeleeMitigation(Mob *attacker, int32 &damage, int32 minhit);
+	virtual void MeleeMitigation(Mob *attacker, int32 &damage, int32 minhit, ExtraAttackOptions *opts = nullptr);
 	bool CombatRange(Mob* other);
 
 	//Appearance
@@ -130,7 +138,7 @@ public:
 	virtual void SetSlotTint(uint8 material_slot, uint8 red_tint, uint8 green_tint, uint8 blue_tint);
 	virtual void WearChange(uint8 material_slot, uint16 texture, uint32 color);
 	void DoAnim(const int animnum, int type=0, bool ackreq = true, eqFilterType filter = FilterNone);
-	void ProjectileAnimation(Mob* to, uint16 item_id, bool IsArrow = false, float speed = 0,
+	void ProjectileAnimation(Mob* to, int item_id, bool IsArrow = false, float speed = 0,
 		float angle = 0, float tilt = 0, float arc = 0);
 	void ChangeSize(float in_size, bool bNoRestriction = false);
 	inline uint8 SeeInvisible() const { return see_invis; }
@@ -192,7 +200,7 @@ public:
 
 	//Buff
 	void BuffProcess();
-	virtual void DoBuffTic(uint16 spell_id, uint32 ticsremaining, uint8 caster_level, Mob* caster = 0);
+	virtual void DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caster_level, Mob* caster = 0);
 	void BuffFadeBySpellID(uint16 spell_id);
 	void BuffFadeByEffect(int effectid, int skipslot = -1);
 	void BuffFadeAll();
@@ -255,7 +263,7 @@ public:
 	virtual uint32 GetEquipmentColor(uint8 material_slot) const;
 	virtual uint32 IsEliteMaterialItem(uint8 material_slot) const;
 	bool AffectedBySpellExcludingSlot(int slot, int effect);
-	virtual void Death(Mob* killerMob, int32 damage, uint16 spell_id, SkillType attack_skill) = 0;
+	virtual bool Death(Mob* killerMob, int32 damage, uint16 spell_id, SkillType attack_skill) = 0;
 	virtual void Damage(Mob* from, int32 damage, uint16 spell_id, SkillType attack_skill,
 		bool avoidable = true, int8 buffslot = -1, bool iBuffTic = false) = 0;
 	inline virtual void SetHP(int32 hp) { if (hp >= max_hp) cur_hp = max_hp; else cur_hp = hp;}
@@ -409,7 +417,7 @@ public:
 	void RemoveFromFeignMemory(Client* attacker);
 	void ClearFeignMemory();
 	void PrintHateListToClient(Client *who) { hate_list.PrintToClient(who); }
-	void GetHateList(std::list<tHateEntry*> &h_list) { return hate_list.GetHateList(h_list); }
+	std::list<tHateEntry*>& GetHateList() { return hate_list.GetHateList(); }
 	bool CheckLos(Mob* other);
 	bool CheckLosFN(Mob* other);
 	bool CheckLosFN(float posX, float posY, float posZ, float mobSize);
@@ -425,6 +433,7 @@ public:
 	void CreateDespawnPacket(EQApplicationPacket* app, bool Decay);
 	void CreateHorseSpawnPacket(EQApplicationPacket* app, const char* ownername, uint16 ownerid, Mob* ForWho = 0);
 	void CreateSpawnPacket(EQApplicationPacket* app, Mob* ForWho = 0);
+	static void CreateSpawnPacket(EQApplicationPacket* app, NewSpawn_Struct* ns);
 	virtual void FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho);
 	void CreateHPPacket(EQApplicationPacket* app);
 	void SendHPUpdate();
@@ -432,7 +441,6 @@ public:
 	//Util
 	static uint32 RandomTimer(int min, int max);
 	static uint8 GetDefaultGender(uint16 in_race, uint8 in_gender = 0xFF);
-	static void CreateSpawnPacket(EQApplicationPacket* app, NewSpawn_Struct* ns);
 	uint16 GetSkillByItemType(int ItemType);
 	virtual void MakePet(uint16 spell_id, const char* pettype, const char *petname = nullptr);
 	virtual void MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower, const char *petname = nullptr);
@@ -497,10 +505,13 @@ public:
 	void QuestJournalledSay(Client *QuestInitiator, const char *str);
 	uint32 GetItemStat(uint32 itemid, const char *identifier);
 
-
 	int16 CalcFocusEffect(focusType type, uint16 focus_id, uint16 spell_id, bool best_focus=false);
 	uint8 IsFocusEffect(uint16 spellid, int effect_index, bool AA=false,uint32 aa_effect=0);
-	void SendIllusionPacket(uint16 in_race, uint8 in_gender = 0xFF, uint8 in_texture = 0xFF, uint8 in_helmtexture = 0xFF, uint8 in_haircolor = 0xFF, uint8 in_beardcolor = 0xFF, uint8 in_eyecolor1 = 0xFF, uint8 in_eyecolor2 = 0xFF, uint8 in_hairstyle = 0xFF, uint8 in_luclinface = 0xFF, uint8 in_beard = 0xFF, uint8 in_aa_title = 0xFF, uint32 in_drakkin_heritage = 0xFFFFFFFF, uint32 in_drakkin_tattoo = 0xFFFFFFFF, uint32 in_drakkin_details = 0xFFFFFFFF, float in_size = 0xFFFFFFFF);
+	void SendIllusionPacket(uint16 in_race, uint8 in_gender = 0xFF, uint8 in_texture = 0xFF, uint8 in_helmtexture = 0xFF, 
+		uint8 in_haircolor = 0xFF, uint8 in_beardcolor = 0xFF, uint8 in_eyecolor1 = 0xFF, uint8 in_eyecolor2 = 0xFF, 
+		uint8 in_hairstyle = 0xFF, uint8 in_luclinface = 0xFF, uint8 in_beard = 0xFF, uint8 in_aa_title = 0xFF, 
+		uint32 in_drakkin_heritage = 0xFFFFFFFF, uint32 in_drakkin_tattoo = 0xFFFFFFFF, 
+		uint32 in_drakkin_details = 0xFFFFFFFF, float in_size = 0xFFFFFFFF);
 	virtual void Stun(int duration);
 	virtual void UnStun();
 	inline void Silence(bool newval) { silenced = newval; }
@@ -561,8 +572,8 @@ public:
 	bool IsOffHandAtk() const { return offhand; }
 	inline void OffHandAtk(bool val) { offhand = val; }
 
-	inline void SetFlurryChance(uint8 value) { NPC_FlurryChance = value;}
-	uint8 GetFlurryChance() { return NPC_FlurryChance; }
+	void SetFlurryChance(uint8 value) { SetSpecialAbilityParam(SPECATK_FLURRY, 0, value); }
+	uint8 GetFlurryChance() { return GetSpecialAbilityParam(SPECATK_FLURRY, 0); }
 
 	static uint32 GetAppearanceValue(EmuAppearance iAppearance);
 	void SendAppearancePacket(uint32 type, uint32 value, bool WholeZone = true, bool iIgnoreSelf = false, Client *specific_target=nullptr);
@@ -639,11 +650,11 @@ public:
 	virtual void DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillType skillinuse, int16 chance_mod=0, int16 focus=0, bool CanRiposte=false);
 	virtual void DoArcheryAttackDmg(Mob* other, const ItemInst* RangeWeapon=nullptr, const ItemInst* Ammo=nullptr, uint16 weapon_damage=0, int16 chance_mod=0, int16 focus=0);
 	bool CanDoSpecialAttack(Mob *other);
-	bool Flurry();
-	bool Rampage();
+	bool Flurry(ExtraAttackOptions *opts);
+	bool Rampage(ExtraAttackOptions *opts);
 	bool AddRampage(Mob*);
 	void ClearRampage();
-	void AreaRampage();
+	void AreaRampage(ExtraAttackOptions *opts);
 
 	void StartEnrage();
 	void ProcessEnrage();
@@ -755,12 +766,21 @@ public:
 	void SetNextIncHPEvent( int inchpevent );
 
 	bool DivineAura() const;
-	bool SpecAttacks[SPECATK_MAXNUM];
+
 	bool HasNPCSpecialAtk(const char* parse);
+	int GetSpecialAbility(int ability);
+	int GetSpecialAbilityParam(int ability, int param);
+	void SetSpecialAbility(int ability, int level);
+	void SetSpecialAbilityParam(int ability, int param, int value);
+	void StartSpecialAbilityTimer(int ability, uint32 time);
+	void StopSpecialAbilityTimer(int ability);
+	Timer *GetSpecialAbilityTimer(int ability);
+	void ClearSpecialAbilities();
+	void ProcessSpecialAbilities(const std::string str);
+
 	Shielders_Struct shielder[MAX_SHIELDERS];
 	Trade* trade;
-
-
+	
 	inline float GetCWPX() const { return(cur_wp_x); }
 	inline float GetCWPY() const { return(cur_wp_y); }
 	inline float GetCWPZ() const { return(cur_wp_z); }
@@ -835,7 +855,6 @@ protected:
 	int16 Vulnerability_Mod[HIGHEST_RESIST+2];
 	bool m_AllowBeneficial;
 	bool m_DisableMelee;
-	uint8 NPC_FlurryChance;
 
 	bool isgrouped;
 	bool israidgrouped;
@@ -875,7 +894,6 @@ protected:
 	uint32 scalerate;
 	Buffs_Struct *buffs;
 	uint32 current_buff_count;
-	Timer *buff_tic_timer;
 	StatBonuses itembonuses;
 	StatBonuses spellbonuses;
 	StatBonuses aabonuses;
@@ -914,9 +932,9 @@ protected:
 	bool PassLimitToSkill(uint16 spell_id, uint16 skill);
 	bool PassLimitClass(uint32 Classes_, uint16 Class_);
 	void TryDefensiveProc(const ItemInst* weapon, Mob *on, uint16 hand = 13, int damage=0);
-	void TryWeaponProc(const Item_Struct* weapon, Mob *on, uint16 hand = 13);
+	void TryWeaponProc(const ItemInst* inst, const Item_Struct* weapon, Mob *on, uint16 hand = 13);
 	void TryWeaponProc(const ItemInst* weapon, Mob *on, uint16 hand = 13);
-	void ExecWeaponProc(uint16 spell_id, Mob *on);
+	void ExecWeaponProc(const ItemInst* weapon, uint16 spell_id, Mob *on);
 	virtual float GetProcChances(float &ProcBonus, float &ProcChance, uint16 weapon_speed = 30, uint16 hand = 13);
 	virtual float GetDefensiveProcChances(float &ProcBonus, float &ProcChance, uint16 weapon_speed = 30, uint16 hand = 13);
 	int GetWeaponDamage(Mob *against, const Item_Struct *weapon_item);
@@ -944,10 +962,6 @@ protected:
 	char orig_name[64];
 	char clean_name[64];
 	char lastname[64];
-
-	bool bEnraged;
-	Timer *SpecAttackTimers[SPECATK_MAXNUM];
-	bool destructibleobject;
 
 	int32 delta_heading;
 	float delta_x;
@@ -1142,6 +1156,10 @@ protected:
 	int QGVarDuration(const char *fmt);
 	void InsertQuestGlobal(int charid, int npcid, int zoneid, const char *name, const char *value, int expdate);
 	uint16 emoteid;
+
+	std::map<int, SpecialAbility> SpecialAbilities;
+	bool bEnraged;
+	bool destructibleobject;
 
 private:
 	void _StopSong(); //this is not what you think it is

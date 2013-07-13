@@ -222,7 +222,7 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		for(int i = 0; i < EFFECT_COUNT; i++) {
 			// not important to check limit on SE_Lull as it doesnt have one and if the other components won't land, then SE_Lull wont either
 			if (spells[spell_id].effectid[i] == SE_ChangeFrenzyRad || spells[spell_id].effectid[i] == SE_Harmony) {
-				if((spells[spell_id].max[i] != 0 && GetTarget()->GetLevel() > spells[spell_id].max[i]) || GetTarget()->SpecAttacks[IMMUNE_PACIFY]) {
+				if((spells[spell_id].max[i] != 0 && GetTarget()->GetLevel() > spells[spell_id].max[i]) || GetTarget()->GetSpecialAbility(IMMUNE_PACIFY)) {
 					InterruptSpell(CANNOT_AFFECT_NPC, 0x121, spell_id);
 					return(false);
 				}
@@ -295,6 +295,16 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 			}
 			return(false);
 		}
+	}
+
+	if(IsClient()) {
+		char temp[64];
+		sprintf(temp, "%d", spell_id);
+		parse->EventPlayer(EVENT_CAST_BEGIN, CastToClient(), temp, 0);
+	} else if(IsNPC()) {
+		char temp[64];
+		sprintf(temp, "%d", spell_id);
+		parse->EventNPC(EVENT_CAST_BEGIN, CastToNPC(), nullptr, temp, 0);
 	}
 
 	if(resist_adjust)
@@ -1197,13 +1207,14 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, uint16 slot,
 	// at this point the spell has successfully been cast
 	//
 
-	// if the spell is cast by a client, trigger the EVENT_CAST player quest
-	if(this->IsClient()) {
-		if(parse->PlayerHasQuestSub("EVENT_CAST") ) {
-			char temp[64];
-			sprintf(temp, "%d", spell_id);
-			parse->EventPlayer(EVENT_CAST, CastToClient(), temp, 0);
-		}
+	if(IsClient()) {
+		char temp[64];
+		sprintf(temp, "%d", spell_id);
+		parse->EventPlayer(EVENT_CAST, CastToClient(), temp, 0);
+	} else if(IsNPC()) {
+		char temp[64];
+		sprintf(temp, "%d", spell_id);
+		parse->EventNPC(EVENT_CAST, CastToNPC(), nullptr, temp, 0);
 	}
 
 	if(bard_song_mode)
@@ -1213,10 +1224,6 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, uint16 slot,
 			this->CastToClient()->CheckSongSkillIncrease(spell_id);
 			this->CastToClient()->MemorizeSpell(slot, spell_id, memSpellSpellbar);
 		}
-		// go again in 6 seconds
-		//this is handled with bardsong_timer
-		//		DoCastSpell(casting_spell_id, casting_spell_targetid, casting_spell_slot, 6000, casting_spell_mana);
-
 		mlog(SPELLS__CASTING, "Bard song %d should be started", spell_id);
 	}
 	else
@@ -3465,15 +3472,6 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	TrySpellTrigger(spelltar, spell_id);
 	TryApplyEffect(spelltar, spell_id);
 
-
-	if(spell_id == 982)	// Cazic Touch, hehe =P
-	{
-		char target_name[64];
-		strcpy(target_name, spelltar->GetCleanName());
-		strupr(target_name);
-		Shout("%s!", target_name);
-	}
-
 	if (spelltar->IsAIControlled() && IsDetrimentalSpell(spell_id) && !IsHarmonySpell(spell_id)) {
 		int32 aggro_amount = CheckAggroAmount(spell_id, isproc);
 		mlog(SPELLS__CASTING, "Spell %d cast on %s generated %d hate", spell_id, spelltar->GetName(), aggro_amount);
@@ -3763,7 +3761,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 
 	if(IsMezSpell(spell_id))
 	{
-		if(SpecAttacks[UNMEZABLE]) {
+		if(GetSpecialAbility(UNMEZABLE)) {
 			mlog(SPELLS__RESISTS, "We are immune to Mez spells.");
 			caster->Message_StringID(MT_Shout, CANNOT_MEZ);
 			int32 aggro = CheckAggroAmount(spell_id);
@@ -3789,7 +3787,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 	}
 
 	// slow and haste spells
-	if(SpecAttacks[UNSLOWABLE] && IsEffectInSpell(spell_id, SE_AttackSpeed))
+	if(GetSpecialAbility(UNSLOWABLE) && IsEffectInSpell(spell_id, SE_AttackSpeed))
 	{
 		mlog(SPELLS__RESISTS, "We are immune to Slow spells.");
 		caster->Message_StringID(MT_Shout, IMMUNE_ATKSPEED);
@@ -3806,7 +3804,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 	if(IsEffectInSpell(spell_id, SE_Fear))
 	{
 		effect_index = GetSpellEffectIndex(spell_id, SE_Fear);
-		if(SpecAttacks[UNFEARABLE]) {
+		if(GetSpecialAbility(UNFEARABLE)) {
 			mlog(SPELLS__RESISTS, "We are immune to Fear spells.");
 			caster->Message_StringID(MT_Shout, IMMUNE_FEAR);
 			int32 aggro = CheckAggroAmount(spell_id);
@@ -3840,7 +3838,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 
 	if(IsCharmSpell(spell_id))
 	{
-		if(SpecAttacks[UNCHARMABLE])
+		if(GetSpecialAbility(UNCHARMABLE))
 		{
 			mlog(SPELLS__RESISTS, "We are immune to Charm spells.");
 			caster->Message_StringID(MT_Shout, CANNOT_CHARM);
@@ -3881,7 +3879,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 		IsEffectInSpell(spell_id, SE_MovementSpeed)
 	)
 	{
-		if(SpecAttacks[UNSNAREABLE]) {
+		if(GetSpecialAbility(UNSNAREABLE)) {
 			mlog(SPELLS__RESISTS, "We are immune to Snare spells.");
 			caster->Message_StringID(MT_Shout, IMMUNE_MOVEMENT);
 			int32 aggro = CheckAggroAmount(spell_id);
@@ -3941,7 +3939,7 @@ float Mob::ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use
 		return 0;
 	}
 
-	if(SpecAttacks[IMMUNE_CASTING_FROM_RANGE])
+	if(GetSpecialAbility(IMMUNE_CASTING_FROM_RANGE))
 	{
 		if(!caster->CombatRange(this))
 		{
@@ -3949,7 +3947,7 @@ float Mob::ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use
 		}
 	}
 
-	if(SpecAttacks[IMMUNE_MAGIC])
+	if(GetSpecialAbility(IMMUNE_MAGIC))
 	{
 		mlog(SPELLS__RESISTS, "We are immune to magic, so we fully resist the spell %d", spell_id);
 		return(0);
@@ -4665,362 +4663,6 @@ bool Client::SpellGlobalCheck(uint16 Spell_ID, uint16 Char_ID) {
 	return false; // Default is false
 }
 
-//this is one nasty function... FindType and FindSpell are rather complex operations...
-/*void Mob::CheckBuffs() {
-	if (!IsCasting()) {
-
-		//try to summon a pet if we havent yet
-		CheckPet();
-
-		uint8 newtype[15] = { SE_ArmorClass, SE_STR, SE_DEX, SE_AGI, SE_WIS,
-							SE_INT, SE_CHA, SE_AttackSpeed, SE_MovementSpeed,
-							SE_DamageShield, SE_ResistFire, SE_ResistCold,
-							SE_ResistMagic, SE_ResistPoison, SE_ResistDisease };
-		for (int h=0; h<15; h++) {
-			if (!this->FindType(newtype[h])) {
-				uint16 buffid = FindSpell(this->class_, this->level,
-										newtype[h], SPELLTYPE_SELF, 0,
-										GetMana());
-				if (buffid != 0) {
-					this->CastSpell(buffid, this->GetID());
-				}
-			}
-		}
-	}
-}
-
-void Mob::CheckPet() {
-	if(HasPet())
-		return;
-	uint16 buffid = 0;
-	if ((GetClass() == NECROMANCER || GetClass() == MAGICIAN)) {
-		if (this->GetClass() == MAGICIAN) {
-			buffid = FindSpell(class_, level,
-							SE_SummonPet, SPELLTYPE_OTHER, 0,
-							GetMana());
-		} else if (GetClass() == NECROMANCER) {
-			buffid = FindSpell(class_, level,
-							SE_NecPet, SPELLTYPE_OTHER, 0,
-							GetMana());
-		}
-		if (buffid != 0) {
-			CastSpell(buffid, GetID());
-		}
-	}
-}
-
-uint16 Mob::FindSpell(uint16 classp, uint16 level, int type,
-					FindSpellType spelltype, float distance,
-					int32 mana_avail) {
-	int i,j;
-
-	int bestvalue = -1;
-	int bestid = 0;
-
-	if (classp < 1)
-		return 0;
-	if (level < 1)
-		return 0;
-	classp = GetEQArrayEQClass(classp);
-
-	// purpose: find a suited spell for a class and level and type
-	// the if's are here to filter out anything which isnt normal.
-	// its possible that we miss some valid spells, but who cares.
-
-	for (i = 0; i < SPDAT_RECORDS; i++) {
-				if(!IsValidSpell(i))
-					continue;
-		// Filter all spells that should never be used
-		if (spells[i].effectid[0] == SE_NegateIfCombat)
-			continue;
-		if (spells[i].targettype == ST_Group)
-			continue;
-		if (i == 2632) // fix for obsolete BST pet summon spell
-			continue;
-		if (i == 1576) // fix for torpor
-			continue;
-		if (spells[i].cast_time < 11)
-			continue;
-		if (spells[i].mana == 0)
-			continue;
-
-		// now for closer checks
-		if (spelltype == SPELLTYPE_SELF) {
-			if ( i == 357) // fix for dark empathy
-				continue;
-			// check buffs 12 would be max, but 90% of all effects are in the first 4 slots
-			for (j = 0; j < 5; j++) {
-				// fix for pets
-				if ( spells[i].effectid[j] == SE_Illusion &&
-					type != SE_Illusion) // only let illusions thru if explicitly requested
-					continue;
-				if (spells[i].effectid[j] == type &&
-						spells[i].goodEffect != 0 &&
-						spells[i].classes[classp] <= level &&
-						spells[i].classes[classp] <= 65 &&
-						(spells[i].recast_time < 10000 ||
-						type == SE_SummonPet ||
-						type == SE_SummonBSTPet) && // fix for druid pets
-						(type == SE_AbsorbMagicAtt || type == SE_Rune ||
-						type == SE_NecPet || type == SE_SummonPet ||
-						spells[i].components[0] == -1 ) &&
-						spells[i].targettype != ST_Undead &&	// for necro mend series
-						spells[i].targettype != ST_Group &&	// fix for group spells
-						spells[i].targettype != ST_Pet &&		// fix for beastlords casting pet heals on self
-						spells[i].targettype != ST_Summoned && // fix for vs. summoned spells on normal npcs
-						spells[i].targettype != ST_AETarget && // dont let em cast AEtarget spells
-						spells[i].mana <= mana_avail &&
-						spells[i].range >= distance) {
-					int32 spellvalue;
-
-					// lets assume pet is always better if higher, so no formula needed
-					if (type == SE_NecPet ||
-						type == SE_SummonPet ||
-						type == SE_SummonBSTPet) {
-						spellvalue = spells[i].classes[classp];
-					} else {
-											spellvalue = CalcSpellEffectValue_formula(spells[i].formula[j],
-													spells[i].base[j],
-													spells[i].max[j],
-													level, i);
-					}
-
-					if (abs(spellvalue) > bestvalue) {
-						bestvalue = abs(spellvalue);
-						bestid = i;
-					}
-				}
-			}
-		} else if (spelltype == SPELLTYPE_OFFENSIVE) {
-			// check offensive spells
-			for (j = 0; j < 5; j++) {
-				if (spells[i].effectid[j] == SE_Illusion &&
-					type != SE_Illusion) // only let illusions thru if explicitly requested
-					continue;
-				if (spells[i].effectid[j] == type &&
-						spells[i].goodEffect == 0 &&
-						spells[i].classes[classp] <= level &&
-						spells[i].classes[classp] <= 65 &&
-						spells[i].recast_time < 10000 &&
-						spells[i].components[0] == -1 &&
-						spells[i].mana <= mana_avail &&
-						spells[i].targettype != ST_Undead &&	// thats for the necro mend series
-						spells[i].targettype != ST_Group &&		// fix for group spells
-						spells[i].targettype != ST_Pet &&		// fix for beastlords casting pet heals on self
-						spells[i].targettype != ST_Summoned &&	// fix for vs. summoned spells on normal npcs
-						spells[i].targettype != ST_AETarget &&	// dont let em cast AEtarget spells
-						spells[i].range >= distance) {
-					int32 spellvalue = CalcSpellEffectValue_formula(spells[i].formula[j],
-													spells[i].base[j],
-													spells[i].max[j],
-													level, i);
-					if ( abs(spellvalue) > bestvalue ) {
-						bestvalue = abs(spellvalue);
-						bestid = i;
-					}
-				}
-			}
-		} else if (spelltype == SPELLTYPE_OTHER) {
-			if ( i == 357) // fix for dark empathy
-				continue;
-			// healing and such
-			for (j = 0; j < 5; j++) {
-				if (spells[i].effectid[j] == SE_Illusion &&
-					type != SE_Illusion) // only let illusions thru if explicitly requested
-					continue;
-				if (spells[i].effectid[j] == type &&
-						spells[i].targettype != ST_Self &&
-						spells[i].goodEffect != 0 &&
-						spells[i].classes[classp] <= level &&
-						spells[i].classes[classp] <= 65 &&
-						spells[i].recast_time < 10000 &&
-						spells[i].components[0] == -1 &&
-						spells[i].targettype != ST_Undead &&	// thats for the necro mend series
-						spells[i].targettype != ST_Group &&		// fix for group spells
-						spells[i].targettype != ST_Pet &&		// fix for beastlords casting pet heals on self
-						spells[i].targettype != ST_Summoned &&	// fix for vs. summoned spells on normal npcs
-						spells[i].targettype != ST_AETarget &&	// dont let em cast AEtarget spells
-						spells[i].mana <= mana_avail &&
-						spells[i].range >= distance) {
-					int32 spellvalue = CalcSpellEffectValue_formula(spells[i].formula[j],
-													spells[i].base[j],
-													spells[i].max[j],
-													level, i);
-					if ( abs(spellvalue) > bestvalue ) {
-						bestvalue = abs(spellvalue);
-						bestid = i;
-					}
-				}
-			}
-		}
-	} // for i
-
-//	g_LogFile.write("for combination [class %02d][level %02d][SE_type %02d][type %02d] i selected the spell: %s",
-//		classp, level, (uint16)type, uint16(spelltype), spells[bestid].name);
-	return bestid;
-}
-
-#if 0
-uint16 Mob::FindSpell(uint16 classp, uint16 level, uint8 type, uint8 spelltype) {
-	if (this->casting_spell_id != 0)
-		return 0;
-
-	if (spelltype == 2) // for future use
-		spelltype = 0;
-
-	//int count=0;
-	uint16 bestsofar = 0;
-	uint16 bestspellid = 0;
-	for (int i = 0; i < SPDAT_RECORDS; i++) {
-		if ((IsLifetapSpell(i) && spelltype == 1) || (spells[i].targettype != ST_Group && spells[i].targettype != ST_Undead && spells[i].targettype != ST_Summoned && spells[i].targettype != ST_Pet && strstr(spells[i].name,"Summoning") == nullptr)) {
-			int Canuse = CanUseSpell(i, classp, level);
-			if (Canuse != 0) {
-				for (int z=0; z < 12; z++) {
-					int spfo = CalcSpellValue(spells[i].formula[z], spells[i].base[z], spells[i].max[z], this->GetLevel());
-					if (spells[i].effectid[z] == SE_ArmorClass && type == SE_ArmorClass && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_TotalHP && type == SE_TotalHP && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_STR && type == SE_STR && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_DEX && type == SE_DEX && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-
-					if (spells[i].effectid[z] == SE_AGI && type == SE_AGI && !FindBuff(i)) {
-
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-
-					if (spells[i].effectid[z] == SE_WIS && type == SE_WIS && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-
-					if (spells[i].effectid[z] == SE_INT && type == SE_INT && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_CHA && type == SE_CHA && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-
-					if (spells[i].effectid[z] == SE_MovementSpeed && type == SE_MovementSpeed && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-
-					if (spells[i].effectid[z] == SE_AttackSpeed && type == SE_AttackSpeed && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_ResistFire && type == SE_ResistFire && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_ResistCold && type == SE_ResistCold && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_ResistMagic && type == SE_ResistMagic && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_ResistDisease && type == SE_ResistDisease && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-
-						}
-					}
-					if (spells[i].effectid[z] == SE_ResistPoison && type == SE_ResistPoison && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_DamageShield && type == SE_DamageShield && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_CurrentHPOnce && type == SE_CurrentHPOnce && !FindBuff(i)) {
-						if (spfo > 0 && (spfo + spells[i].buffduration) > bestsofar) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_SummonPet && type == SE_SummonPet && !FindBuff(i)) {
-						if (Canuse > bestsofar) {
-							bestsofar = Canuse;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_NecPet && type == SE_NecPet && !FindBuff(i)) {
-						if (Canuse > bestsofar) {
-							bestsofar = Canuse;
-							bestspellid = i;
-						}
-					}
-					if (spells[i].effectid[z] == SE_CurrentHP && type == SE_CurrentHP && !FindBuff(i)) {
-						if (spfo < 0 && (spells[i].buffduration + spfo) < bestsofar && spelltype == 1) {
-							bestsofar = ((spells[i].buffduration * -1) + spfo);
-							bestspellid = i;
-						}
-						if ((spfo + spells[i].buffduration) > bestsofar && spfo > 0 && spelltype == 0) {
-							bestsofar = spfo + spells[i].buffduration;
-							bestspellid = i;
-						}
-
-					}
-				}
-			}
-		}
-	}
-
-	return bestspellid;
-}
-#endif
-*/
-
 // TODO get rid of this
 int16 Mob::GetBuffSlotFromType(uint16 type) {
 	uint32 buff_count = GetMaxTotalSlots();
@@ -5448,7 +5090,6 @@ void Client::InitializeBuffSlots()
 		buffs[x].spellid = SPELL_UNKNOWN;
 	}
 	current_buff_count = 0;
-	buff_tic_timer = nullptr;
 }
 
 void Client::UninitializeBuffSlots()
@@ -5465,7 +5106,6 @@ void NPC::InitializeBuffSlots()
 		buffs[x].spellid = SPELL_UNKNOWN;
 	}
 	current_buff_count = 0;
-	buff_tic_timer = nullptr;
 }
 
 void NPC::UninitializeBuffSlots()

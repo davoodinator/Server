@@ -6510,9 +6510,8 @@ XS(XS_Mob_GetHateList)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		std::list<tHateEntry*> hate_list;
-		THIS->GetHateList(hate_list);
-		std::list<tHateEntry*>::iterator iter = hate_list.begin();
+		auto hate_list = THIS->GetHateList();
+		auto iter = hate_list.begin();
 
 		while(iter != hate_list.end())
 		{
@@ -6797,7 +6796,7 @@ XS(XS_Mob_ProjectileAnim)
 	{
 		Mob *		THIS;
 		Mob*		mob;
-		uint16		item_id = (uint16)SvUV(ST(2));
+		int         item_id = SvUV(ST(2));
 		bool		IsArrow = false;
 		float		speed = 0;
 		float		angle = 0;

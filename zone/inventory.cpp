@@ -32,6 +32,7 @@
 #include "../common/StringUtil.h"
 #include "StringIDs.h"
 #include "NpcAI.h"
+#include "QuestParserCollection.h"
 extern WorldServer worldserver;
 
 // @merth: this needs to be touched up
@@ -302,7 +303,7 @@ void Client::SummonItem(uint32 item_id, int16 charges, uint32 aug1, uint32 aug2,
 			if ((RuleB(Character, EnableDiscoveredItems)))
 			{
 				if(!GetGM() && !IsDiscovered(item_id))
-				DiscoverItem(item_id);
+					DiscoverItem(item_id);
 			}
 		}
 	}
@@ -319,29 +320,36 @@ void Client::SummonItem(uint32 item_id, int16 charges, uint32 aug1, uint32 aug2,
 // Drop item from inventory to ground (generally only dropped from SLOT_CURSOR)
 void Client::DropItem(int16 slot_id)
 {
-
-	if (GetInv().CheckNoDrop(slot_id) && RuleI(World, FVNoDropFlag) == 0 || RuleI(Character, MinStatusForNoDropExemptions) < Admin() && RuleI(World, FVNoDropFlag) == 2) {
-		//Message(0, "No Drop Exploit: Items Destroyed.");
+	if(GetInv().CheckNoDrop(slot_id) && RuleI(World, FVNoDropFlag) == 0 ||
+		RuleI(Character, MinStatusForNoDropExemptions) < Admin() && RuleI(World, FVNoDropFlag) == 2) {
 		database.SetHackerFlag(this->AccountName(), this->GetCleanName(), "Tried to drop an item on the ground that was nodrop!");
 		GetInv().DeleteItem(slot_id);
 		return;
 	}
 
 	// Take control of item in client inventory
-	ItemInst* inst = m_inv.PopItem(slot_id);
-
-	if (!inst) {
+	ItemInst *inst = m_inv.PopItem(slot_id);
+	if(inst) {
+		int i = parse->EventItem(EVENT_DROP_ITEM, this, inst, nullptr, "", 0);
+		if(i != 0) {
+			safe_delete(inst);
+		}
+	} else {
 		// Item doesn't exist in inventory!
 		Message(13, "Error: Item not found in slot %i", slot_id);
 		return;
 	}
 
 	// Save client inventory change to database
-	if (slot_id==SLOT_CURSOR) {
+	if(slot_id == SLOT_CURSOR) {
 		std::list<ItemInst*>::const_iterator s=m_inv.cursor_begin(),e=m_inv.cursor_end();
 		database.SaveCursor(CharacterID(), s, e);
-	} else
+	} else {
 		database.SaveInventory(CharacterID(), nullptr, slot_id);
+	}
+
+	if(!inst)
+		return;
 
 	// Package as zone object
 	Object* object = new Object(this, inst);
@@ -668,6 +676,8 @@ bool Client::AutoPutLootInInventory(ItemInst& inst, bool try_worn, bool try_curs
 					{
 						SendWearChange(worn_slot_material);
 					}
+					
+					parse->EventItem(EVENT_EQUIP_ITEM, this, &inst, nullptr, "", i);
 					return true;
 				}
 			}
@@ -1005,6 +1015,12 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 		if(move_in->from_slot == (uint32)SLOT_CURSOR) {
 			mlog(INVENTORY__SLOTS, "Client destroyed item from cursor slot %d", move_in->from_slot);
 			if(RuleB(QueryServ, PlayerLogMoves)) { QSSwapItemAuditor(move_in); } // QS Audit
+
+			ItemInst *inst = m_inv.GetItem(SLOT_CURSOR);
+			if(inst) {
+				parse->EventItem(EVENT_DESTROY_ITEM, this, inst, nullptr, "", 0);
+			}
+
 			DeleteItemInInventory(move_in->from_slot);
 			return true; // Item destroyed by client
 		}
@@ -1324,6 +1340,26 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 		}
 		if(!m_inv.SwapItem(src_slot_id, dst_slot_id)) { return false; }
 		mlog(INVENTORY__SLOTS, "Moving entire item from slot %d to slot %d", src_slot_id, dst_slot_id);
+
+		if(src_slot_id < 22 || src_slot_id == 9999) {
+			if(src_inst) {
+				parse->EventItem(EVENT_UNEQUIP_ITEM, this, src_inst, nullptr, "", src_slot_id);
+			}
+
+			if(dst_inst) {
+				parse->EventItem(EVENT_EQUIP_ITEM, this, dst_inst, nullptr, "", src_slot_id);
+			}
+		}
+
+		if(dst_slot_id < 22 || dst_slot_id == 9999) {
+			if(dst_inst) {
+				parse->EventItem(EVENT_UNEQUIP_ITEM, this, dst_inst, nullptr, "", dst_slot_id);
+			}
+
+			if(src_inst) {
+				parse->EventItem(EVENT_EQUIP_ITEM, this, src_inst, nullptr, "", dst_slot_id);
+			}
+		}
 	}
 
 	int matslot = SlotConvert2(dst_slot_id);
@@ -1912,50 +1948,6 @@ uint32 Client::GetEquipmentColor(uint8 material_slot) const
 	}
 
 	return 0;
-}
-
-bool Client::LootToStack(uint32 itemid) { //Loots stackable items to existing stacks - Wiz
-	// @merth: Need to do loot code with new inventory struct
-	/*
-	const Item_Struct* item;
-	int i;
-	for (i=22; i<=29; i++) {
-		item = GetItemAt(i);
-		if (item) {
-			if (m_pp.invitemproperties[i].charges < 20 && item->ID == itemid)
-			{
-				m_pp.invitemproperties[i].charges += 1;
-				EQApplicationPacket* outapp = new EQApplicationPacket(OP_PlaceItem, sizeof(Item_Struct));
-				memcpy(outapp->pBuffer, item, outapp->size);
-				Item_Struct* outitem = (Item_Struct*) outapp->pBuffer;
-				outitem->equipSlot = i;
-				outitem->charges = m_pp.invitemproperties[i].charges;
-				QueuePacket(outapp);
-				safe_delete(outapp);
-				return true;
-			}
-		}
-	}
-	for (i=0; i<=pp_containerinv_size; i++) {
-		if (m_pp.containerinv[i] != 0xFFFF) {
-			item = database.GetItem(m_pp.containerinv[i]);
-			if (m_pp.bagitemproperties[i].charges < 20 && item->ID == itemid)
-			{
-				m_pp.bagitemproperties[i].charges += 1;
-
-				EQApplicationPacket* outapp = new EQApplicationPacket(OP_PlaceItem, sizeof(Item_Struct));
-				memcpy(outapp->pBuffer, item, outapp->size);
-				Item_Struct* outitem = (Item_Struct*) outapp->pBuffer;
-				outitem->equipSlot = 250+i;
-				outitem->charges = m_pp.bagitemproperties[i].charges;
-				QueuePacket(outapp);
-				safe_delete(outapp);
-				return true;
-			}
-		}
-	}
-	*/
-	return false;
 }
 
 // Send an item packet (including all subitems of the item)

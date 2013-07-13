@@ -49,15 +49,16 @@
 #include "net.h"
 #include "zone.h"
 #include "command.h"
-#include "parser.h"
-#include "embparser.h"
-#include "perlparser.h"
-#include "client_logs.h"
-#include "questmgr.h"
+#include "ZoneConfig.h"
 #include "titles.h"
 #include "guild_mgr.h"
 #include "tasks.h"
+
 #include "QuestParserCollection.h"
+#include "embparser.h"
+#include "lua_parser.h"
+#include "client_logs.h"
+#include "questmgr.h"
 
 #include <iostream>
 #include <string>
@@ -72,7 +73,7 @@
 	#undef new
 	#define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
 #endif
-	
+
 #ifdef _WINDOWS
 	#include <conio.h>
 	#include <process.h>
@@ -83,8 +84,6 @@
 
 volatile bool RunLoops = true;
 extern volatile bool ZoneLoaded;
-
-
 
 TimeoutManager timeout_manager;
 NetConnection net;
@@ -144,7 +143,7 @@ int main(int argc, char** argv) {
 	_log(ZONE__INIT, "Loading server configuration..");
 	if (!ZoneConfig::LoadConfig()) {
 		_log(ZONE__INIT_ERR, "Loading server configuration failed.");
-		return(1);
+		return 1;
 	}
 	const ZoneConfig *Config=ZoneConfig::get();
 
@@ -163,7 +162,7 @@ int main(int argc, char** argv) {
 		Config->DatabaseDB.c_str(),
 		Config->DatabasePort)) {
 		_log(ZONE__INIT_ERR, "Cannot continue without a database connection.");
-		return(1);
+		return 1;
 	}
 	dbasync = new DBAsync(&database);
 	dbasync->AddFQ(&MTdbafq);
@@ -182,16 +181,16 @@ int main(int argc, char** argv) {
 	*/
 	if (signal(SIGINT, CatchSignal) == SIG_ERR)	{
 		_log(ZONE__INIT_ERR, "Could not set signal handler");
-		return 0;
+		return 1;
 	}
 	if (signal(SIGTERM, CatchSignal) == SIG_ERR)	{
 		_log(ZONE__INIT_ERR, "Could not set signal handler");
-		return 0;
+		return 1;
 	}
 	#ifndef WIN32
 	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)	{
 		_log(ZONE__INIT_ERR, "Could not set signal handler");
-		return 0;
+		return 1;
 	}
 	#endif
 
@@ -217,19 +216,19 @@ int main(int argc, char** argv) {
 	if (!database.LoadNPCFactionLists()) {
 		_log(ZONE__INIT_ERR, "Loading npcs faction lists FAILED!");
 		CheckEQEMuErrorAndPause();
-		return 0;
+		return 1;
 	}
 	_log(ZONE__INIT, "Loading loot tables");
 	if (!database.LoadLoot()) {
 		_log(ZONE__INIT_ERR, "Loading loot FAILED!");
 		CheckEQEMuErrorAndPause();
-		return 0;
+		return 1;
 	}
 	_log(ZONE__INIT, "Loading skill caps");
 	if (!database.LoadSkillCaps()) {
 		_log(ZONE__INIT_ERR, "Loading skill caps FAILED!");
 		CheckEQEMuErrorAndPause();
-		return 0;
+		return 1;
 	}
 
 	_log(ZONE__INIT, "Loading spells");
@@ -279,13 +278,15 @@ int main(int argc, char** argv) {
 	}
 
 	parse = new QuestParserCollection();
-#ifdef EMBPERL
-	PerlXSParser *pxs = new PerlXSParser();
-	parse->RegisterQuestInterface(pxs, "pl");
+#ifdef LUA_EQEMU
+	LuaParser *lua_parser = new LuaParser();
+	parse->RegisterQuestInterface(lua_parser, "lua");
 #endif
-	Parser *ps = new Parser();
-	//parse->RegisterQuestInterface(ps, "qst");
 
+#ifdef EMBPERL
+	PerlembParser *perl_parser = new PerlembParser();
+	parse->RegisterQuestInterface(perl_parser, "pl");
+#endif
 
 	//now we have our parser, load the quests
 	_log(ZONE__INIT, "Loading quests");
@@ -469,12 +470,16 @@ int main(int argc, char** argv) {
 
 	entity_list.Clear();
 
-	safe_delete(parse);
 #ifdef EMBPERL
-	safe_delete(pxs);
+ 	safe_delete(perl_parser);
 #endif
-	safe_delete(ps);
+
+#ifdef LUA_EQEMU
+	safe_delete(lua_parser);
+#endif
+
 	safe_delete(mmf);
+	safe_delete(Config);
 
 	if (zone != 0)
 		Zone::Shutdown(true);

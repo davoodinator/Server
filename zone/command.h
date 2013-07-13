@@ -60,8 +60,6 @@ int command_add(const char *command_string, const char *desc, int access, CmdFun
 int command_notavail(Client *c, const char *message);
 int command_realdispatch(Client *c, char const *message);
 void command_logcommand(Client *c, const char *message);
-int command_add_perl(const char *command_string, const char *desc, int access);
-void command_clear_perl();
 
 //commands
 void command_resetaa(Client* c,const Seperator *sep);
@@ -319,16 +317,9 @@ void command_picklock(Client *c, const Seperator *sep);
 void command_qtest(Client *c, const Seperator *sep);
 void command_mysql(Client *c, const Seperator *sep);
 void command_xtargets(Client *c, const Seperator *sep);
-void command_printquestitems(Client *c, const Seperator *sep);
-void command_clearquestitems(Client *c, const Seperator *sep);
 void command_zopp(Client *c, const Seperator *sep);
 void command_augmentitem(Client *c, const Seperator *sep);
-
-#ifdef EMBPERL
-void command_embperl_plugin(Client *c, const Seperator *sep);
-void command_embperl_eval(Client *c, const Seperator *sep);
-void command_reloadpl(Client *c, const Seperator *sep);
-#endif
+void command_questerrors(Client *c, const Seperator *sep);
 
 #ifdef EQPROFILE
 void command_profiledump(Client *c, const Seperator *sep);

@@ -79,9 +79,10 @@ public:
 	virtual ~NPC();
 
 	//abstract virtual function implementations requird by base abstract class
-	virtual void Death(Mob* killerMob, int32 damage, uint16 spell_id, SkillType attack_skill);
+	virtual bool Death(Mob* killerMob, int32 damage, uint16 spell_id, SkillType attack_skill);
 	virtual void Damage(Mob* from, int32 damage, uint16 spell_id, SkillType attack_skill, bool avoidable = true, int8 buffslot = -1, bool iBuffTic = false);
-	virtual bool Attack(Mob* other, int Hand = 13, bool FromRiposte = false, bool IsStrikethrough = false, bool IsFromSpell = false);
+	virtual bool Attack(Mob* other, int Hand = 13, bool FromRiposte = false, bool IsStrikethrough = false,
+		bool IsFromSpell = false, ExtraAttackOptions *opts = nullptr);
 	virtual bool HasRaid() { return false; }
 	virtual bool HasGroup() { return false; }
 	virtual Raid* GetRaid() { return 0; }
@@ -164,7 +165,6 @@ public:
 	void	RemoveCash();
 	void	QueryLoot(Client* to);
 	uint32	CountLoot();
-	void	DumpLoot(uint32 npcdump_index, ZSDump_NPC_Loot* npclootdump, uint32* NPCLootindex);
 	inline uint32	GetLoottableID()	const { return loottable_id; }
 
 	inline uint32	GetCopper()		const { return copper; }
@@ -341,117 +341,13 @@ public:
 	NPC_Emote_Struct* GetNPCEmote(uint16 emoteid, uint8 event_);
 	void DoNPCEmote(uint8 event_, uint16 emoteid);
 	bool CanTalk();
+	void DoQuestPause(Mob *other);
 
 	inline void SetSpellScale(float amt)		{ spellscale = amt; }
 	inline float GetSpellScale()				{ return spellscale; }
 
 	inline void SetHealScale(float amt)		{ healscale = amt; }
 	inline float GetHealScale()					{ return healscale; }
-
-	void AddQuestItem(ItemInst* inst) { questItems.Insert(inst); }
-
-	void ClearQuestLists()
-	{
-		ClearQuestItems(true);
-		ClearQuestDeleteItems(true);
-	}
-
-	void ResetQuestDeleteList()
-	{
-		ClearQuestDeleteItems(true);
-	}
-
-
-	void ClearQuestItems(bool delete_=false)
-	{
-		LinkedListIterator<ItemInst*> iterator(questItems);
-		iterator.Reset();
-		while(iterator.MoreElements())
-		{
-			iterator.RemoveCurrent(delete_);
-		}
-
-		questItems.Clear();
-	}
-
-	void ClearQuestDeleteItems(bool delete_=false)
-	{
-		LinkedListIterator<ItemInst*> iterator(questDeletionItems);
-		iterator.Reset();
-		while(iterator.MoreElements())
-		{
-			iterator.RemoveCurrent(delete_);
-		}
-
-		questDeletionItems.Clear();
-	}
-
-	ItemInst* FindQuestItemByID(uint32 itmID, int charges, bool flagItemForDeletion=false)
-	{
-		LinkedListIterator<ItemInst*> iterator(questItems);
-		iterator.Reset();
-		int totalCharges = 0;
-		while(iterator.MoreElements())
-		{
-			if ( iterator.GetData()->GetItem()->ID == itmID )
-			{
-				totalCharges += 1;
-
-				if ( flagItemForDeletion )
-					questDeletionItems.Insert(iterator.GetData()->Clone());
-				if ( charges > totalCharges )
-				{
-					iterator.Advance();
-					continue;
-				}
-
-				return iterator.GetData();
-			}
-			iterator.Advance();
-		}
-		return nullptr;
-	}
-
-	bool DoesQuestItemExist(uint32 itmID, int charges, bool flagItemForDeletion=false) {
-		ItemInst* inst = FindQuestItemByID(itmID,charges,flagItemForDeletion);
-		if ( inst != nullptr )
-		{
-			return true;
-		}
-		else
-			return false;
-	}
-
-	void ClearQuestItem(ItemInst* inst, bool delete_=true)
-	{
-		LinkedListIterator<ItemInst*> iterator(questItems);
-		iterator.Reset();
-
-		while(iterator.MoreElements())
-		{
-			if ( iterator.GetData ()->GetItem()->ID == inst->GetItem()->ID )
-			{
-				iterator.RemoveCurrent(delete_);
-				break;
-			}
-			iterator.Advance();
-		}
-	}
-
-	void RemoveQuestDeleteItems()
-	{
-		LinkedListIterator<ItemInst*> iterator(questDeletionItems);
-		iterator.Reset();
-		while(iterator.MoreElements())
-		{
-			ClearQuestItem(iterator.GetData(),true);
-			iterator.RemoveCurrent(true);
-		}
-
-		questDeletionItems.Clear();
-	}
-
-	void PrintOutQuestItems(Client* c);
 
     uint32 	GetSpawnKillCount();
     int 	GetScore();
@@ -550,9 +446,6 @@ protected:
 	bool ldon_trap_detected;
 	QGlobalCache *qGlobals;
 	uint32 adventure_template_id;
-
-	LinkedList<ItemInst*> questItems;
-	LinkedList<ItemInst*> questDeletionItems;
 
 	//mercenary stuff
 	std::list<MercType> mercTypeList;

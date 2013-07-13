@@ -51,12 +51,6 @@ Core Zone features
 //this seems to make perl very unhappy on reload, and crashes
 #define EMBPERL_IO_CAPTURE
 
-//enable perl-based in-game command, pretty useless without EMBPERL_XS_CLASSES
-#define EMBPERL_COMMANDS
-
-//enable #plugin and #peval, which requires IO::Stringy
-//#define EMBPERL_EVAL_COMMANDS
-
 #endif
 
 /*
@@ -89,8 +83,8 @@ Zone extensions and features
 #ifdef QUEST_SCRIPTS_BYNAME
 //extends byname system to look in a templates directory
 //independant of zone name
-#define QUEST_TEMPLATES_BYNAME
-#define QUEST_TEMPLATES_DIRECTORY "templates"
+#define QUEST_GLOBAL_BYNAME
+#define QUEST_GLOBAL_DIRECTORY "global"
 #endif
 
 //the min ratio at which a mob's speed is reduced
@@ -123,17 +117,10 @@ Zone extensions and features
 //New aggro system to reduce overhead.
 #define REVERSE_AGGRO
 
-//Enable spacial queue to manage NPC update packets
-//#define PACKET_UPDATE_MANAGER
-//#define MANAGE_HP_UPDATES
-
 //The highest you can #setskill / #setallskill
 #define HIGHEST_CAN_SET_SKILL 400
 
 #define SKILL_MAX_LEVEL 75
-
-//#define MIN_RANGED_ATK_RANGE 25
-//replaced the above define with RuleI(Combat, MinRangedAttackDist)
 
 /*
 
@@ -175,7 +162,7 @@ enum {	//timer settings, all in milliseconds
 	AItarget_check_duration = 500,
 	AIClientScanarea_delay = 750,	//used in REVERSE_AGGRO
 	AIassistcheck_delay = 3000,		//now often a fighting NPC will yell for help
-	ClientProximity_interval = 1000,
+	ClientProximity_interval = 150,
 	CombatEventTimer_expire = 12000,
 	Tribute_duration = 600000,
 	ZoneTimerResolution = 3,			//sleep time between zone main loop runs (milliseconds)

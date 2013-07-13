@@ -33,7 +33,6 @@
 #include "net.h"
 #include "masterentity.h"
 #include "worldserver.h"
-#include "PlayerCorpse.h"
 #include "../common/guilds.h"
 #include "../common/packet_dump.h"
 #include "../common/packet_functions.h"
@@ -41,7 +40,6 @@
 #include "../common/spdat.h"
 #include "../common/features.h"
 #include "StringIDs.h"
-#include "parser.h"
 #include "../common/dbasync.h"
 #include "guild_mgr.h"
 #include "raids.h"
@@ -717,13 +715,12 @@ void EntityList::AddToSpawnQueue(uint16 entityid, NewSpawn_Struct** ns) {
 	NumSpawnsOnQueue++;
 	if (tsFirstSpawnOnQueue == 0xFFFFFFFF)
 		tsFirstSpawnOnQueue = Timer::GetCurrentTime();
-	*ns = 0; // make it so the calling function cant fuck us and delete the data =)
+	*ns = nullptr;
 }
 
 void EntityList::CheckSpawnQueue() {
 	// Send the stuff if the oldest packet on the queue is older than 50ms -Quagmire
 	if (tsFirstSpawnOnQueue != 0xFFFFFFFF && (Timer::GetCurrentTime() - tsFirstSpawnOnQueue) > 50) {
-		//if (NumSpawnsOnQueue <= 5) {
 			LinkedListIterator<NewSpawn_Struct*> iterator(SpawnQueue);
 			EQApplicationPacket* outapp = 0;
 
@@ -731,29 +728,10 @@ void EntityList::CheckSpawnQueue() {
 			while(iterator.MoreElements()) {
 				outapp = new EQApplicationPacket;
 				Mob::CreateSpawnPacket(outapp, iterator.GetData());
-//				cout << "Sending spawn packet: " << iterator.GetData()->spawn.name << endl;
 				QueueClients(0, outapp);
 				safe_delete(outapp);
 				iterator.RemoveCurrent();
 			}
-			//sending Spawns like this after zone in causes the client to freeze...
-		/*}
-		else {
-			uint32 spawns_per_pack = MAX_SPAWNS_PER_PACKET;
-			if(NumSpawnsOnQueue < spawns_per_pack)
-				spawns_per_pack = NumSpawnsOnQueue;
-
-			BulkZoneSpawnPacket* bzsp = new BulkZoneSpawnPacket(0, spawns_per_pack);
-			LinkedListIterator<NewSpawn_Struct*> iterator(SpawnQueue);
-
-			iterator.Reset();
-			while(iterator.MoreElements()) {
-				bzsp->AddSpawn(iterator.GetData());
-				iterator.RemoveCurrent();
-			}
-			safe_delete(bzsp);
-		}*/
-
 		tsFirstSpawnOnQueue = 0xFFFFFFFF;
 		NumSpawnsOnQueue = 0;
 	}
@@ -1356,8 +1334,6 @@ void EntityList::SendZoneSpawnsBulk(Client* client)
 	Mob *spawn;
 	uint32 maxspawns=100;
 
-	//rate = rate > 1.0 ? (rate < 10.0 ? rate : 10.0) : 1.0;
-	//maxspawns = (uint32)rate * SPAWNS_PER_POINT_DATARATE; // FYI > 10240 entities will cause BulkZoneSpawnPacket to throw exception
 	if(maxspawns > mob_list.Count())
 		maxspawns = mob_list.Count();
 	BulkZoneSpawnPacket* bzsp = new BulkZoneSpawnPacket(client, maxspawns);
@@ -1411,8 +1387,6 @@ void EntityList::SendZoneCorpsesBulk(Client* client) {
 	Corpse *spawn;
 	uint32 maxspawns=100;
 
-	//rate = rate > 1.0 ? (rate < 10.0 ? rate : 10.0) : 1.0;
-	//maxspawns = (uint32)rate * SPAWNS_PER_POINT_DATARATE; // FYI > 10240 entities will cause BulkZoneSpawnPacket to throw exception
 	BulkZoneSpawnPacket* bzsp = new BulkZoneSpawnPacket(client, maxspawns);
 
 	for(iterator.Reset(); iterator.MoreElements(); iterator.Advance())
@@ -1703,124 +1677,6 @@ void EntityList::QueueClients(Mob* sender, const EQApplicationPacket* app, bool 
 	}
 }
 
-/*
-rewrite of all the queue close methods to use the update manager
-void EntityList::FilterQueueCloseClients(uint8 filter, uint8 required, Mob* sender, const EQApplicationPacket* app, bool ignore_sender, float dist, Mob* SkipThisMob, bool ackreq){
-	if(dist <= 0) {
-		dist = 600;
-	}
-
-#ifdef PACKET_UPDATE_MANAGER
-	EQApplicationPacket* tmp_app = app->Copy();
-#else
-	float dist2 = dist * dist; //pow(dist, 2);
-#endif
-
-	LinkedListIterator<Client*> iterator(client_list);
-
-	iterator.Reset();
-	while(iterator.MoreElements()) {
-
-		Client* ent = iterator.GetData();
-		uint8 filterval=ent->GetFilter(filter);
-		if(required==0)
-			required=1;
-		if(filterval==required){
-			if ((!ignore_sender || ent != sender) && (ent != SkipThisMob)
-				) {
-#ifdef PACKET_UPDATE_MANAGER
-				if(ent->Connected()) {
-					ent->GetUpdateManager()->QueuePacket(tmp_app, ackreq, sender, ent->DistNoRoot(*sender));
-				}
-#else
-				if(ent->Connected() && (ent->DistNoRoot(*sender) <= dist2 || dist == 0)) {
-						ent->QueuePacket(app, ackreq);
-				}
-#endif
-			}
-		}
-		iterator.Advance();
-	}
-#ifdef PACKET_UPDATE_MANAGER
-	EQApplicationPacket::PacketUsed(&tmp_app);
-#endif
-}
-
-void EntityList::QueueCloseClients(Mob* sender, const EQApplicationPacket* app, bool ignore_sender, float dist, Mob* SkipThisMob, bool ackreq,uint8 filter) {
-	if (sender == 0) {
-		QueueClients(sender, app, ignore_sender);
-		return;
-	}
-	if(dist <= 0) {
-		dist = 600;
-	}
-#ifdef PACKET_UPDATE_MANAGER
-	EQApplicationPacket* tmp_app = app->Copy();
-#else
-	float dist2 = dist * dist; //pow(dist, 2);
-#endif
-
-
-	LinkedListIterator<Client*> iterator(client_list);
-
-	iterator.Reset();
-	while(iterator.MoreElements()) {
-
-		Client* ent = iterator.GetData();
-
-		if ((!ignore_sender || ent != sender) && (ent != SkipThisMob)) {
-			uint8 filter2=ent->GetFilter(filter);
-			if(ent->Connected() &&
-				(filter==0 || (filter2==1 ||
-				(filter2==99 && entity_list.GetGroupByClient(ent)!=0 &&
-				entity_list.GetGroupByClient(ent)->IsGroupMember(sender))
-				|| (filter2==98 && ent==sender)))
-#ifdef PACKET_UPDATE_MANAGER
-			) {
-				ent->GetUpdateManager()->QueuePacket(tmp_app, ackreq, sender, ent->DistNoRoot(*sender));
-			}
-#else
-			&& (ent->DistNoRoot(*sender) <= dist2 || dist == 0)) {
-				ent->QueuePacket(app, ackreq, Client::CLIENT_CONNECTED);
-			}
-#endif
-		}
-		iterator.Advance();
-	}
-#ifdef PACKET_UPDATE_MANAGER
-	EQApplicationPacket::PacketUsed(&tmp_app);
-#endif
-}
-
-void EntityList::QueueClients(Mob* sender, const EQApplicationPacket* app, bool ignore_sender, bool ackreq) {
-	LinkedListIterator<Client*> iterator(client_list);
-
-#ifdef PACKET_UPDATE_MANAGER
-	EQApplicationPacket* tmp_app = app->Copy();
-#endif
-
-	iterator.Reset();
-	while(iterator.MoreElements())
-	{
-		Client* ent = iterator.GetData();
-
-		if ((!ignore_sender || ent != sender))
-		{
-#ifdef PACKET_UPDATE_MANAGER
-			ent->GetUpdateManager()->QueuePacket(tmp_app, ackreq, sender, ent->DistNoRoot(*sender));
-#else
-			ent->QueuePacket(app, ackreq, Client::CLIENT_CONNECTED);
-#endif
-		}
-		iterator.Advance();
-	}
-#ifdef PACKET_UPDATE_MANAGER
-	EQApplicationPacket::PacketUsed(&tmp_app);
-#endif
-}
-*/
-
-/*
 void EntityList::QueueManaged(Mob* sender, const EQApplicationPacket* app, bool ignore_sender, bool ackreq) {
 	LinkedListIterator<Client*> iterator(client_list);
 
@@ -1835,33 +1691,6 @@ void EntityList::QueueManaged(Mob* sender, const EQApplicationPacket* app, bool 
 		}
 		iterator.Advance();
 	}
-}*/
-
-void EntityList::QueueManaged(Mob* sender, const EQApplicationPacket* app, bool ignore_sender, bool ackreq) {
-	LinkedListIterator<Client*> iterator(client_list);
-
-#ifdef PACKET_UPDATE_MANAGER
-	EQApplicationPacket* tmp_app = app->Copy();
-#endif
-
-	iterator.Reset();
-	while(iterator.MoreElements())
-	{
-		Client* ent = iterator.GetData();
-
-		if ((!ignore_sender || ent != sender))
-		{
-#ifdef PACKET_UPDATE_MANAGER
-			ent->GetUpdateManager()->QueuePacket(tmp_app, ackreq, sender, ent->DistNoRoot(*sender));
-#else
-			ent->QueuePacket(app, ackreq, Client::CLIENT_CONNECTED);
-#endif
-		}
-		iterator.Advance();
-	}
-#ifdef PACKET_UPDATE_MANAGER
-	EQApplicationPacket::PacketUsed(&tmp_app);
-#endif
 }
 
 
@@ -1885,8 +1714,12 @@ void EntityList::DuelMessage(Mob* winner, Mob* loser, bool flee) {
 
 	if(winner->GetLevelCon(winner->GetLevel(), loser->GetLevel()) > 2)
 	{
-		parse->EventPlayer(EVENT_DUEL_WIN, winner->CastToClient(), loser->GetName(), loser->CastToClient()->CharacterID());
-		parse->EventPlayer(EVENT_DUEL_LOSE, loser->CastToClient(), winner->GetName(), winner->CastToClient()->CharacterID());
+		std::vector<void*> args;
+		args.push_back(winner);
+		args.push_back(loser);
+
+		parse->EventPlayer(EVENT_DUEL_WIN, winner->CastToClient(), loser->GetName(), loser->CastToClient()->CharacterID(), &args);
+		parse->EventPlayer(EVENT_DUEL_LOSE, loser->CastToClient(), winner->GetName(), winner->CastToClient()->CharacterID(), &args);
 	}
 
 	iterator.Reset();
@@ -2041,6 +1874,23 @@ Corpse* EntityList::GetCorpseByName(const char* name){
 	return 0;
 }
 
+Spawn2* EntityList::GetSpawnByID(uint32 id) {
+	if(!zone)
+		return nullptr;
+
+	LinkedListIterator<Spawn2*> iterator(zone->spawn2_list);
+	iterator.Reset();
+	while(iterator.MoreElements())
+	{
+		if(iterator.GetData()->GetID() == id) {
+			return iterator.GetData();
+		}
+		iterator.Advance();
+	}
+
+	return nullptr;
+}
+
 void EntityList::RemoveAllCorpsesByCharID(uint32 charid)
 {
 	LinkedListIterator<Corpse*> iterator(corpse_list);
@@ -2105,7 +1955,7 @@ Group* EntityList::GetGroupByMob(Mob* mob)
 	return 0;
 }
 
-Group* EntityList::GetGroupByLeaderName(char* leader){
+Group* EntityList::GetGroupByLeaderName(const char* leader){
 	std::list<Group *>::iterator iterator;
 
 	iterator = group_list.begin();
@@ -2796,57 +2646,6 @@ void EntityList::CountNPC(uint32* NPCCount, uint32* NPCLootCount, uint32* gmspaw
 	}
 }
 
-void EntityList::DoZoneDump(ZSDump_Spawn2* spawn2_dump, ZSDump_NPC* npc_dump, ZSDump_NPC_Loot* npcloot_dump, NPCType* gmspawntype_dump) {
-	uint32 spawn2index = 0;
-	uint32 NPCindex = 0;
-	uint32 NPCLootindex = 0;
-	uint32 gmspawntype_index = 0;
-
-	if (npc_dump != 0) {
-		LinkedListIterator<NPC*> iterator(npc_list);
-		NPC* npc = 0;
-		iterator.Reset();
-		while(iterator.MoreElements())
-		{
-			npc = iterator.GetData()->CastToNPC();
-			if (spawn2_dump != 0)
-				npc_dump[NPCindex].spawn2_dump_index = zone->DumpSpawn2(spawn2_dump, &spawn2index, npc->respawn2);
-			npc_dump[NPCindex].npctype_id = npc->GetNPCTypeID();
-			npc_dump[NPCindex].cur_hp = npc->GetHP();
-			if (npc->IsCorpse()) {
-				if (npc->CastToCorpse()->IsLocked())
-					npc_dump[NPCindex].corpse = 2;
-				else
-					npc_dump[NPCindex].corpse = 1;
-			}
-			else
-				npc_dump[NPCindex].corpse = 0;
-			npc_dump[NPCindex].decay_time_left = 0xFFFFFFFF;
-			npc_dump[NPCindex].x = npc->GetX();
-			npc_dump[NPCindex].y = npc->GetY();
-			npc_dump[NPCindex].z = npc->GetZ();
-			npc_dump[NPCindex].heading = npc->GetHeading();
-			npc_dump[NPCindex].copper = npc->copper;
-			npc_dump[NPCindex].silver = npc->silver;
-			npc_dump[NPCindex].gold = npc->gold;
-			npc_dump[NPCindex].platinum = npc->platinum;
-			if (npcloot_dump != 0)
-				npc->DumpLoot(NPCindex, npcloot_dump, &NPCLootindex);
-			if (gmspawntype_dump != 0) {
-				if (npc->GetNPCTypeID() == 0) {
-					memcpy(&gmspawntype_dump[gmspawntype_index], npc->NPCTypedata, sizeof(NPCType));
-					npc_dump[NPCindex].gmspawntype_index = gmspawntype_index;
-					gmspawntype_index++;
-				}
-			}
-			NPCindex++;
-			iterator.Advance();
-		}
-	}
-	if (spawn2_dump != 0)
-		zone->DumpAllSpawn2(spawn2_dump, &spawn2index);
-}
-
 void EntityList::Depop(bool StartSpawnTimer) {
 	LinkedListIterator<NPC*> iterator(npc_list);
 
@@ -3362,19 +3161,33 @@ void EntityList::ClearFeignAggro(Mob* targ)
 	{
 		if (iterator.GetData()->CheckAggro(targ))
 		{
-			if(iterator.GetData()->SpecAttacks[IMMUNE_FEIGN_DEATH])
+			if(iterator.GetData()->GetSpecialAbility(IMMUNE_FEIGN_DEATH))
 			{
-				iterator.GetData()->SetHate(targ, 0);
 				iterator.Advance();
 				continue;
 			}
 
+			if(targ->IsClient()) {
+				std::vector<void*> args;
+				args.push_back(iterator.GetData());
+				int i = parse->EventPlayer(EVENT_FEIGN_DEATH, targ->CastToClient(), "", 0, &args);
+				if(i != 0) {
+					iterator.Advance();
+					continue;
+				}
+
+				if(iterator.GetData()->IsNPC()) {
+					int i = parse->EventNPC(EVENT_FEIGN_DEATH, iterator.GetData()->CastToNPC(), targ, "", 0);
+					if(i != 0) {
+						iterator.Advance();
+						continue;
+					}
+				}
+			}
+
 			iterator.GetData()->RemoveFromHateList(targ);
-			// EverHood 6/24/06
-			// For client targets if the mob that hated us is 35+
-			// there is a 3 outta 5 chance he adds us to feign memory
 			if(targ->IsClient()){
-				if (iterator.GetData()->GetLevel() >= 35 && (MakeRandomInt(1,100)<=60)){
+				if (iterator.GetData()->GetLevel() >= 35 && MakeRandomInt(1, 100) <= 60){
 					iterator.GetData()->AddFeignMemory(targ->CastToClient());
 				} else {
 					targ->CastToClient()->RemoveXTarget(iterator.GetData(), false);
@@ -3384,7 +3197,7 @@ void EntityList::ClearFeignAggro(Mob* targ)
 		iterator.Advance();
 	}
 }
-// EverHood 6/17/06
+
 void EntityList::ClearZoneFeignAggro(Client* targ)
 {
 	LinkedListIterator<NPC*> iterator(npc_list);
@@ -3676,105 +3489,233 @@ void EntityList::SendAlarm(Trap* trap, Mob* currenttarget, uint8 kos)
 void EntityList::AddProximity(NPC *proximity_for) {
 	RemoveProximity(proximity_for->GetID());
 
-	proximity_list.Insert(proximity_for);
+	proximity_list.push_back(proximity_for);
 
 	proximity_for->proximity = new NPCProximity;
 }
 
 bool EntityList::RemoveProximity(uint16 delete_npc_id) {
-	LinkedListIterator<NPC*> iterator(proximity_list);
-	iterator.Reset();
-	while(iterator.MoreElements()) {
-		NPC *d = iterator.GetData();
-		if(d->GetID() == delete_npc_id) {
-			//safe_delete(d->proximity);
-			iterator.RemoveCurrent(false);
+	auto iter = proximity_list.begin();
+
+	while(iter != proximity_list.end()) {
+		if((*iter)->GetID() == delete_npc_id) {
+			proximity_list.erase(iter);
 			return true;
 		}
-		iterator.Advance();
+		++iter;
 	}
 	return false;
 }
 
 void EntityList::RemoveAllLocalities() {
-	LinkedListIterator<NPC*> iterator(proximity_list);
-	iterator.Reset();
-	while(iterator.MoreElements())
-		iterator.RemoveCurrent(false);
+	proximity_list.clear();
 }
 
-void EntityList::ProcessMove(Client *c, float x, float y, float z) {
-	/*
-		We look through each proximity, looking to see if last_* was in(out)
-		the proximity, and the new supplied coords are out(in)...
-	*/
-	LinkedListIterator<NPC*> iterator(proximity_list);
-	std::list<int> skip_ids;
+struct quest_proximity_event {
+	QuestEventID event_id;
+	Client *client;
+	NPC *npc;
+	int area_id;
+	int area_type;
+};
 
+void EntityList::ProcessMove(Client *c, float x, float y, float z) {
 	float last_x = c->ProximityX();
 	float last_y = c->ProximityY();
 	float last_z = c->ProximityZ();
 
-	for(iterator.Reset(); iterator.MoreElements(); iterator.Advance()) {
-		NPC *d = iterator.GetData();
+	std::list<quest_proximity_event> events;
+	for(auto iter = proximity_list.begin(); iter != proximity_list.end(); ++iter) {
+		NPC *d = (*iter);
 		NPCProximity *l = d->proximity;
 		if(l == nullptr)
 			continue;
-
-		//This is done to address the issue of this code not being reentrant
-		//because perl can call clear_proximity() while we're still iterating through the list
-		//This causes our list to become invalid but we don't know it. On GCC it's basic heap
-		//corruption and it doesn't appear to catch it at all.
-		//MSVC it's a crash with 0xfeeefeee debug address (freed memory off the heap)
-		std::list<int>::iterator iter = skip_ids.begin();
-		bool skip = false;
-		while(iter != skip_ids.end())
-		{
-			if(d->GetID() == (*iter))
-			{
-				skip = true;
-				break;
-			}
-			iter++;
-		}
-
-		if(skip)
-		{
-			continue;
-		}
-
+	
 		//check both bounding boxes, if either coords pairs
 		//cross a boundary, send the event.
 		bool old_in = true;
 		bool new_in = true;
-		if(last_x < l->min_x || last_x > l->max_x
-		|| last_y < l->min_y || last_y > l->max_y
-		|| last_z < l->min_z || last_z > l->max_z ) {
+		if(last_x < l->min_x || last_x > l->max_x ||
+			last_y < l->min_y || last_y > l->max_y ||
+			last_z < l->min_z || last_z > l->max_z ) {
 			old_in = false;
 		}
-		if(x < l->min_x || x > l->max_x
-		|| y < l->min_y || y > l->max_y
-		|| z < l->min_z || z > l->max_z ) {
+		if(x < l->min_x || x > l->max_x ||
+			y < l->min_y || y > l->max_y ||
+			z < l->min_z || z > l->max_z ) {
 			new_in = false;
 		}
-
+	
 		if(old_in && !new_in) {
-			//we were in the proximity, we are no longer, send event exit
-			parse->EventNPC(EVENT_EXIT, d, c, "", 0);
-
-			//Reentrant fix
-			iterator.Reset();
-			skip_ids.push_back(d->GetID());
+			quest_proximity_event evt;
+			evt.event_id = EVENT_EXIT;
+			evt.client = c;
+			evt.npc = d;
+			evt.area_id = 0;
+			evt.area_type = 0;
+			events.push_back(evt);
 		} else if(new_in && !old_in) {
-			//we were not in the proximity, we are now, send enter event
-			parse->EventNPC(EVENT_ENTER, d, c, "", 0);
-
-			//Reentrant fix
-			iterator.Reset();
-			skip_ids.push_back(d->GetID());
+			quest_proximity_event evt;
+			evt.event_id = EVENT_ENTER;
+			evt.client = c;
+			evt.npc = d;
+			evt.area_id = 0;
+			evt.area_type = 0;
+			events.push_back(evt);
+		}
+	}
+	
+	for(auto iter = area_list.begin(); iter != area_list.end(); ++iter) {
+		Area& a = (*iter);
+		bool old_in = true;
+		bool new_in = true;
+		if(last_x < a.min_x || last_x > a.max_x ||
+			last_y < a.min_y || last_y > a.max_y ||
+			last_z < a.min_z || last_z > a.max_z )
+		{
+			old_in = false;
+		}
+	
+		if(x < a.min_x || x > a.max_x ||
+			y < a.min_y || y > a.max_y ||
+			z < a.min_z || z > a.max_z ) 
+		{
+			new_in = false;
+		}
+	
+		if(old_in && !new_in) {
+			//were in but are no longer.
+			quest_proximity_event evt;
+			evt.event_id = EVENT_LEAVE_AREA;
+			evt.client = c;
+			evt.npc = nullptr;
+			evt.area_id = a.id;
+			evt.area_type = a.type;
+			events.push_back(evt);
+		} else if (!old_in && new_in) {
+			//were not in but now are
+			quest_proximity_event evt;
+			evt.event_id = EVENT_ENTER_AREA;
+			evt.client = c;
+			evt.npc = nullptr;
+			evt.area_id = a.id;
+			evt.area_type = a.type;
+			events.push_back(evt);
 		}
 	}
 
+	for(auto iter = events.begin(); iter != events.end(); ++iter) {
+		quest_proximity_event& evt = (*iter);
+		if(evt.npc) {
+			parse->EventNPC(evt.event_id, evt.npc, evt.client, "", 0);
+		} else {
+			std::vector<void*> args;
+			args.push_back(&evt.area_id);
+			args.push_back(&evt.area_type);
+			parse->EventPlayer(evt.event_id, evt.client, "", 0, &args);
+		}
+	}
+}
+
+void EntityList::ProcessMove(NPC *n, float x, float y, float z) {
+	float last_x = n->GetX();
+	float last_y = n->GetY();
+	float last_z = n->GetZ();
+	
+	std::list<quest_proximity_event> events;
+	for(auto iter = area_list.begin(); iter != area_list.end(); ++iter) {
+		Area& a = (*iter);
+		bool old_in = true;
+		bool new_in = true;
+		if(last_x < a.min_x || last_x > a.max_x ||
+			last_y < a.min_y || last_y > a.max_y ||
+			last_z < a.min_z || last_z > a.max_z )
+		{
+			old_in = false;
+		}
+	
+		if(x < a.min_x || x > a.max_x ||
+			y < a.min_y || y > a.max_y ||
+			z < a.min_z || z > a.max_z ) 
+		{
+			new_in = false;
+		}
+	
+		if(old_in && !new_in) {
+			//were in but are no longer.
+			quest_proximity_event evt;
+			evt.event_id = EVENT_LEAVE_AREA;
+			evt.client = nullptr;
+			evt.npc = n;
+			evt.area_id = a.id;
+			evt.area_type = a.type;
+			events.push_back(evt);
+		} else if (!old_in && new_in) {
+			//were not in but now are
+			quest_proximity_event evt;
+			evt.event_id = EVENT_ENTER_AREA;
+			evt.client = nullptr;
+			evt.npc = n;
+			evt.area_id = a.id;
+			evt.area_type = a.type;
+			events.push_back(evt);
+		}
+	}
+
+	for(auto iter = events.begin(); iter != events.end(); ++iter) {
+		quest_proximity_event& evt = (*iter);
+		std::vector<void*> args;
+		args.push_back(&evt.area_id);
+		args.push_back(&evt.area_type);
+		parse->EventNPC(evt.event_id, evt.npc, evt.client, "", 0, &args);
+	}
+}
+
+void EntityList::AddArea(int id, int type, float min_x, float max_x, float min_y, float max_y, float min_z, float max_z) {
+	RemoveArea(id);
+	Area a;
+	a.id = id;
+	a.type = type;
+	if(min_x > max_x) {
+		a.min_x = max_x;
+		a.max_x = min_x;
+	} else {
+		a.min_x = min_x;
+		a.max_x = max_x;
+	}
+
+	if(min_y > max_y) {
+		a.min_y = max_y;
+		a.max_y = min_y;
+	} else {
+		a.min_y = min_y;
+		a.max_y = max_y;
+	}
+
+	if(min_z > max_z) {
+		a.min_z = max_z;
+		a.max_z = min_z;
+	} else {
+		a.min_z = min_z;
+		a.max_z = max_z;
+	}
+
+	area_list.push_back(a);
+}
+
+void EntityList::RemoveArea(int id) {
+	auto iter = area_list.begin();
+	while(iter != area_list.end()) {
+		if((*iter).id == id) {
+			area_list.erase(iter);
+			return;
+		}
+		++iter;
+	}
+}
+
+void EntityList::ClearAreas() {
+	area_list.clear();
 }
 
 void EntityList::ProcessProximitySay(const char *Message, Client *c, uint8 language) {
@@ -3782,10 +3723,9 @@ void EntityList::ProcessProximitySay(const char *Message, Client *c, uint8 langu
 	if(!Message || !c)
 		return;
 
-	LinkedListIterator<NPC*> iterator(proximity_list);
-
-	for(iterator.Reset(); iterator.MoreElements(); iterator.Advance()) {
-		NPC *d = iterator.GetData();
+	auto iter = proximity_list.begin();
+	for(; iter != proximity_list.end(); ++iter) {
+		NPC *d = (*iter);
 		NPCProximity *l = d->proximity;
 		if(l == nullptr || !l->say)
 			continue;
@@ -4819,6 +4759,21 @@ void EntityList::GetDoorsList(std::list<Doors*> &o_list)
 		Doors *ent = iterator.GetData();
 		o_list.push_back(ent);
 		iterator.Advance();
+	}
+}
+
+void EntityList::GetSpawnList(std::list<Spawn2*> &o_list)
+{
+	o_list.clear();
+	if(zone) {
+		LinkedListIterator<Spawn2*> iterator(zone->spawn2_list);
+		iterator.Reset();
+		while(iterator.MoreElements())
+		{
+			Spawn2 *ent = iterator.GetData();
+			o_list.push_back(ent);
+			iterator.Advance();
+		}
 	}
 }
 

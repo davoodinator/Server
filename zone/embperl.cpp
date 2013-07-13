@@ -18,7 +18,7 @@ Eglin
 #include "embxs.h"
 #include "../common/features.h"
 #ifndef GvCV_set
-#define GvCV_set(gv,cv) (GvCV(gv) = (cv))
+#define GvCV_set(gv,cv)   (GvCV(gv) = (cv))
 #endif
 
 #ifdef EMBPERL_XS
@@ -36,16 +36,7 @@ EXTERN_C XS(boot_HateEntry);
 EXTERN_C XS(boot_Object);
 EXTERN_C XS(boot_Doors);
 EXTERN_C XS(boot_PerlPacket);
-/*XS(XS_Client_new);
-//XS(XS_Mob_new);
-XS(XS_NPC_new);
-//XS(XS_Corpse_new);
-XS(XS_EntityList_new);
-//XS(XS_Group_new);*/
 #endif
-#endif
-#ifdef EMBPERL_COMMANDS
-XS(XS_command_add);
 #endif
 
 #ifdef EMBPERL_IO_CAPTURE
@@ -72,14 +63,11 @@ EXTERN_C void xs_init(pTHX)
 	newXS(strcpy(buf, "Mob::boot_Mob"), boot_Mob, file);
 	newXS(strcpy(buf, "NPC::boot_Mob"), boot_Mob, file);
 	newXS(strcpy(buf, "NPC::boot_NPC"), boot_NPC, file);
-///	newXS(strcpy(buf, "NPC::new"), XS_NPC_new, file);
 	newXS(strcpy(buf, "Corpse::boot_Mob"), boot_Mob, file);
 	newXS(strcpy(buf, "Corpse::boot_Corpse"), boot_Corpse, file);
 	newXS(strcpy(buf, "Client::boot_Mob"), boot_Mob, file);
 	newXS(strcpy(buf, "Client::boot_Client"), boot_Client, file);
-//	newXS(strcpy(buf, "Client::new"), XS_Client_new, file);
 	newXS(strcpy(buf, "EntityList::boot_EntityList"), boot_EntityList, file);
-//	newXS(strcpy(buf, "EntityList::new"), XS_EntityList_new, file);
 	newXS(strcpy(buf, "PerlPacket::boot_PerlPacket"), boot_PerlPacket, file);
 	newXS(strcpy(buf, "Group::boot_Group"), boot_Group, file);
 	newXS(strcpy(buf, "Raid::boot_Raid"), boot_Raid, file);
@@ -89,9 +77,6 @@ EXTERN_C void xs_init(pTHX)
 	newXS(strcpy(buf, "Doors::boot_Doors"), boot_Doors, file);
 ;
 #endif
-#endif
-#ifdef EMBPERL_COMMANDS
-	newXS(strcpy(buf, "commands::command_add"), XS_command_add, file);
 #endif
 #ifdef EMBPERL_IO_CAPTURE
 	newXS(strcpy(buf, "EQEmuIO::PRINT"), XS_EQEmuIO_PRINT, file);
@@ -165,20 +150,19 @@ void Embperl::DoInit() {
 	//make a tieable class to capture IO and pass it into EQEMuLog
 	eval_pv(
 		"package EQEmuIO; "
-//			"&boot_EQEmuIO;"
-			"sub TIEHANDLE { my $me = bless {}, $_[0]; $me->PRINT('Creating '.$me); return($me); } "
-			"sub WRITE { } "
-			//dunno why I need to shift off fmt here, but it dosent like without it
-			"sub PRINTF { my $me = shift; my $fmt = shift; $me->PRINT(sprintf($fmt, @_)); } "
-			"sub CLOSE { my $me = shift; $me->PRINT('Closing '.$me); } "
-			"sub DESTROY { my $me = shift; $me->PRINT('Destroying '.$me); } "
-//this ties us for all packages, just do it in quest since thats kinda 'our' package
-		"package quest;"
-		"	if(tied *STDOUT) { untie(*STDOUT); }"
-		"	if(tied *STDERR) { untie(*STDERR); }"
-		"	tie *STDOUT, 'EQEmuIO';"
-		"	tie *STDERR, 'EQEmuIO';"
-		,FALSE);
+ 			"sub TIEHANDLE { my $me = bless {}, $_[0]; $me->PRINT('Creating '.$me); return($me); } "
+  			"sub WRITE {  } "
+  			//dunno why I need to shift off fmt here, but it dosent like without it
+  			"sub PRINTF { my $me = shift; my $fmt = shift; $me->PRINT(sprintf($fmt, @_)); } "
+  			"sub CLOSE { my $me = shift; $me->PRINT('Closing '.$me); } "
+  			"sub DESTROY { my $me = shift; $me->PRINT('Destroying '.$me); } "
+		//this ties us for all packages, just do it in quest since thats kinda 'our' package
+  		"package quest;"
+  		"	if(tied *STDOUT) { untie(*STDOUT); }"
+  		"	if(tied *STDERR) { untie(*STDERR); }"
+  		"	tie *STDOUT, 'EQEmuIO';"
+  		"	tie *STDERR, 'EQEmuIO';"
+  		,FALSE);
 #endif //EMBPERL_IO_CAPTURE
 
 #ifdef EMBPERL_PLUGIN
@@ -186,18 +170,6 @@ void Embperl::DoInit() {
 		"package plugin; "
 		,FALSE
 	);
-#ifdef EMBPERL_EVAL_COMMANDS
-	try {
-		eval_pv(
-			"use IO::Scalar;"
-			"$plugin::printbuff='';"
-			"tie *PLUGIN,'IO::Scalar',\\$plugin::printbuff;"
-		,FALSE);
-	}
-	catch(const char *err) {
-		throw "failed to install plugin printhook, do you lack IO::Scalar?";
-	}
-#endif
 
 	LogFile->write(EQEMuLog::Quest, "Loading perlemb plugins.");
 	try
@@ -227,21 +199,6 @@ void Embperl::DoInit() {
 		LogFile->write(EQEMuLog::Quest, "Perl warning: %s", err);
 	}
 #endif //EMBPERL_PLUGIN
-#ifdef EMBPERL_COMMANDS
-	LogFile->write(EQEMuLog::Quest, "Loading perl commands...");
-	try
-	{
-		eval_pv(
-			"package commands;"
-			"main::eval_file('commands', 'commands.pl');"
-			"&commands::commands_init();"
-		, FALSE);
-	}
-	catch(const char *err)
-	{
-		LogFile->write(EQEMuLog::Quest, "Warning - commands.pl: %s", err);
-	}
-#endif //EMBPERL_COMMANDS
 	in_use = false;
 }
 
@@ -293,61 +250,72 @@ void Embperl::init_eval_file(void)
 		,FALSE);
  }
 
-void Embperl::eval_file(const char * packagename, const char * filename)
+int Embperl::eval_file(const char * packagename, const char * filename)
 {
 	std::vector<std::string> args;
 	args.push_back(packagename);
 	args.push_back(filename);
-	dosub("eval_file", &args);
+	return dosub("main::eval_file", &args);
 }
 
-void Embperl::dosub(const char * subname, const std::vector<std::string> * args, int mode)
-{//as seen in perlembed docs
-#if EQDEBUG >= 5
-	if(InUse()) {
-		LogFile->write(EQEMuLog::Debug, "Warning: Perl dosub called for %s when perl is allready in use.\n", subname);
-	}
-#endif
-	in_use = true;
-	bool err = false;
-	dSP;							/* initialize stack pointer */
-	ENTER;							/* everything created after here */
-	SAVETMPS;						/* ...is a temporary variable. */
-	PUSHMARK(SP);					/* remember the stack pointer */
+int Embperl::dosub(const char * subname, const std::vector<std::string> * args, int mode)
+{
+	dSP;
+	int ret_value = 0;
+	int count;
+	std::string error;
+
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
 	if(args && args->size())
 	{
 		for(std::vector<std::string>::const_iterator i = args->begin(); i != args->end(); ++i)
-		{/* push the arguments onto the perl stack */
+		{
 			XPUSHs(sv_2mortal(newSVpv(i->c_str(), i->length())));
 		}
 	}
-	PUTBACK;				/* make local stack pointer global */
-	call_pv(subname, mode); /*eval our code*/
-	SPAGAIN;				/* refresh stack pointer */
+	PUTBACK;
+
+	count = call_pv(subname, mode);
+	SPAGAIN;
+
 	if(SvTRUE(ERRSV))
 	{
-		err = true;
+		error = SvPV_nolen(ERRSV);
+		POPs;
 	}
-	FREETMPS;			/* free temp values */
-	LEAVE;				/* ...and the XPUSHed "mortal" args.*/
-
-	in_use = false;
-	if(err)
+	else
 	{
-		errmsg = "Perl runtime error: ";
+		if(count == 1) {
+			SV *ret = POPs;
+			if(SvTYPE(ret) == SVt_IV) {
+				IV v = SvIV(ret);
+				ret_value = v;
+			}
+			PUTBACK;
+		}
+	}
+
+	FREETMPS;
+	LEAVE;
+
+	if(error.length() > 0)
+	{
+		std::string errmsg = "Perl runtime error: ";
 		errmsg += SvPVX(ERRSV);
 		throw errmsg.c_str();
 	}
+
+	return ret_value;
 }
 
 //evaluate an expression. throw error on fail
-void Embperl::eval(const char * code)
+int Embperl::eval(const char * code)
 {
 	std::vector<std::string> arg;
 	arg.push_back(code);
-// MYRA - added EVAL & KEEPERR to eval per Eglin's recommendation
-	dosub("my_eval", &arg, G_SCALAR|G_DISCARD|G_EVAL|G_KEEPERR);
-//end Myra
+	return dosub("main::my_eval", &arg, G_SCALAR|G_EVAL|G_KEEPERR);
 }
 
 bool Embperl::SubExists(const char *package, const char *sub) {

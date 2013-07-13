@@ -139,9 +139,21 @@ void Object::HandleAugmentation(Client* user, const AugmentItem_Struct* in_augme
 	// Adding augment
 	if (in_augment->augment_slot == -1)
 	{
-		if (((slot=tobe_auged->AvailableAugmentSlot(auged_with->GetAugmentType()))!=-1) && (tobe_auged->AvailableWearSlot(auged_with->GetItem()->Slots)))
+		if (((slot=tobe_auged->AvailableAugmentSlot(auged_with->GetAugmentType()))!=-1) && 
+			(tobe_auged->AvailableWearSlot(auged_with->GetItem()->Slots)))
 		{
-			tobe_auged->PutAugment(slot,*auged_with);
+			tobe_auged->PutAugment(slot, *auged_with);
+
+			ItemInst *aug = tobe_auged->GetAugment(slot);
+			if(aug) {
+				std::vector<void*> args;
+				args.push_back(aug);
+				parse->EventItem(EVENT_AUGMENT_ITEM, user, tobe_auged, nullptr, "", slot, &args);
+
+				args.assign(1, tobe_auged);
+				parse->EventItem(EVENT_AUGMENT_INSERT, user, aug, nullptr, "", slot, &args);
+			}
+
 			itemOneToPush = tobe_auged->Clone();
 			deleteItems = true;
 		}
@@ -152,16 +164,35 @@ void Object::HandleAugmentation(Client* user, const AugmentItem_Struct* in_augme
 	}
 	else
 	{
-		ItemInst *old_aug=nullptr;
-		const uint32 id=auged_with->GetID();
-		if (id==40408 || id==40409 || id==40410)
+		ItemInst *old_aug = nullptr;
+		const uint32 id = auged_with->GetID();
+		ItemInst *aug = tobe_auged->GetAugment(in_augment->augment_slot);
+		if(aug) {
+			std::vector<void*> args;
+			args.push_back(aug);
+			parse->EventItem(EVENT_UNAUGMENT_ITEM, user, tobe_auged, nullptr, "", slot, &args);
+
+			args.assign(1, tobe_auged);
+			bool destroyed = false;
+			if(id == 40408 || id == 40409 || id == 40410) {
+				destroyed = true;
+			}
+
+			args.push_back(&destroyed);
+
+			parse->EventItem(EVENT_AUGMENT_REMOVE, user, aug, nullptr, "", slot, &args);
+		}
+
+		if(id == 40408 || id == 40409 || id == 40410)
 			tobe_auged->DeleteAugment(in_augment->augment_slot);
 		else
-			old_aug=tobe_auged->RemoveAugment(in_augment->augment_slot);
+			old_aug = tobe_auged->RemoveAugment(in_augment->augment_slot);
 
 		itemOneToPush = tobe_auged->Clone();
 		if (old_aug)
 			itemTwoToPush = old_aug->Clone();
+
+
 
 		deleteItems = true;
 	}
@@ -197,11 +228,12 @@ void Object::HandleAugmentation(Client* user, const AugmentItem_Struct* in_augme
 	// Must push items after the items in inventory are deleted - necessary due to lore items...
 	if (itemOneToPush)
 	{
-		user->PushItemOnCursor(*itemOneToPush,true);
+		user->PushItemOnCursor(*itemOneToPush, true);
 	}
+
 	if (itemTwoToPush)
 	{
-		user->PushItemOnCursor(*itemTwoToPush,true);
+		user->PushItemOnCursor(*itemTwoToPush, true);
 	}
 
 }

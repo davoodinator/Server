@@ -1343,12 +1343,11 @@ ItemInst* SharedDatabase::CreateBaseItem(const Item_Struct* item, int16 charges)
 		if (charges == 0 && item->MaxCharges == -1)
 			charges = 1;
 
+		inst = new ItemInst(item, charges);
+
 		if(item->CharmFileID != 0 || (item->LoreGroup >= 1000 && item->LoreGroup != -1)) {
-			inst = new EvoItemInst(item, charges);
-			((EvoItemInst*)inst)->Initialize(this);
+			inst->Initialize(this);
 		}
-		else
-			inst = new ItemInst(item, charges);
 	}
 	return inst;
 }
@@ -1635,6 +1634,7 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			}
 
 			++counter;
+			sp[tempid].id = tempid;
 			strn0cpy(sp[tempid].name, row[1], sizeof(sp[tempid].name));
 			strn0cpy(sp[tempid].player_1, row[2], sizeof(sp[tempid].player_1));
 			strn0cpy(sp[tempid].teleport_zone, row[3], sizeof(sp[tempid].teleport_zone));

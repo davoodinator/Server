@@ -29,15 +29,7 @@
 #include "zonedbasync.h"
 #include "QGlobals.h"
 
-// max number of newspawns to send per bulk packet
-#define SPAWNS_PER_POINT_DATARATE 10
-#define MAX_SPAWNS_PER_PACKET	100
-
-//#ifdef _WINDOWS
-	class	EQApplicationPacket;
-//#else
-//	struct	EQApplicationPacket;
-//#endif
+class EQApplicationPacket;
 
 class Client;
 class Mob;
@@ -61,8 +53,6 @@ class BotRaids;
 
 extern EntityList entity_list;
 
-void ProcessClientThreadSpawn(void *tmp);
-
 class Entity
 {
 public:
@@ -77,7 +67,6 @@ public:
 	virtual bool IsPlayerCorpse()	const { return false; }
 	virtual bool IsNPCCorpse()		const { return false; }
 	virtual bool IsObject()			const { return false; }
-//	virtual bool IsGroup()			const { return false; }
 	virtual bool IsDoor()			const { return false; }
 	virtual bool IsTrap()			const { return false; }
 	virtual bool IsBeacon()			const { return false; }
@@ -102,12 +91,12 @@ public:
 	const Merc*		CastToMerc() const;
 	const Corpse*	CastToCorpse() const;
 	const Object*	CastToObject() const;
-//	const Group*	CastToGroup() const;
 	const Doors*	CastToDoors() const;
 	const Trap*		CastToTrap() const;
 	const Beacon*	CastToBeacon() const;
 
-	inline const uint16& GetID() const{ return id; }
+	inline const uint16& GetID() const { return id; }
+
 	virtual const char* GetName() { return ""; }
 	virtual void DBAWComplete(uint8 workpt_b1, DBAsyncWork* dbaw) { pDBAsyncWorkID = 0; }
 	bool CheckCoordLosNoZLeaps(float cur_x, float cur_y, float cur_z, float trg_x, float trg_y, float trg_z, float perwalk=1);
@@ -128,6 +117,14 @@ private:
 class EntityList
 {
 public:
+	struct Area {
+		int id;
+		int type;
+		float min_x, max_x;
+		float min_y, max_y;
+		float min_z, max_z;
+	};
+
 	EntityList();
 	~EntityList();
 
@@ -150,7 +147,7 @@ public:
 	Group*	GetGroupByMob(Mob* mob);
 	Group*	GetGroupByClient(Client* client);
 	Group*	GetGroupByID(uint32 id);
-	Group*	GetGroupByLeaderName(char* leader);
+	Group*	GetGroupByLeaderName(const char* leader);
 	Raid*	GetRaidByMob(Mob* mob);
 	Raid*	GetRaidByClient(Client* client);
 	Raid*	GetRaidByID(uint32 id);
@@ -161,6 +158,8 @@ public:
 	Corpse* GetCorpseByID(uint16 id);
 	Corpse* GetCorpseByDBID(uint32 dbid);
 	Corpse* GetCorpseByName(const char* name);
+
+	Spawn2* GetSpawnByID(uint32 id);
 
 	Client* FindCorpseDragger(const char *CorpseName);
 
@@ -180,8 +179,6 @@ public:
 	void	SendGuildMembers(uint32 guild_id);
 	void	RefreshAllGuildInfo(uint32 guild_id);
 	void	SendGuildList();
-//	void	SendGuildJoin(GuildJoin_Struct* gj);
-	// Check group list for nullptr entries
 	void	CheckGroupList (const char *fname, const int fline);
 	void	GroupProcess();
 	void	RaidProcess();
@@ -192,6 +189,10 @@ public:
 	void	TrapProcess();
 	void	BeaconProcess();
 	void	ProcessMove(Client *c, float x, float y, float z);
+	void	ProcessMove(NPC *n, float x, float y, float z);
+	void	AddArea(int id, int type, float min_x, float max_x, float min_y, float max_y, float min_z, float max_z);
+	void	RemoveArea(int id);
+	void	ClearAreas();
 	void	ProcessProximitySay(const char *Message, Client *c, uint8 language = 0);
 	void	SendAATimer(uint32 charid,UseAA_Struct* uaa);
 	Doors*	FindDoor(uint8 door_id);
@@ -248,7 +249,6 @@ public:
 	Entity*	GetEntityObject(uint16 id);
 	Entity*	GetEntityCorpse(uint16 id);
 	Entity* GetEntityCorpse(const char *name);
-//	Entity*	GetEntityGroup(uint32 id);
 	Entity*	GetEntityTrap(uint16 id);
 	Entity*	GetEntityBeacon(uint16 id);
 
@@ -316,7 +316,6 @@ public:
 	static char* RemoveNumbers(char* name);
 	void	SignalMobsByNPCID(uint32 npc_type, int signal_id);
 	void	CountNPC(uint32* NPCCount, uint32* NPCLootCount, uint32* gmspawntype_count);
-	void	DoZoneDump(ZSDump_Spawn2* spawn2dump, ZSDump_NPC* npcdump, ZSDump_NPC_Loot* npclootdump, NPCType* gmspawntype_dump);
 	void	RemoveEntity(uint16 id);
 	void	SendPetitionToAdmins(Petition* pet);
 	void	SendPetitionToAdmins();
@@ -395,6 +394,7 @@ public:
 	void GetCorpseList(std::list<Corpse*> &c_list);
 	void GetObjectList(std::list<Object*> &o_list);
 	void GetDoorsList(std::list<Doors*> &d_list);
+	void GetSpawnList(std::list<Spawn2*> &d_list);
 	void GetTargetsForConeArea(Mob *start, uint32 radius, uint32 height, std::list<Mob*> &m_list);
 
 	void	DepopAll(int NPCTypeID, bool StartSpawnTimer = true);
@@ -429,8 +429,9 @@ private:
 	LinkedList<Doors*> door_list;
 	LinkedList<Trap*> trap_list;
 	LinkedList<Beacon*> beacon_list;
-	LinkedList<NPC *> proximity_list;
+	std::list<NPC*> proximity_list;
 	std::list<Raid *> raid_list;
+	std::list<Area> area_list;
 	uint16 last_insert_id;
 
 	// Please Do Not Declare Any EntityList Class Members After This Comment

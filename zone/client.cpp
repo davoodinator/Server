@@ -26,13 +26,13 @@
 
 // for windows compile
 #ifdef _WINDOWS
-    #define abs64 _abs64
+	#define abs64 _abs64
 #else
-    #include <stdarg.h>
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include "../common/unix.h"
-    #define abs64 abs
+	#include <stdarg.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	#include "../common/unix.h"
+	#define abs64 abs
 #endif
 
 extern volatile bool RunLoops;
@@ -146,12 +146,9 @@ Client::Client(EQStreamInterface* ieqs)
 	scanarea_timer(AIClientScanarea_delay),
 #endif
 	tribute_timer(Tribute_duration),
-#ifdef PACKET_UPDATE_MANAGER
-	update_manager(ieqs),
-#endif
 	proximity_timer(ClientProximity_interval),
 	TaskPeriodic_Timer(RuleI(TaskSystem, PeriodicCheckTimer) * 1000),
-	charm_update_timer(60000),
+	charm_update_timer(6000),
 	rest_timer(1),
 	charm_class_attacks_timer(3000),
 	charm_cast_timer(3500),
@@ -159,7 +156,8 @@ Client::Client(EQStreamInterface* ieqs)
 	TrackingTimer(2000),
 	RespawnFromHoverTimer(0),
 	merc_timer(RuleI(Mercs, UpkeepIntervalMS)),
-	ItemTickTimer(10000)
+	ItemTickTimer(10000),
+	ItemQuestTimer(500)
 {
 	for(int cf=0; cf < _FilterCount; cf++)
 		ClientFilters[cf] = FilterShow;
@@ -357,10 +355,6 @@ Client::~Client() {
 #ifdef CLIENT_LOGS
 	client_logs.unsubscribeAll(this);
 #endif
-
-
-//	if(AbilityTimer || GetLevel()>=51)
-//		database.UpdateAndDeleteAATimers(CharacterID());
 
 	ChangeSQLLog(nullptr);
 	if(IsDueling() && GetDuelTarget() != 0) {
@@ -1033,26 +1027,24 @@ void Client::ChannelMessageReceived(uint8 chan_num, uint8 language, uint8 lang_s
 	case 8: { // /say
 		if(message[0] == COMMAND_CHAR) {
 			if(command_dispatch(this, message) == -2) {
-				if(RuleB(Chat, FlowCommandstoPerl_EVENT_SAY)) {
-					if(parse->PlayerHasQuestSub("EVENT_SAY")) {
-						parse->EventPlayer(EVENT_SAY, this, message, language);
+				if(parse->PlayerHasQuestSub(EVENT_COMMAND)) {
+					int i = parse->EventPlayer(EVENT_COMMAND, this, message, 0);
+					if(i != 0) {
+						Message(13, "Command '%s' not recognized.", message);
 					}
 				} else {
-					this->Message(13, "Command '%s' not recognized.", message);
+					Message(13, "Command '%s' not recognized.", message);
 				}
 			}
 			break;
 		}
+
 		Mob* sender = this;
 		if (GetPet() && GetPet()->FindType(SE_VoiceGraft))
 			sender = GetPet();
 
-		printf("Message: %s\n",message);
 		entity_list.ChannelMessage(sender, chan_num, language, lang_skill, message);
-		if(parse->PlayerHasQuestSub("EVENT_SAY"))
-		{
-			parse->EventPlayer(EVENT_SAY, this, message, language);
-		}
+		parse->EventPlayer(EVENT_SAY, this, message, language);
 
 		if (sender != this)
 			break;
@@ -1065,32 +1057,21 @@ void Client::ChannelMessageReceived(uint8 chan_num, uint8 language, uint8 lang_s
 				CheckLDoNHail(GetTarget());
 				CheckEmoteHail(GetTarget(), message);
 
-				if(parse->HasQuestSub(GetTarget()->GetNPCTypeID(), "EVENT_SAY")){
-					if (DistNoRootNoZ(*GetTarget()) <= 200) {
-						if(GetTarget()->CastToNPC()->IsMoving() && !GetTarget()->CastToNPC()->IsOnHatelist(GetTarget()))
-							GetTarget()->CastToNPC()->PauseWandering(RuleI(NPC, SayPauseTimeInSec));
-						parse->EventNPC(EVENT_SAY, GetTarget()->CastToNPC(), this, message, language);
-					}
-				}
 
-				if (RuleB(TaskSystem, EnableTaskSystem) && DistNoRootNoZ(*GetTarget()) <= 200) {
+				if(DistNoRootNoZ(*GetTarget()) <= 200) {
+					NPC *tar = GetTarget()->CastToNPC();
+					parse->EventNPC(EVENT_SAY, tar->CastToNPC(), this, message, language);
 
-					if(GetTarget()->CastToNPC()->IsMoving() && !GetTarget()->CastToNPC()->IsOnHatelist(GetTarget()))
-						GetTarget()->CastToNPC()->PauseWandering(RuleI(NPC, SayPauseTimeInSec));
-
-					if(UpdateTasksOnSpeakWith(GetTarget()->GetNPCTypeID())) {
-						// If the client had an activity to talk to this NPC, make the NPC turn to face him if
-						// he isn't moving. Makes things look better.
-						if(!GetTarget()->CastToNPC()->IsMoving())
-							GetTarget()->FaceTarget(this);
+					if(RuleB(TaskSystem, EnableTaskSystem)) {
+						if(UpdateTasksOnSpeakWith(tar->GetNPCTypeID())) {
+							tar->DoQuestPause(this);
+						}
 					}
 				}
 			}
 			else {
-				if(parse->HasQuestSub(GetTarget()->GetNPCTypeID(), "EVENT_AGGRO_SAY")) {
-					if (DistNoRootNoZ(*GetTarget()) <= 200) {
-						parse->EventNPC(EVENT_AGGRO_SAY, GetTarget()->CastToNPC(), this, message, language);
-					}
+				if (DistNoRootNoZ(*GetTarget()) <= 200) {
+					parse->EventNPC(EVENT_AGGRO_SAY, GetTarget()->CastToNPC(), this, message, language);
 				}
 			}
 
@@ -2335,7 +2316,7 @@ bool Client::CheckIncreaseSkill(SkillType skillid, Mob *against_who, int chancem
 
 	if(against_who)
 	{
-		if(against_who->SpecAttacks[IMMUNE_AGGRO] || against_who->IsClient() ||
+		if(against_who->GetSpecialAbility(IMMUNE_AGGRO) || against_who->IsClient() ||
 			GetLevelCon(against_who->GetLevel()) == CON_GREEN)
 		{
 			//false by default
@@ -2705,9 +2686,6 @@ bool Client::BindWound(Mob* bindmob, bool start, bool fail){
 					// Binding self
 					}
 					// Send client bind done
-
-					//this is taken care of on start of bind, not finish now, and is improved
-					//DeleteItemInInventory(m_inv.HasItem(13009, 1), 1, true);
 
 					bind_out->type = 1; // Done
 					QueuePacket(outapp);
@@ -4777,7 +4755,7 @@ void Client::ShowSkillsWindow()
 		if(GetSkill(it->second) > 0 || MaxSkill(it->second) > 0) {
 			WindowText += it->first;
 			// line up the values
-			for (int j = 0; j < 5; j++)
+			for (int j = 0; j < MAX_AUGMENT_SLOTS; j++)
 				WindowText += "&nbsp;";
 			WindowText += itoa(this->GetSkill(it->second));
 			if (MaxSkill(it->second) > 0) {
@@ -7228,13 +7206,13 @@ const char* Client::GetClassPlural(Client* client) {
 
 void Client::SendWebLink(const char *website)
 {
-	if(website != 0)
+	size_t len = strlen(website) + 1;
+	if(website != 0 && len > 1)
 	{
-		std::string str = website;
-		EQApplicationPacket* outapp = new EQApplicationPacket(OP_Weblink, sizeof(Weblink_Struct) + str.length() + 1);
+		EQApplicationPacket* outapp = new EQApplicationPacket(OP_Weblink, sizeof(Weblink_Struct) + len);
 		Weblink_Struct *wl = (Weblink_Struct*)outapp->pBuffer;
-		memcpy(wl->weblink, str.c_str(), str.length() + 1);
-		wl->weblink[str.length() + 1] = '\0';
+		memcpy(wl->weblink, website, len);
+		wl->weblink[len] = '\0';
 
 		FastQueuePacket(&outapp);
 	}
@@ -7242,11 +7220,11 @@ void Client::SendWebLink(const char *website)
 
 void Client::SendMercPersonalInfo()
 {
-uint32 mercTypeCount = 1;
-uint32 mercCount = 1; //TODO: Un-hardcode this and support multiple mercs like in later clients than SoD.
-//uint32 packetSize = 0;
-uint32 i=0;
-uint32 altCurrentType = 19; //TODO: Implement alternate currency purchases involving mercs!
+	uint32 mercTypeCount = 1;
+	uint32 mercCount = 1; //TODO: Un-hardcode this and support multiple mercs like in later clients than SoD.
+	//uint32 packetSize = 0;
+	uint32 i=0;
+	uint32 altCurrentType = 19; //TODO: Implement alternate currency purchases involving mercs!
 
 	if (GetClientVersion() >= EQClientRoF)
 	{
@@ -7730,109 +7708,224 @@ some day.
 
 void Client::LoadAccountFlags()
 {
-    char errbuf[MYSQL_ERRMSG_SIZE];
-    char *query = 0;
-    MYSQL_RES *result;
-    MYSQL_ROW row;
+	char errbuf[MYSQL_ERRMSG_SIZE];
+	char *query = 0;
+	MYSQL_RES *result;
+	MYSQL_ROW row;
 
-    accountflags.clear();
-    MakeAnyLenString(&query, "SELECT p_flag, p_value FROM account_flags WHERE p_accid = '%d'", account_id);
-    if(database.RunQuery(query, strlen(query), errbuf, &result))
-    {
-        while(row = mysql_fetch_row(result))
-        {
-            std::string fname(row[0]);
-            std::string fval(row[1]);
-            accountflags[fname] = fval;
-        }
-        mysql_free_result(result);
-    }
-    else
-    {
-        std::cerr << "Error in LoadAccountFlags query '" << query << "' " << errbuf << std::endl;
-    }
-    safe_delete_array(query);
+	accountflags.clear();
+	MakeAnyLenString(&query, "SELECT p_flag, p_value FROM account_flags WHERE p_accid = '%d'", account_id);
+	if(database.RunQuery(query, strlen(query), errbuf, &result))
+	{
+		while(row = mysql_fetch_row(result))
+		{
+			std::string fname(row[0]);
+			std::string fval(row[1]);
+			accountflags[fname] = fval;
+		}
+		mysql_free_result(result);
+	}
+	else
+	{
+		std::cerr << "Error in LoadAccountFlags query '" << query << "' " << errbuf << std::endl;
+	}
+	safe_delete_array(query);
 }
 
 void Client::SetAccountFlag(std::string flag, std::string val)
 {
-    char errbuf[MYSQL_ERRMSG_SIZE];
-    char *query = 0;
+	char errbuf[MYSQL_ERRMSG_SIZE];
+	char *query = 0;
 
-    MakeAnyLenString(&query, "REPLACE INTO account_flags (p_accid, p_flag, p_value) VALUES( '%d', '%s', '%s')", account_id, flag.c_str(), val.c_str());
-    if(!database.RunQuery(query, strlen(query), errbuf))
-    {
-        std::cerr << "Error in SetAccountFlags query '" << query << "' " << errbuf << std::endl;
-    }
-    safe_delete_array(query);
+	MakeAnyLenString(&query, "REPLACE INTO account_flags (p_accid, p_flag, p_value) VALUES( '%d', '%s', '%s')", account_id, flag.c_str(), val.c_str());
+	if(!database.RunQuery(query, strlen(query), errbuf))
+	{
+		std::cerr << "Error in SetAccountFlags query '" << query << "' " << errbuf << std::endl;
+	}
+	safe_delete_array(query);
 
-    accountflags[flag] = val;
+	accountflags[flag] = val;
 }
 
 std::string Client::GetAccountFlag(std::string flag)
 {
-    return(accountflags[flag]);
+	return(accountflags[flag]);
 }
 
 void Client::TickItemCheck()
 {
-    int i;
+	int i;
 
 	if(zone->tick_items.empty()) { return; }
 
-    //Scan equip slots for items
-    for(i = 0; i <= 21; i++)
-    {
+	//Scan equip slots for items
+	for(i = 0; i <= 21; i++)
+	{
 		TryItemTick(i);
-    }
-    //Scan main inventory + cursor
-    for(i = 22; i < 31; i++)
-    {
+	}
+	//Scan main inventory + cursor
+	for(i = 22; i < 31; i++)
+	{
 		TryItemTick(i);
-    }
-    //Scan bags
-    for(i = 251; i < 340; i++)
-    {
+	}
+	//Scan bags
+	for(i = 251; i < 340; i++)
+	{
 		TryItemTick(i);
-    }
+	}
 }
 
 void Client::TryItemTick(int slot)
 {
 	int iid = 0;
-    const ItemInst* inst = m_inv[slot];
-    if(inst == 0) { return; }
+	const ItemInst* inst = m_inv[slot];
+	if(inst == 0) { return; }
 
-    iid = inst->GetID();
+	iid = inst->GetID();
 
-    if(zone->tick_items.count(iid) > 0)
-    {
-        if( GetLevel() >= zone->tick_items[iid].level && MakeRandomInt(0, 100) >= (100 - zone->tick_items[iid].chance) && (zone->tick_items[iid].bagslot || slot < 22) )
-        {
-            ItemInst* e_inst = (ItemInst*)inst;
-            parse->EventItem(EVENT_ITEM_TICK, this, e_inst, e_inst->GetID(), slot);
-        }
-    }
+	if(zone->tick_items.count(iid) > 0)
+	{
+		if( GetLevel() >= zone->tick_items[iid].level && MakeRandomInt(0, 100) >= (100 - zone->tick_items[iid].chance) && (zone->tick_items[iid].bagslot || slot < 22) )
+		{
+			ItemInst* e_inst = (ItemInst*)inst;
+			parse->EventItem(EVENT_ITEM_TICK, this, e_inst, nullptr, "", slot);
+		}
+	}
 
 	//Only look at augs in main inventory
 	if(slot > 21) { return; }
 
-    for(int x = 0; x < MAX_AUGMENT_SLOTS; ++x)
-    {
-        ItemInst * a_inst = inst->GetAugment(x);
-        if(!a_inst) { continue; }
+	for(int x = 0; x < MAX_AUGMENT_SLOTS; ++x)
+	{
+		ItemInst * a_inst = inst->GetAugment(x);
+		if(!a_inst) { continue; }
 
-        iid = a_inst->GetID();
+		iid = a_inst->GetID();
 
-        if(zone->tick_items.count(iid) > 0)
-        {
-            if( GetLevel() >= zone->tick_items[iid].level && MakeRandomInt(0, 100) >= (100 - zone->tick_items[iid].chance) )
-            {
-                ItemInst* e_inst = (ItemInst*)a_inst;
-                parse->EventItem(EVENT_ITEM_TICK, this, e_inst, e_inst->GetID(), slot);
-            }
-        }
-    }
+		if(zone->tick_items.count(iid) > 0)
+		{
+			if( GetLevel() >= zone->tick_items[iid].level && MakeRandomInt(0, 100) >= (100 - zone->tick_items[iid].chance) )
+			{
+				ItemInst* e_inst = (ItemInst*)a_inst;
+				parse->EventItem(EVENT_ITEM_TICK, this, e_inst, nullptr, "", slot);
+			}
+		}
+	}
+}
+
+void Client::ItemTimerCheck()
+{
+	int i;
+	for(i = 0; i <= 21; i++)
+	{
+		TryItemTimer(i);
+	}
+
+	for(i = 22; i < 31; i++)
+	{
+		TryItemTimer(i);
+	}
+
+	for(i = 251; i < 340; i++)
+	{
+		TryItemTimer(i);
+	}
+}
+
+void Client::TryItemTimer(int slot)
+{
+	ItemInst* inst = m_inv.GetItem(slot);
+	if(!inst) {
+		return;
+	}
+
+	auto item_timers = inst->GetTimers();
+	auto it_iter = item_timers.begin();
+	while(it_iter != item_timers.end()) {
+		if(it_iter->second.Check()) {
+			parse->EventItem(EVENT_TIMER, this, inst, nullptr, it_iter->first, 0);
+		}
+		++it_iter;
+	}
+	
+	if(slot > 21) {
+		return;
+	}
+
+	for(int x = 0; x < MAX_AUGMENT_SLOTS; ++x)
+	{
+		ItemInst * a_inst = inst->GetAugment(x);
+		if(!a_inst) {
+			continue;
+		}
+
+		auto item_timers = a_inst->GetTimers();
+		auto it_iter = item_timers.begin();
+		while(it_iter != item_timers.end()) {
+			if(it_iter->second.Check()) {
+				parse->EventItem(EVENT_TIMER, this, a_inst, nullptr, it_iter->first, 0);
+			}
+			++it_iter;
+		}
+	}
+}
+
+void Client::RefundAA() {
+	int cur = 0;
+	bool refunded = false;
+
+	for(int x = 0; x < aaHighestID; x++) {
+		cur = GetAA(x);
+		if(cur > 0){
+			SendAA_Struct* curaa = zone->FindAA(x);
+			if(cur){
+				SetAA(x, 0);
+				for(int j = 0; j < cur; j++) {
+					m_pp.aapoints += curaa->cost + (curaa->cost_inc * j);
+					refunded = true;
+				}
+			}
+			else
+			{
+				m_pp.aapoints += cur;
+				SetAA(x, 0);
+				refunded = true;
+			}
+		}
+	}
+
+	if(refunded) {
+		Save();
+		Kick();
+	}
+}
+
+void Client::IncrementAA(int aa_id) {
+	SendAA_Struct* aa2 = zone->FindAA(aa_id);
+
+	if(aa2 == nullptr)
+		return;
+
+	if(GetAA(aa_id) == aa2->max_level)
+		return;
+
+	SetAA(aa_id, GetAA(aa_id) + 1);
+
+	Save();
+
+	SendAA(aa_id);
+	SendAATable();
+	SendAAStats();
+	CalcBonuses();
+}
+
+void Client::SendItemScale(ItemInst *inst) {
+	int slot = m_inv.GetSlotByItemInst(inst);
+	if(slot != -1) {
+		inst->ScaleItem();
+		SendItemPacket(slot, inst, ItemPacketCharmUpdate);
+		CalcBonuses();
+	}
 }
 
 void Client::AddRespawnOption(std::string option_name, uint32 zoneid, float x, float y, float z, float heading, bool initial_selection, int8 position)

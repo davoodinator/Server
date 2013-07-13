@@ -931,7 +931,7 @@ void Mob::DoArcheryAttackDmg(Mob* other, const ItemInst* RangeWeapon, const Item
 					hate += (2*((GetLevel()-25)/3));
 				}
 
-				other->AvoidDamage(this, TotalDmg, false); //CanRiposte=false - Can not riposte archery attacks.
+				other->AvoidDamage(this, TotalDmg, false);
 				other->MeleeMitigation(this, TotalDmg, minDmg);
 				if(TotalDmg > 0)
 				{
@@ -979,7 +979,7 @@ void NPC::RangedAttack(Mob* other)
 	//if we have SPECATK_RANGED_ATK set then we range attack without weapon or ammo
 	const Item_Struct* weapon = nullptr;
 	const Item_Struct* ammo = nullptr;
-	if(!SpecAttacks[SPECATK_RANGED_ATK])
+	if(!GetSpecialAbility(SPECATK_RANGED_ATK))
 	{
 		//find our bow and ammo return if we can't find them...
 		return;
@@ -1325,7 +1325,7 @@ void Mob::SendItemAnimation(Mob *to, const Item_Struct *item, SkillType skillInU
 	safe_delete(outapp);
 }
 
-void Mob::ProjectileAnimation(Mob* to, uint16 item_id, bool IsArrow, float speed, float angle, float tilt, float arc) {
+void Mob::ProjectileAnimation(Mob* to, int item_id, bool IsArrow, float speed, float angle, float tilt, float arc) {
 
 	const Item_Struct* item = nullptr;
 	uint8 item_type = 0;
@@ -1940,7 +1940,7 @@ void Mob::Taunt(NPC* who, bool always_succeed, float chance_bonus) {
 	float level_difference = GetLevel() - who->GetLevel();
 
 	//Support for how taunt worked pre 2000 on LIVE - Can not taunt NPC over your level.
-	if ((RuleB(Combat,TauntOverLevel) == false) && (level_difference < 0) || who->SpecAttacks[IMMUNE_TAUNT]){
+	if ((RuleB(Combat,TauntOverLevel) == false) && (level_difference < 0) || who->GetSpecialAbility(IMMUNE_TAUNT)){
 		Message_StringID(MT_SpellFailure,FAILED_TAUNT);
 		return;
 	}
@@ -2207,7 +2207,7 @@ bool Mob::CanDoSpecialAttack(Mob *other)
 		return false;
 	}
 
-	if(other->GetInvul() || other->SpecAttacks[IMMUNE_MELEE])
+	if(other->GetInvul() || other->GetSpecialAbility(IMMUNE_MELEE))
 		return false;
 
 	return true;

@@ -426,7 +426,7 @@ void Merc::AddItemBonuses(const Item_Struct *item, StatBonuses* newbon) {
 
 	if(item->Attack > 0) {
 
-		int cap = RuleI(Character, ItemATKCap);
+		unsigned int cap = RuleI(Character, ItemATKCap);
 		cap += itembonuses.ItemATKCap + spellbonuses.ItemATKCap + aabonuses.ItemATKCap;
 
 		if((newbon->ATK + item->Attack) > cap)
@@ -1671,13 +1671,13 @@ void Merc::AI_Process() {
 							Attack(GetTarget(), SLOT_PRIMARY, true);
 						}
 
-						if(GetOwner() && GetTarget() && SpecAttacks[SPECATK_TRIPLE]) {
+						if(GetOwner() && GetTarget() && GetSpecialAbility(SPECATK_TRIPLE)) {
 							tripleSuccess = true;
 							Attack(GetTarget(), SLOT_PRIMARY, true);
 						}
 
 						//quad attack, does this belong here??
-						if(GetOwner() && GetTarget() && SpecAttacks[SPECATK_QUAD]) {
+						if(GetOwner() && GetTarget() && GetSpecialAbility(SPECATK_QUAD)) {
 							Attack(GetTarget(), SLOT_PRIMARY, true);
 						}
 					}
@@ -1851,7 +1851,7 @@ void Merc::AI_Start(int32 iMoveDelay) {
 
 	if (NPCTypedata_ours) {
 		//AI_AddNPCSpells(ourNPCData->npc_spells_id);
-		NPCSpecialAttacks(NPCTypedata_ours->npc_attacks,0);
+		ProcessSpecialAbilities(NPCTypedata_ours->special_abilities);
 	}
 
 	SendTo(GetX(), GetY(), GetZ());
@@ -2284,7 +2284,6 @@ bool Merc::AICastSpell(int8 iChance, int32 iSpellTypes) {
 						else {
 							for( int i = 0; i < MAX_GROUP_MEMBERS; i++) {
 								if(g->members[i]) {
-									int32 oDontDoAgainBefore;
 									Mob* tar = g->members[i];
 
 									if( !tar->IsImmuneToSpell(selectedMercSpell.spellid, this)
@@ -2374,7 +2373,7 @@ bool Merc::AICastSpell(int8 iChance, int32 iSpellTypes) {
 
 							selectedMercSpell = GetBestMercSpellForAENuke(this, tar);
 
-							if(selectedMercSpell.spellid == 0 && !tar->SpecAttacks[UNSTUNABLE] && !tar->IsStunned()) {
+							if(selectedMercSpell.spellid == 0 && !tar->GetSpecialAbility(UNSTUNABLE) && !tar->IsStunned()) {
 								uint8 stunChance = 15;
 								if(MakeRandomInt(1, 100) <= stunChance) {
 									selectedMercSpell = GetBestMercSpellForStun(this);
@@ -2463,7 +2462,6 @@ bool Merc::AICastSpell(int8 iChance, int32 iSpellTypes) {
 
 						if(castedSpell) {
 							if(IsGroupSpell(selectedMercSpell.spellid)){
-								Group *g;
 
 								if(this->HasGroup()) {
 									Group *g = this->GetGroup();
@@ -2577,29 +2575,6 @@ void Merc::CheckHateList() {
 									}
 								}
 							}
-
-
-							/*std::list<tHateEntry*> their_hate_list;
-							npc->GetHateList(their_hate_list);
-							std::list<tHateEntry*>::iterator hateEntryIter = their_hate_list.begin();
-
-							while(hateEntryIter != their_hate_list.end())
-							{
-								tHateEntry *entry = (*hateEntryIter);
-
-								if(g->IsGroupMember(entry->ent)) {
-									if(!hate_list.IsOnHateList(npc)) {
-										float range = g->HasRole(entry->ent, RolePuller) ? RuleI(Mercs, AggroRadiusPuller) : RuleI(Mercs, AggroRadius);
-										range *= range;
-										if(entry->ent->DistNoRootNoZ(*this) < range) {
-											hate_list.Add(entry->ent, 1);
-										}
-									}
-								}
-
-
-								hateEntryIter++;
-							}*/
 						}
 					}
 				}
@@ -4738,7 +4713,7 @@ void Merc::DoClassAttacks(Mob *target) {
 	classattack_timer.Start(reuse*HasteModifier/100);
 }
 
-bool Merc::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, bool IsFromSpell)
+bool Merc::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, bool IsFromSpell, ExtraAttackOptions *opts)
 {
 
 	_ZP(Client_Attack);
@@ -4749,7 +4724,7 @@ bool Merc::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, boo
 		return false;
 	}
 
-	return NPC::Attack(other, Hand, bRiposte, IsStrikethrough, IsFromSpell);
+	return NPC::Attack(other, Hand, bRiposte, IsStrikethrough, IsFromSpell, opts);
 }
 
 void Merc::Damage(Mob* other, int32 damage, uint16 spell_id, SkillType attack_skill, bool avoidable, int8 buffslot, bool iBuffTic)
@@ -4793,9 +4768,11 @@ Mob* Merc::GetOwnerOrSelf() {
 	return Result;
 }
 
-void Merc::Death(Mob* killerMob, int32 damage, uint16 spell, SkillType attack_skill)
+bool Merc::Death(Mob* killerMob, int32 damage, uint16 spell, SkillType attack_skill)
 {
-	NPC::Death(killerMob, damage, spell, attack_skill);
+	if(!NPC::Death(killerMob, damage, spell, attack_skill))
+		return false;
+
 	Save();
 
 	Mob *give_exp = hate_list.GetDamageTop(this);
@@ -4806,44 +4783,11 @@ void Merc::Death(Mob* killerMob, int32 damage, uint16 spell, SkillType attack_sk
 
 	bool IsLdonTreasure = (this->GetClass() == LDON_TREASURE);
 
-	//if (give_exp_client && !IsCorpse() && MerchantType == 0)
-	//{
-	//	Group *kg = entity_list.GetGroupByClient(give_exp_client);
-	//	Raid *kr = entity_list.GetRaidByClient(give_exp_client);
-
-	//	if(!kr && give_exp_client->IsClient() && give_exp_client->GetBotRaidID() > 0) {
-	//		BotRaids *br = entity_list.GetBotRaidByMob(give_exp_client->CastToMob());
-	//		if(br) {
-	//			if(!IsLdonTreasure)
-	//				br->SplitExp((EXP_FORMULA), this);
-
-	//			if(br->GetBotMainTarget() == this)
-	//				br->SetBotMainTarget(nullptr);
-
-	//			/* Send the EVENT_KILLED_MERIT event for all raid members */
-	//			if(br->BotRaidGroups[0]) {
-	//				for(int j=0; j<MAX_GROUP_MEMBERS; j++) {
-	//					if(br->BotRaidGroups[0]->members[j] && br->BotRaidGroups[0]->members[j]->IsClient()) {
-	//						parse->Event(EVENT_KILLED_MERIT, GetNPCTypeID(), "killed", this, br->BotRaidGroups[0]->members[j]);
-	//						if(RuleB(TaskSystem, EnableTaskSystem)) {
-	//							br->BotRaidGroups[0]->members[j]->CastToClient()->UpdateTasksOnKill(GetNPCTypeID());
-	//						}
-	//					}
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
-
-	//corpse->Depop();
-
 	//no corpse, no exp if we're a merc. We'll suspend instead, since that's what live does. I'm not actually sure live supports 'depopping' merc corpses.
 	if(entity_list.GetCorpseByID(GetID()))
 		entity_list.GetCorpseByID(GetID())->Depop();
 
-	if(Suspend())
-	{
-	}
+	return true;
 }
 
 Client* Merc::GetMercOwner() {
@@ -5786,7 +5730,7 @@ bool Merc::AddMercToGroup(Merc* merc, Group* group) {
 
 void Client::InitializeMercInfo() {
 	for(int i=0; i<MAXMERCS; i++) {
-		m_mercinfo[i].mercid = 0;
+		m_mercinfo[i] = MercInfo();
 	}
 }
 

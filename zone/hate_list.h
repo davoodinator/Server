@@ -19,9 +19,8 @@
 #ifndef HATELIST_H
 #define HATELIST_H
 
-class tHateEntry
+struct tHateEntry
 {
-public:
 	Mob *ent;
 	int32 damage, hate;
 	bool bFrenzy;
@@ -60,7 +59,7 @@ public:
 	//Gets the target with the most hate regardless of things like frenzy etc.
 	Mob* GetMostHate();
 
-	int AreaRampage(Mob *caster, Mob *target);
+	int AreaRampage(Mob *caster, Mob *target, int count, ExtraAttackOptions *opts);
 
 	void SpellCast(Mob *caster, uint32 spell_id, float range);
 
@@ -68,15 +67,15 @@ public:
 	void PrintToClient(Client *c);
 
 	//For accessing the hate list via perl; don't use for anything else
-	void GetHateList(std::list<tHateEntry*> &h_list);
+	std::list<tHateEntry*>& GetHateList() { return list; }
 
 	//setting owner
 	void SetOwner(Mob *newOwner) { owner = newOwner; }
 
 protected:
-	tHateEntry *Find(Mob *ent);
+	tHateEntry* Find(Mob *ent);
 private:
-	LinkedList<tHateEntry*> list;
+	std::list<tHateEntry*> list;
 	Mob *owner;
 };
 

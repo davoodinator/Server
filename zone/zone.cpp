@@ -53,7 +53,6 @@
 #include "object.h"
 #include "petitions.h"
 #include "pathing.h"
-#include "parser.h"
 #include "event_codes.h"
 #include "client_logs.h"
 #include "../common/rulesys.h"
@@ -80,9 +79,6 @@ volatile bool ZoneLoaded = false;
 extern QuestParserCollection* parse;
 extern DBAsyncFinishedQueue MTdbafq;
 extern DBAsync *dbasync;
-void CleanupLoadZoneState(uint32 spawn2_count, ZSDump_Spawn2** spawn2_dump, ZSDump_NPC** npc_dump, ZSDump_NPC_Loot** npcloot_dump, NPCType** gmspawntype_dump, Spawn2*** spawn2_loaded, NPC*** npc_loaded, MYSQL_RES** result);
-
-
 
 bool Zone::Bootup(uint32 iZoneID, uint32 iInstanceID, bool iStaticZone) {
 	_ZP(Zone_Bootup);
@@ -113,9 +109,6 @@ bool Zone::Bootup(uint32 iZoneID, uint32 iInstanceID, bool iStaticZone) {
 	zone->pathing = PathManager::LoadPathFile(zone->map_name);
 
 	char tmp[10];
-	//PlayerProfile_Struct* pp;
-	//int char_num = 0;
-	//unsigned long* lengths;
 	if (database.GetVariable("loglevel",tmp, 9)) {
 		int log_levels[4];
 		if (atoi(tmp)>9){ //Server is using the new code
@@ -169,6 +162,7 @@ bool Zone::Bootup(uint32 iZoneID, uint32 iInstanceID, bool iStaticZone) {
 
 	LogFile->write(EQEMuLog::Normal, "---- Zone server %s, listening on port:%i ----", zonename, ZoneConfig::get()->ZonePort);
 	LogFile->write(EQEMuLog::Status, "Zone Bootup: %s (%i: %i)", zonename, iZoneID, iInstanceID);
+	parse->Init();
 	UpdateWindowTitle();
 	zone->GetTimeSync();
 
@@ -251,25 +245,25 @@ bool Zone::LoadZoneObjects() {
 			uint32 idx = 0;
 			int16 charges = 0;
 
-			id							= (uint32)atoi(row[idx++]);
-			data.zone_id				= atoi(row[idx++]);
-			data.x						= atof(row[idx++]);
-			data.y						= atof(row[idx++]);
-			data.z						= atof(row[idx++]);
-			data.heading				= atof(row[idx++]);
-			itemid						= (uint32)atoi(row[idx++]);
-			charges						= (int16)atoi(row[idx++]);
-			strcpy(data.object_name, row[idx++]);
-			type						= (uint8)atoi(row[idx++]);
-			icon						= (uint32)atoi(row[idx++]);
-			data.object_type			= (uint32)atoi(row[idx++]);
+			id							= (uint32)atoi(row[0]);
+			data.zone_id				= atoi(row[1]);
+			data.x						= atof(row[2]);
+			data.y						= atof(row[3]);
+			data.z						= atof(row[4]);
+			data.heading				= atof(row[5]);
+			itemid						= (uint32)atoi(row[6]);
+			charges						= (int16)atoi(row[7]);
+			strcpy(data.object_name, row[8]);
+			type						= (uint8)atoi(row[9]);
+			icon						= (uint32)atoi(row[10]);
+			data.object_type			= type;
 			data.linked_list_addr[0]	= 0;
 			data.linked_list_addr[1]	= 0;
-			data.unknown008[0]			= (uint32)atoi(row[idx++]);
-			data.unknown008[1]			= (uint32)atoi(row[idx++]);
-			data.unknown020				= (uint32)atoi(row[idx++]);
-			data.unknown024				= (uint32)atoi(row[idx++]);
-			data.unknown076				= (uint32)atoi(row[idx++]);
+			data.unknown008				= (uint32)atoi(row[11]);
+			data.unknown010				= (uint32)atoi(row[12]);
+			data.unknown020				= (uint32)atoi(row[13]);
+			data.unknown024				= (uint32)atoi(row[14]);
+			data.unknown076				= (uint32)atoi(row[15]);
 			data.unknown084				= 0;
 
 			ItemInst* inst = nullptr;
@@ -457,36 +451,6 @@ void Zone::LoadTempMerchantData(){
 		LogFile->write(EQEMuLog::Error, "dbasync->AddWork() failed adding merchant list query");
 		return;
 	}
-/*	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	std::list<TempMerchantList> merlist;
-	if (database.RunQuery(query, MakeAnyLenString(&query, "select ml.npcid,ml.slot,ml.itemid,ml.charges from merchantlist_temp ml, npc_types nt, spawnentry se, spawn2 s2 where nt.id=ml.npcid and nt.id=se.npcid and se.spawngroupid=s2.spawngroupid and s2.zone='%s' group by ml.npcid,slot order by npcid,slot asc", GetShortName()), errbuf, &result)) {
-		uint32 npcid = 0;
-		while((row = mysql_fetch_row(result))) {
-			if(npcid != atoul(row[0])){
-				if(npcid > 0)
-					tmpmerchanttable[npcid] = merlist;
-				npcid = atoul(row[0]);
-				merlist.clear();
-			}
-			TempMerchantList ml;
-			ml.npcid = npcid;
-			ml.slot = atoul(row[1]);
-			ml.item = atoul(row[2]);
-			ml.charges = atoul(row[3]);
-			ml.origslot = ml.slot;
-			merlist.push_back(ml);
-		}
-		if(npcid > 0)
-			tmpmerchanttable[npcid] = merlist;
-		mysql_free_result(result);
-	}
-	else
-		cerr << "Error in LoadTempMerchantData query '" << query << "' " << errbuf << endl;
-	safe_delete_array(query);
-*/
 }
 
 void Zone::LoadTempMerchantData_result(MYSQL_RES* result) {
@@ -511,8 +475,6 @@ void Zone::LoadTempMerchantData_result(MYSQL_RES* result) {
 		ml.origslot = ml.slot;
 		cur->second.push_back(ml);
 	}
-	//mysql_free_result(result);
-	//LogFile->write(EQEMuLog::Status, "Finished Loading Temporary Merchant Lists...");
 }
 
 //there should prolly be a temp counterpart of this...
@@ -601,34 +563,6 @@ void Zone::GetMerchantDataForZoneLoad(){
 		LogFile->write(EQEMuLog::Error,"dbasync->AddWork() failed adding merchant list query");
 		return;
 	}
-/*	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	std::list<MerchantList> merlist;
-	if (database.RunQuery(query, MakeAnyLenString(&query, "select ml.merchantid,ml.slot,ml.item from merchantlist ml, npc_types nt, spawnentry se, spawn2 s2 where nt.merchant_id=ml.merchantid and nt.id=se.npcid and se.spawngroupid=s2.spawngroupid and s2.zone='%s' group by ml.merchantid,slot order by merchantid,slot asc", GetShortName()), errbuf, &result)) {
-		uint32 npcid = 0;
-		while((row = mysql_fetch_row(result))) {
-			if(npcid != atoul(row[0])){
-				if(npcid > 0)
-					merchanttable[npcid] = merlist;
-				npcid = atoul(row[0]);
-				merlist.clear();
-			}
-			MerchantList ml;
-			ml.id = npcid;
-			ml.slot = atoul(row[1]);
-			ml.item = atoul(row[2]);
-			merlist.push_back(ml);
-		}
-		if(npcid > 0)
-			merchanttable[npcid] = merlist;
-		mysql_free_result(result);
-	}
-	else
-		cerr << "Error in GetMerchantDataForZoneLoad query '" << query << "' " << errbuf << endl;
-	safe_delete_array(query);
-*/
 }
 
 void Zone::LoadMercTemplates(){
@@ -727,7 +661,7 @@ void Zone::LoadLevelEXPMods(){
 		mysql_free_result(DatasetResult);
 	}
 
-	safe_delete(Query);
+	safe_delete_array(Query);
 	Query = 0;
 
 	if(!errorMessage.empty()) {
@@ -868,18 +802,12 @@ void Zone::Shutdown(bool quite)
 	if (!quite)
 		LogFile->write(EQEMuLog::Normal, "Zone shutdown: going to sleep");
 	ZoneLoaded = false;
-	char pzs[3] = "";
-	if (database.GetVariable("PersistentZoneState", pzs, 2)) {
-		if (pzs[0] == '1') {
-			Sleep(100);
-			LogFile->write(EQEMuLog::Normal, "Saving zone state");
-			database.DumpZoneState();
-		}
-	}
+	
 	zone->ResetAuth();
 	safe_delete(zone);
 	dbasync->CommitWrites();
-	if(parse) { parse->ReloadQuests(true); }
+	entity_list.ClearAreas();
+	parse->ReloadQuests(true);
 	UpdateWindowTitle();
 }
 
@@ -927,6 +855,11 @@ Zone::Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name)
 	pathing = nullptr;
 	qGlobals = nullptr;
 	default_ruleset = 0;
+
+	loglevelvar = 0;
+	merchantvar = 0;
+	tradevar = 0;
+	lootvar = 0;
 
 	if(RuleB(TaskSystem, EnableTaskSystem)) {
 		taskmanager->LoadProximities(zoneid);
@@ -1348,6 +1281,8 @@ bool Zone::Process() {
 	if(spawn2_timer.Check()) {
 		LinkedListIterator<Spawn2*> iterator(spawn2_list);
 
+		Inventory::CleanDirty();
+
 		iterator.Reset();
 		while (iterator.MoreElements()) {
 			if (iterator.GetData()->Process()) {
@@ -1722,299 +1657,7 @@ bool ZoneDatabase::LoadStaticZonePoints(LinkedList<ZonePoint*>* zone_point_list,
 		safe_delete_array(query);
 		return false;
 	}
-return true;
-}
-
-bool ZoneDatabase::DumpZoneState() {
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-
-	if (!RunQuery(query, MakeAnyLenString(&query, "DELETE FROM zone_state_dump WHERE zonename='%s'", zone->GetShortName()), errbuf)) {
-		std::cerr << "Error in DumpZoneState query '" << query << "' " << errbuf << std::endl;
-		safe_delete_array(query);
-		return false;
-	}
-	safe_delete_array(query);
-
-
-
-	uint32	spawn2_count = zone->CountSpawn2();
-	uint32	npc_count = 0;
-	uint32	npcloot_count = 0;
-	uint32	gmspawntype_count = 0;
-	entity_list.CountNPC(&npc_count, &npcloot_count, &gmspawntype_count);
-
-	std::cout << "DEBUG: spawn2count=" << spawn2_count << ", npc_count=" << npc_count << ", npcloot_count=" << npcloot_count << ", gmspawntype_count=" << gmspawntype_count << std::endl;
-
-	ZSDump_Spawn2* spawn2_dump = 0;
-	ZSDump_NPC*	npc_dump = 0;
-	ZSDump_NPC_Loot* npcloot_dump = 0;
-	NPCType* gmspawntype_dump = 0;
-	if (spawn2_count > 0) {
-		spawn2_dump = (ZSDump_Spawn2*) new uchar[spawn2_count * sizeof(ZSDump_Spawn2)];
-		memset(spawn2_dump, 0, sizeof(ZSDump_Spawn2) * spawn2_count);
-	}
-	if (npc_count > 0) {
-		npc_dump = (ZSDump_NPC*) new uchar[npc_count * sizeof(ZSDump_NPC)];
-		memset(npc_dump, 0, sizeof(ZSDump_NPC) * npc_count);
-		for (unsigned int i=0; i < npc_count; i++) {
-			npc_dump[i].spawn2_dump_index = 0xFFFFFFFF;
-			npc_dump[i].gmspawntype_index = 0xFFFFFFFF;
-		}
-	}
-	if (npcloot_count > 0) {
-		npcloot_dump = (ZSDump_NPC_Loot*) new uchar[npcloot_count * sizeof(ZSDump_NPC_Loot)];
-		memset(npcloot_dump, 0, sizeof(ZSDump_NPC_Loot) * npcloot_count);
-		for (unsigned int k=0; k < npcloot_count; k++)
-			npcloot_dump[k].npc_dump_index = 0xFFFFFFFF;
-	}
-	if (gmspawntype_count > 0) {
-		gmspawntype_dump = (NPCType*) new uchar[gmspawntype_count * sizeof(NPCType)];
-		memset(gmspawntype_dump, 0, sizeof(NPCType) * gmspawntype_count);
-	}
-
-	entity_list.DoZoneDump(spawn2_dump, npc_dump, npcloot_dump, gmspawntype_dump);
-	query = new char[512 + ((sizeof(ZSDump_Spawn2) * spawn2_count + sizeof(ZSDump_NPC) * npc_count + sizeof(ZSDump_NPC_Loot) * npcloot_count + sizeof(NPCType) * gmspawntype_count) * 2)];
-	char* end = query;
-
-	end += sprintf(end, "Insert Into zone_state_dump (zonename, spawn2_count, npc_count, npcloot_count, gmspawntype_count, spawn2, npcs, npc_loot, gmspawntype) values ('%s', %i, %i, %i, %i, ", zone->GetShortName(), spawn2_count, npc_count, npcloot_count, gmspawntype_count);
-	*end++ = '\'';
-	if (spawn2_dump != 0) {
-		end += DoEscapeString(end, (char*)spawn2_dump, sizeof(ZSDump_Spawn2) * spawn2_count);
-		safe_delete_array(spawn2_dump);
-	}
-	*end++ = '\'';
-	end += sprintf(end, ", ");
-	*end++ = '\'';
-	if (npc_dump != 0) {
-		end += DoEscapeString(end, (char*)npc_dump, sizeof(ZSDump_NPC) * npc_count);
-		safe_delete_array(npc_dump);
-	}
-	*end++ = '\'';
-	end += sprintf(end, ", ");
-	*end++ = '\'';
-	if (npcloot_dump != 0) {
-		end += DoEscapeString(end, (char*)npcloot_dump, sizeof(ZSDump_NPC_Loot) * npcloot_count);
-		safe_delete_array(npcloot_dump);
-	}
-	*end++ = '\'';
-	end += sprintf(end, ", ");
-	*end++ = '\'';
-	if (gmspawntype_dump != 0) {
-		end += DoEscapeString(end, (char*)gmspawntype_dump, sizeof(NPCType) * gmspawntype_count);
-		safe_delete_array(gmspawntype_dump);
-	}
-	*end++ = '\'';
-	end += sprintf(end, ")");
-
-	uint32 affected_rows = 0;
-	if (!RunQuery(query, (uint32) (end - query), errbuf, 0, &affected_rows)) {
-		// if (DoEscapeString(query, (unsigned int) (end - query))) {
-		safe_delete_array(query);
-		std::cerr << "Error in ZoneDump query " << errbuf << std::endl;
-		return false;
-	}
-	safe_delete_array(query);
-
-	if (affected_rows == 0) {
-		std::cerr << "Zone dump failed. (affected rows = 0)" << std::endl;
-		return false;
-	}
 	return true;
-}
-
-int8 ZoneDatabase::LoadZoneState(const char* zonename, LinkedList<Spawn2*>& spawn2_list) {
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-
-	uint32 i;
-	unsigned long* lengths;
-	uint32	elapsedtime = 0;
-	uint32	spawn2_count = 0;
-	uint32	npc_count = 0;
-	uint32	npcloot_count = 0;
-	uint32	gmspawntype_count = 0;
-	ZSDump_Spawn2* spawn2_dump = 0;
-	ZSDump_NPC*	npc_dump = 0;
-	ZSDump_NPC_Loot* npcloot_dump = 0;
-	NPCType* gmspawntype_dump = 0;
-	Spawn2** spawn2_loaded = 0;
-	NPC** npc_loaded = 0;
-
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT spawn2_count, npc_count, npcloot_count, gmspawntype_count, spawn2, npcs, npc_loot, gmspawntype, (UNIX_TIMESTAMP()-UNIX_TIMESTAMP(time)) as elapsedtime FROM zone_state_dump WHERE zonename='%s'", zonename), errbuf, &result)) {
-		safe_delete_array(query);
-		if (mysql_num_rows(result) == 1) {
-			row = mysql_fetch_row(result);
-			std::cout << "Elapsed time: " << row[8] << std::endl;
-			elapsedtime = atoi(row[8]) * 1000;
-			lengths = mysql_fetch_lengths(result);
-			spawn2_count = atoi(row[0]);
-			std::cout << "Spawn2count: " << spawn2_count << std::endl;
-			if (lengths[4] != (sizeof(ZSDump_Spawn2) * spawn2_count)) {
-				std::cerr << "Error in LoadZoneState: spawn2_dump length mismatch l=" << lengths[4] << ", e=" << (sizeof(ZSDump_Spawn2) * spawn2_count) << std::endl;
-				CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-				return -1;
-			}
-			else if (spawn2_count > 0) {
-				spawn2_dump = new ZSDump_Spawn2[spawn2_count];
-				spawn2_loaded = new Spawn2*[spawn2_count];
-				memcpy(spawn2_dump, row[4], lengths[4]);
-				for (i=0; i < spawn2_count; i++) {
-					if (spawn2_dump[i].time_left == 0xFFFFFFFF) // npc spawned, timer should be disabled
-						spawn2_loaded[i] = LoadSpawn2(spawn2_list, spawn2_dump[i].spawn2_id, 0xFFFFFFFF);
-					else if (spawn2_dump[i].time_left <= elapsedtime)
-						spawn2_loaded[i] = LoadSpawn2(spawn2_list, spawn2_dump[i].spawn2_id, 0);
-					else
-						spawn2_loaded[i] = LoadSpawn2(spawn2_list, spawn2_dump[i].spawn2_id, spawn2_dump[i].time_left - elapsedtime);
-					if (spawn2_loaded[i] == 0) {
-						std::cerr << "Error in LoadZoneState: spawn2_loaded[" << i << "] == 0" << std::endl;
-						CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-						return -1;
-
-					}
-				}
-			}
-
-			gmspawntype_count = atoi(row[3]);
-			std::cout << "gmspawntype_count: " << gmspawntype_count << std::endl;
-			if (lengths[7] != (sizeof(NPCType) * gmspawntype_count)) {
-				std::cerr << "Error in LoadZoneState: gmspawntype_dump length mismatch l=" << lengths[7] << ", e=" << (sizeof(NPCType) * gmspawntype_count) << std::endl;
-				CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-				return -1;
-			}
-			else if (gmspawntype_count > 0) {
-				gmspawntype_dump = new NPCType[gmspawntype_count];
-				memcpy(gmspawntype_dump, row[7], lengths[7]);
-			}
-
-			npc_count = atoi(row[1]);
-			std::cout << "npc_count: " << npc_count << std::endl;
-			if (lengths[5] != (sizeof(ZSDump_NPC) * npc_count)) {
-				std::cerr << "Error in LoadZoneState: npc_dump length mismatch l=" << lengths[5] << ", e=" << (sizeof(ZSDump_NPC) * npc_count) << std::endl;
-				CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-				return -1;
-			}
-			else if (npc_count > 0) {
-				npc_dump = new ZSDump_NPC[npc_count];
-				npc_loaded = new NPC*[npc_count];
-				for (i=0; i < npc_count; i++) {
-					npc_loaded[i] = 0;
-				}
-				memcpy(npc_dump, row[5], lengths[5]);
-				for (i=0; i < npc_count; i++) {
-					if (npc_loaded[i] != 0) {
-						std::cerr << "Error in LoadZoneState: npc_loaded[" << i << "] != 0" << std::endl;
-						CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-						return -1;
-					}
-					Spawn2* tmp = 0;
-					if (!npc_dump[i].corpse && npc_dump[i].spawn2_dump_index != 0xFFFFFFFF) {
-						if (spawn2_loaded == 0 || npc_dump[i].spawn2_dump_index >= spawn2_count) {
-							std::cerr << "Error in LoadZoneState: (spawn2_loaded == 0 || index >= count) && npc_dump[" << i << "].spawn2_dump_index != 0xFFFFFFFF" << std::endl;
-							CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-							return -1;
-						}
-						tmp = spawn2_loaded[npc_dump[i].spawn2_dump_index];
-						spawn2_loaded[npc_dump[i].spawn2_dump_index] = 0;
-					}
-					if (npc_dump[i].npctype_id == 0) {
-						if (npc_dump[i].gmspawntype_index == 0xFFFFFFFF) {
-							std::cerr << "Error in LoadZoneState: gmspawntype index invalid" << std::endl;
-							safe_delete(tmp);
-
-							CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-							return -1;
-						}
-						else {
-							if (gmspawntype_dump == 0 || npc_dump[i].gmspawntype_index >= gmspawntype_count) {
-								std::cerr << "Error in LoadZoneState: (gmspawntype_dump == 0 || index >= count) && npc_dump[" << i << "].npctype_id == 0" << std::endl;
-								safe_delete(tmp);
-
-								CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-								return -1;
-							}
-							npc_loaded[i] = new NPC(&gmspawntype_dump[npc_dump[i].gmspawntype_index], tmp, npc_dump[i].x, npc_dump[i].y, npc_dump[i].z, npc_dump[i].heading, FlyMode3, npc_dump[i].corpse);
-						}
-					}
-					else {
-						const NPCType* crap = database.GetNPCType(npc_dump[i].npctype_id);
-						if (crap != 0)
-							npc_loaded[i] = new NPC(crap, tmp, npc_dump[i].x, npc_dump[i].y, npc_dump[i].z, npc_dump[i].heading, FlyMode3, npc_dump[i].corpse);
-						else {
-							std::cerr << "Error in LoadZoneState: Unknown npctype_id: " << npc_dump[i].npctype_id << std::endl;
-							safe_delete(tmp);
-						}
-					}
-					if (npc_loaded[i] != 0) {
-						npc_loaded[i]->AddCash(npc_dump[i].copper, npc_dump[i].silver, npc_dump[i].gold, npc_dump[i].platinum);
-						//							if (npc_dump[i].corpse) {
-						//								if (npc_dump[i].decay_time_left <= elapsedtime)
-						//									npc_loaded[i]->SetDecayTimer(0);
-						//								else
-						//									npc_loaded[i]->SetDecayTimer(npc_dump[i].decay_time_left - elapsedtime);
-						//							}
-						entity_list.AddNPC(npc_loaded[i]);
-					}
-				}
-			}
-
-			npcloot_count = atoi(row[2]);
-			std::cout << "npcloot_count: " << npcloot_count << std::endl;
-			if (lengths[6] != (sizeof(ZSDump_NPC_Loot) * npcloot_count)) {
-				std::cerr << "Error in LoadZoneState: npcloot_dump length mismatch l=" << lengths[6] << ", e=" << (sizeof(ZSDump_NPC_Loot) * npcloot_count) << std::endl;
-				CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-				return -1;
-			}
-			else if (npcloot_count > 0) {
-				if (npc_loaded == 0) {
-					std::cerr << "Error in LoadZoneState: npcloot_count > 0 && npc_loaded == 0" << std::endl;
-					CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-					return -1;
-				}
-				npcloot_dump = new ZSDump_NPC_Loot[npcloot_count];
-				memcpy(npcloot_dump, row[6], lengths[6]);
-				for (i=0; i < npcloot_count; i++) {
-					if (npcloot_dump[i].npc_dump_index >= npc_count) {
-						std::cerr << "Error in LoadZoneState: npcloot_dump[" << i << "].npc_dump_index >= npc_count" << std::endl;
-						CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-						return -1;
-					}
-					if (npc_loaded[npcloot_dump[i].npc_dump_index] != 0) {
-						npc_loaded[npcloot_dump[i].npc_dump_index]->AddItem(npcloot_dump[i].itemid, npcloot_dump[i].charges, npcloot_dump[i].equipSlot);
-					}
-				}
-			}
-			CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-		}
-		else {
-			CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-			return 0;
-		}
-		CleanupLoadZoneState(spawn2_count, &spawn2_dump, &npc_dump, &npcloot_dump, &gmspawntype_dump, &spawn2_loaded, &npc_loaded, &result);
-	}
-	else {
-		std::cerr << "Error in LoadZoneState query '" << query << "' " << errbuf << std::endl;
-
-		safe_delete_array(query);
-		return -1;
-	}
-
-	return 1;
-}
-
-void CleanupLoadZoneState(uint32 spawn2_count, ZSDump_Spawn2** spawn2_dump, ZSDump_NPC** npc_dump, ZSDump_NPC_Loot** npcloot_dump, NPCType** gmspawntype_dump, Spawn2*** spawn2_loaded, NPC*** npc_loaded, MYSQL_RES** result) {
-	safe_delete(*spawn2_dump);
-	safe_delete(*spawn2_loaded);
-	safe_delete(*gmspawntype_dump);
-	safe_delete(*npc_dump);
-	safe_delete(*npc_loaded);
-	safe_delete(*npcloot_dump);
-	if (*result) {
-		mysql_free_result(*result);
-		*result = 0;
-	}
 }
 
 void Zone::SpawnStatus(Mob* client) {
@@ -2665,6 +2308,7 @@ void Zone::LoadNPCEmotes(LinkedList<NPC_Emote_Struct*>* NPCEmoteList)
 void Zone::ReloadWorld(uint32 Option){
 	if(Option == 1){
 		zone->Repop(0);
+		entity_list.ClearAreas();
 		parse->ReloadQuests();
 	}
 }

@@ -2713,33 +2713,6 @@ XS(XS_Client_SetBecomeNPCLevel)
 	XSRETURN_EMPTY;
 }
 
-XS(XS_Client_LootToStack); /* prototype to pass -Wmissing-prototypes */
-XS(XS_Client_LootToStack)
-{
-	dXSARGS;
-	if (items != 2)
-		Perl_croak(aTHX_ "Usage: Client::LootToStack(THIS, itemid)");
-	{
-		Client *		THIS;
-		bool		RETVAL;
-		uint32		itemid = (uint32)SvUV(ST(1));
-
-		if (sv_derived_from(ST(0), "Client")) {
-			IV tmp = SvIV((SV*)SvRV(ST(0)));
-			THIS = INT2PTR(Client *,tmp);
-		}
-		else
-			Perl_croak(aTHX_ "THIS is not of type Client");
-		if(THIS == nullptr)
-			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
-
-		RETVAL = THIS->LootToStack(itemid);
-		ST(0) = boolSV(RETVAL);
-		sv_2mortal(ST(0));
-	}
-	XSRETURN(1);
-}
-
 XS(XS_Client_SetFeigned); /* prototype to pass -Wmissing-prototypes */
 XS(XS_Client_SetFeigned)
 {
@@ -3967,8 +3940,7 @@ XS(XS_Client_SetAAPoints) {
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		THIS->GetPP().aapoints = points;
-		THIS->SendAAStats();
+		THIS->SetAAPoints(points);
 	}
 	XSRETURN_EMPTY;
 }
@@ -3992,7 +3964,7 @@ XS(XS_Client_GetAAPoints) {
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		RETVAL = THIS->GetPP().aapoints;
+		RETVAL = THIS->GetAAPoints();
 		XSprePUSH; PUSHu((UV)RETVAL);
 	}
 	XSRETURN(1);
@@ -4017,7 +3989,7 @@ XS(XS_Client_GetSpentAA) {
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		RETVAL = THIS->GetPP().aapoints_spent;
+		RETVAL = THIS->GetSpentAA();
 		XSprePUSH; PUSHu((UV)RETVAL);
 	}
 	XSRETURN(1);
@@ -4041,8 +4013,7 @@ XS(XS_Client_AddAAPoints) {
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		THIS->GetPP().aapoints += points;
-		THIS->SendAAStats();
+		THIS->AddAAPoints(points);
 	}
 	XSRETURN_EMPTY;
 }
@@ -4902,22 +4873,7 @@ XS(XS_Client_IncrementAA)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		SendAA_Struct* aa2 = zone->FindAA(aaskillid);
-
-		if(aa2 == nullptr)
-			Perl_croak(aTHX_ "Invalid AA.");
-
-		if(THIS->GetAA(aaskillid) == aa2->max_level)
-			Perl_croak(aTHX_ "AA at Max already.");
-
-		THIS->SetAA(aaskillid, THIS->GetAA(aaskillid)+1);
-
-		THIS->Save();
-
-		THIS->SendAA(aaskillid);
-		THIS->SendAATable();
-		THIS->SendAAStats();
-		THIS->CalcBonuses();
+		THIS->IncrementAA(aaskillid);
 	}
 	XSRETURN_EMPTY;
 }
@@ -5232,7 +5188,7 @@ XS(XS_Client_GetCorpseCount)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		RETVAL = database.GetPlayerCorpseCount(THIS->CharacterID());
+		RETVAL = THIS->GetCorpseCount();
 		XSprePUSH; PUSHi((IV)RETVAL);
 	}
 	XSRETURN(1);
@@ -5259,7 +5215,7 @@ XS(XS_Client_GetCorpseID)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		RETVAL = database.GetPlayerCorpseID(THIS->CharacterID(), corpse);
+		RETVAL = THIS->GetCorpseID(corpse);
 		XSprePUSH; PUSHi((IV)RETVAL);
 	}
 	XSRETURN(1);
@@ -5287,7 +5243,7 @@ XS(XS_Client_GetCorpseItemAt)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		RETVAL = database.GetPlayerCorpseItemAt(corpse_id, slotid);
+		RETVAL = THIS->GetCorpseItemAt(corpse_id, slotid);
 		XSprePUSH; PUSHi((IV)RETVAL);
 	}
 	XSRETURN(1);
@@ -5854,7 +5810,6 @@ XS(boot_Client)
 		newXSproto(strcpy(buf, "GetBecomeNPCLevel"), XS_Client_GetBecomeNPCLevel, file, "$");
 		newXSproto(strcpy(buf, "SetBecomeNPC"), XS_Client_SetBecomeNPC, file, "$$");
 		newXSproto(strcpy(buf, "SetBecomeNPCLevel"), XS_Client_SetBecomeNPCLevel, file, "$$");
-		newXSproto(strcpy(buf, "LootToStack"), XS_Client_LootToStack, file, "$$");
 		newXSproto(strcpy(buf, "SetFeigned"), XS_Client_SetFeigned, file, "$$");
 		newXSproto(strcpy(buf, "GetFeigned"), XS_Client_GetFeigned, file, "$");
 		newXSproto(strcpy(buf, "AutoSplitEnabled"), XS_Client_AutoSplitEnabled, file, "$");

@@ -44,7 +44,6 @@ class Client;
 #include "merc.h"
 #include "zone.h"
 #include "AA.h"
-#include "updatemgr.h"
 #include "questmgr.h"
 #include "QGlobals.h"
 
@@ -213,15 +212,15 @@ Client(EQStreamInterface * ieqs);
 ~Client();
 
 //abstract virtual function implementations requird by base abstract class
-virtual void Death(Mob* killerMob, int32 damage, uint16 spell_id, SkillType attack_skill);
+	virtual bool Death(Mob* killerMob, int32 damage, uint16 spell_id, SkillType attack_skill);
 virtual void Damage(Mob* from, int32 damage, uint16 spell_id, SkillType attack_skill, bool avoidable = true, int8 buffslot = -1, bool iBuffTic = false);
-virtual bool Attack(Mob* other, int Hand = 13, bool FromRiposte = false, bool IsStrikethrough = false, bool IsFromSpell = false);
+	virtual bool Attack(Mob* other, int Hand = 13, bool FromRiposte = false, bool IsStrikethrough = false, bool IsFromSpell = false,
+		ExtraAttackOptions *opts = nullptr);
 virtual bool HasRaid() { return (GetRaid() ? true : false); }
 virtual bool HasGroup() { return (GetGroup() ? true : false); }
 virtual Raid* GetRaid() { return entity_list.GetRaidByClient(this); }
 virtual Group* GetGroup() { return entity_list.GetGroupByClient(this); }
 
-// void Discipline(ClientDiscipline_Struct* disc_in, Mob* tar);
 void	AI_Init();
 void	AI_Start(uint32 iMoveDelay = 0);
 void	AI_Stop();
@@ -697,7 +696,6 @@ inline bool	IsBecomeNPC() const { return npcflag; }
 inline uint8	GetBecomeNPCLevel() const { return npclevel; }
 inline void	SetBecomeNPC(bool flag) { npcflag = flag; }
 inline void	SetBecomeNPCLevel(uint8 level) { npclevel = level; }
-bool LootToStack(uint32 itemid);
 void SetFeigned(bool in_feigned);
 /// this cures timing issues cuz dead animation isn't done but server side feigning is?
 inline bool GetFeigned() const { return(feigned); }
@@ -761,6 +759,12 @@ bool SetAA(uint32 aa_id, uint32 new_value);
 inline uint32 GetAAPointsSpent() { return m_pp.aapoints_spent; }
 int16 CalcAAFocusEffect(focusType type, uint16 focus_spell, uint16 spell_id);
 int16 CalcAAFocus(focusType type, uint32 aa_ID, uint16 spell_id);
+	void SetAAPoints(uint32 points) { m_pp.aapoints = points; SendAAStats(); }
+	void AddAAPoints(uint32 points) { m_pp.aapoints += points; SendAAStats(); }
+	int GetAAPoints() { return m_pp.aapoints; }
+	int GetSpentAA() { return m_pp.aapoints_spent; }
+	void RefundAA();
+	void IncrementAA(int aa_id);
 
 int16 acmod();
 
@@ -844,9 +848,6 @@ bool	CheckTitle(int titleset);
 void	EnableTitle(int titleset);
 void	RemoveTitle(int titleset);
 
-#ifdef PACKET_UPDATE_MANAGER
-inline UpdateManager *GetUpdateManager() { return(&update_manager); }
-#endif
 void	EnteringMessages(Client* client);
 void	SendRules(Client* client);
 std::list<std::string> consent_list;
@@ -1019,13 +1020,18 @@ int	LDoNChest_SkillCheck(NPC *target, int skill);
 
 void MarkSingleCompassLoc(float in_x, float in_y, float in_z, uint8 count=1);
 
-void CalcItemScale(bool login = false);
-bool CalcItemScale(uint32 slot_x, uint32 slot_y, bool login = false);
+	void CalcItemScale();
+	bool CalcItemScale(uint32 slot_x, uint32 slot_y);
+	void DoItemEnterZone();
+	bool DoItemEnterZone(uint32 slot_x, uint32 slot_y);
 void SummonAndRezzAllCorpses();
 void SummonAllCorpses(float dest_x, float dest_y, float dest_z, float dest_heading);
 void DepopAllCorpses();
 void DepopPlayerCorpse(uint32 dbid);
 void BuryPlayerCorpses();
+	uint32 GetCorpseCount() { return database.GetPlayerCorpseCount(CharacterID()); }
+	uint32 GetCorpseID(int corpse) { return database.GetPlayerCorpseID(CharacterID(), corpse); }
+	uint32 GetCorpseItemAt(int corpse_id, int slot_id) { return database.GetPlayerCorpseItemAt(corpse_id, slot_id); }
 void SuspendMinion();
 void Doppelganger(uint16 spell_id, Mob *target, const char *name_override, int pet_count, int pet_duration);
 void NotifyNewTitlesAvailable();
@@ -1123,12 +1129,15 @@ const char* GetRacePlural(Client* client);
 const char* GetClassPlural(Client* client);
 void SendWebLink(const char* website);
 
-bool StoreTurnInItems(Mob* with);
 void DuplicateLoreMessage(uint32 ItemID);
 void GarbleMessage(char *, uint8);
 
 void TickItemCheck();
 void TryItemTick(int slot);
+	void ItemTimerCheck();
+	void TryItemTimer(int slot);
+	void SendItemScale(ItemInst *inst);
+
 int16 GetActSTR() { return( std::min(GetMaxSTR(), GetSTR()) ); }
 int16 GetActSTA() { return( std::min(GetMaxSTA(), GetSTA()) ); }
 int16 GetActDEX() { return( std::min(GetMaxDEX(), GetDEX()) ); }
@@ -1360,10 +1369,6 @@ Timer	scanarea_timer;
 #endif
 Timer	tribute_timer;
 
-#ifdef PACKET_UPDATE_MANAGER
-UpdateManager update_manager;
-#endif
-
 Timer	proximity_timer;
 Timer	TaskPeriodic_Timer;
 Timer	charm_update_timer;
@@ -1462,11 +1467,11 @@ bool XTargetAutoAddHaters;
 
 struct XTarget_Struct XTargets[XTARGET_HARDCAP];
 
-Timer ItemTickTimer;
+	Timer ItemTickTimer;
+	Timer ItemQuestTimer;
 std::map<std::string,std::string> accountflags;
 
 	uint8 initial_respawn_selection;
 };
 
-#include "parser.h"
 #endif

@@ -265,8 +265,7 @@ int command_init(void) {
 		command_add("viewnpctype","[npctype id] - Show info about an npctype",100,command_viewnpctype) ||
 		command_add("reloadstatic","- Reload Static Zone Data",150,command_reloadstatic) ||
 		command_add("reloadquest"," - Clear quest cache (any argument causes it to also stop all timers)",150,command_reloadqst) ||
-		command_add("reloadqst",nullptr,0,command_reloadqst) ||
-		command_add("reloadpl",nullptr,0,command_reloadqst) ||
+		command_add("reloadqst"," - Clear quest cache (any argument causes it to also stop all timers)",150,command_reloadqst) ||
 		command_add("reloadworld",nullptr,255,command_reloadworld) ||
 		command_add("reloadlevelmods",nullptr,255,command_reloadlevelmods) ||
 		command_add("rq",nullptr,0,command_reloadqst) ||
@@ -325,12 +324,6 @@ int command_init(void) {
 		command_add("qglobal","[on/off/view] - Toggles qglobal functionality on an NPC",100,command_qglobal) ||
 		command_add("loc","- Print out your or your target's current location and heading",0,command_loc) ||
 		command_add("goto","[x] [y] [z] - Teleport to the provided coordinates or to your target",10,command_goto) ||
-#ifdef EMBPERL_PLUGIN
-#ifdef EMBPERL_EVAL_COMMANDS
-		command_add("plugin","(sub) [args] - execute a plugin",PERL_PRIVS,command_embperl_plugin) ||
-		command_add("peval","(expression) - execute some perl",PERL_PRIVS,command_embperl_eval) ||
-#endif //EMBPERL_EVAL_COMMANDS
-#endif //EMBPERL_PLUGIN
 		command_add("iteminfo","- Get information about the item on your cursor",10,command_iteminfo) ||
 		command_add("uptime","[zone server id] - Get uptime of worldserver, or zone server if argument provided",10,command_uptime) ||
 		command_add("flag","[status] [acctname] - Refresh your admin status, or set an account's admin status if arguments provided",0,command_flag) ||
@@ -450,10 +443,9 @@ int command_init(void) {
 		command_add("picklock", "Analog for ldon pick lock for the newer clients since we still don't have it working.", 0, command_picklock) ||
 		command_add("mysql", "Mysql CLI, see 'help' for options.", 250, command_mysql) ||
 		command_add("xtargets", "Show your targets Extended Targets and optionally set how many xtargets they can have.", 250, command_xtargets) ||
-		command_add("printquestitems","Returns available quest items for multiquesting currently on the target npc.",200,command_printquestitems) ||
-		command_add("clearquestitems","Clears quest items for multiquesting currently on the target npc.",200,command_clearquestitems) ||
 		command_add("zopp", "Troubleshooting command - Sends a fake item packet to you. No server reference is created.", 250, command_zopp) ||
-		command_add("augmentitem", "Force augments an item. Must have the augment item window open.", 250, command_augmentitem)
+		command_add("augmentitem", "Force augments an item. Must have the augment item window open.", 250, command_augmentitem) ||
+		command_add("questerrors", "Shows quest errors.", 100, command_questerrors)
 		)
 	{
 		command_deinit();
@@ -498,13 +490,7 @@ int command_init(void) {
  */
 void command_deinit(void)
 {
-/*	LinkedListIterator<CommandRecord *> cur(cleanup_commandlist);
-	while(cur.MoreElements()) {
-		CommandRecord *tmp = cur.GetData();
-		safe_delete(tmp);
-		cur.Advance();
-	}
-*/	commandlist.clear();
+	commandlist.clear();
 
 	command_dispatch = command_notavail;
 	commandcount = 0;
@@ -565,64 +551,6 @@ int command_add(const char *command_string, const char *desc, int access, CmdFun
 	return 0;
 }
 
-
-#ifdef EMBPERL_COMMANDS
-/*
- * command_add_perl
- * adds a command to the command list, as a perl function
- *
- * Parameters:
- *	command_string	- the command ex: "spawn"
- *	desc		- text description of command for #help
- *	access		- default access level required to use command
- *
- */
-int command_add_perl(const char *command_string, const char *desc, int access) {
-	std::string cstr(command_string);
-
-	if(commandlist.count(cstr) != 0) {
-#ifdef COMMANDS_PERL_OVERRIDE
-		//print a warning so people dont get too confused when this happens
-		LogFile->write(EQEMuLog::Status, "command_add_perl() - Perl Command '%s' is overriding the compiled command." , command_string);
-		CommandRecord *tmp = commandlist[cstr];
-		safe_delete(tmp);
-#else
-		LogFile->write(EQEMuLog::Error, "command_add_perl() - Command '%s' is a duplicate - check commands.pl." , command_string);
-		return(-1);
-#endif
-	}
-
-	CommandRecord *c = new CommandRecord;
-	c->desc = desc;
-	c->access = access;
-	c->function = nullptr;
-
-	commandlist[cstr] = c;
-
-	commandcount++;
-	return 0;
-
-}
-
-//clear out any perl commands.
-//should restore any overridden C++ commands, but thats a lot of work.
-void command_clear_perl() {
-	std::map<std::string, CommandRecord *>::iterator cur,end,del;
-	cur = commandlist.begin();
-	end = commandlist.end();
-	for(; cur != end;) {
-		del = cur;
-		cur++;
-		if(del->second->function == nullptr) {
-			safe_delete(del->second);
-			commandlist.erase(del);
-		}
-	}
-}
-
-#endif //EMBPERL_COMMANDS
-
-
 /*
  *
  * command_realdispatch
@@ -663,15 +591,8 @@ int command_realdispatch(Client *c, const char *message)
 #endif
 
 	if(cur->function == nullptr) {
-#ifdef EMBPERL_COMMANDS
-		//todo reimplement this stuff
-		//dispatch perl command
-		//PerlembParser *embparse = (PerlembParser *) parse;
-		//embparse->ExecCommand(c, &sep);
-#else
-		LogFile->write(EQEMuLog::Error, "Command '%s' has a null function, but perl commands are diabled!\n", cstr.c_str());
+		LogFile->write(EQEMuLog::Error, "Command '%s' has a null function\n", cstr.c_str());
 		return(-1);
-#endif
 	} else {
 		//dispatch C++ command
 		cur->function(c, &sep);	// dispatch command
@@ -3452,7 +3373,7 @@ void command_viewnpctype(Client *c, const Seperator *sep)
 			c->Message(0, "  Class: %i", npct->class_);
 			c->Message(0, "  MinDmg: %i", npct->min_dmg);
 			c->Message(0, "  MaxDmg: %i", npct->max_dmg);
-			c->Message(0, "  Attacks: %s", npct->npc_attacks);
+			c->Message(0, "  Special Abilities: %s", npct->special_abilities.c_str());
 			c->Message(0, "  Spells: %i", npct->npc_spells_id);
 			c->Message(0, "  Loot Table: %i", npct->loottable_id);
 			c->Message(0, "  NPCFactionID: %i", npct->npc_faction_id);
@@ -3467,11 +3388,13 @@ void command_reloadqst(Client *c, const Seperator *sep)
 	if (sep->arg[1][0] == 0)
 	{
 		c->Message(0, "Clearing quest memory cache.");
+		entity_list.ClearAreas();
 		parse->ReloadQuests();
 	}
 	else
 	{
 		c->Message(0, "Clearing quest memory cache and stopping timers.");
+		entity_list.ClearAreas();
 		parse->ReloadQuests(true);
 	}
 
@@ -6407,101 +6330,6 @@ void command_stun(Client *c, const Seperator *sep)
 		c->Message(0, "Usage: #stun [duration]");
 }
 
-#ifdef EMBPERL_PLUGIN
-#ifdef EMBPERL_EVAL_COMMANDS
-
-void command_embperl_plugin(Client *c, const Seperator *sep)
-{
-	if(sep->arg[1][0] == 0)
-	{
-		c->Message(0, "Usage: #plugin (subname) [arguments]");
-		return;
-	}
-
-	Embperl * perl;
-	if(!parse || !(perl = ((PerlembParser *)parse)->getperl()))
-	{
-		c->Message(0, "Error: Perl module not loaded");
-		return;
-	}
-
-	std::string exports = "$plugin::printbuff='';$plugin::ip='";
-	struct in_addr ip; ip.s_addr = c->GetIP();
-	exports += inet_ntoa(ip);
-	exports += "';$plugin::name=qq(";
-	exports += c->GetName();
-	exports += ");package plugin;";
-	perl->eval(exports.c_str());
-
-	std::string fqsubname("plugin::");
-	fqsubname.append(sep->arg[1]);
-
-	//convert args into a vector of strings.
-	std::vector<std::string> args;
-	for(int i = 2; i < sep->argnum; ++i)
-	{
-		args.push_back(sep->arg[i]);
-	}
-
-	try
-	{
-		perl->dosub(fqsubname.c_str(), &args);
-		std::string output = perl->getstr("$plugin::printbuff");
-		if(output.length())
-			c->Message(0, "%s", output.c_str());
-	}
-	catch(const char * err)
-	{
-		c->Message(0, "Error executing plugin: %s", perl->lasterr().c_str());
-	}
-
-	perl->eval("package main;");
-
-}
-
-void command_embperl_eval(Client *c, const Seperator *sep)
-{
-	if(sep->arg[1][0] == 0)
-	{
-		c->Message(0, "Usage: #peval (expr)");
-		return;
-	}
-
-	Embperl * perl;
-	if(!parse || !(perl = ((PerlembParser *)parse)->getperl()))
-	{
-		c->Message(0, "Error: Perl module not loaded");
-		return;
-	}
-
-	std::string exports = "$plugin::printbuff='';$plugin::ip='";
-	struct in_addr ip; ip.s_addr = c->GetIP();
-	exports += inet_ntoa(ip);
-	exports += "';$plugin::name=qq(";
-	exports += c->GetName();
-	exports += ");";
-	perl->eval(exports.c_str());
-
-	try
-	{
-		std::string cmd = std::string("package plugin;") + std::string(sep->msg + sizeof("peval "));
-		perl->eval(cmd.c_str());
-		std::string output = perl->getstr("$plugin::printbuff");
-		if(output.length())
-			c->Message(0, "%s", output.c_str());
-	}
-	catch(const char * err)
-	{
-		c->Message(0, "Error: %s", perl->lasterr().c_str());
-	}
-
-	perl->eval("package main;");
-
-}
-
-#endif //EMBPERL_PLUGIN
-#endif //EMBPERL_EVAL_COMMANDS
-
 void command_ban(Client *c, const Seperator *sep)
 {
 	char errbuf[MYSQL_ERRMSG_SIZE];
@@ -8445,17 +8273,13 @@ void command_acceptrules(Client *c, const Seperator *sep)
 
 void command_guildcreate(Client *c, const Seperator *sep)
 {
-	char founders[3];
-	if (database.GetVariable("GuildCreation", founders, 3));
+	if(strlen(sep->argplus[1])>4 && strlen(sep->argplus[1])<16)
 	{
-		if(strlen(sep->argplus[1])>4 && strlen(sep->argplus[1])<16)
-		{
-			guild_mgr.AddGuildApproval(sep->argplus[1],c);
-		}
-		else
-		{
-			c->Message(0,"Guild name must be more than 4 characters and less than 16.");
-		}
+		guild_mgr.AddGuildApproval(sep->argplus[1],c);
+	}
+	else
+	{
+		c->Message(0,"Guild name must be more than 4 characters and less than 16.");
 	}
 }
 
@@ -8818,9 +8642,7 @@ void command_altactivate(Client *c, const Seperator *sep){
 
 void command_refundaa(Client *c, const Seperator *sep){
 	Client* refundee = nullptr;
-	int curpt = 0;
-	bool refunded = false;
-	if(c){
+	if(c) {
 		if(c->GetTarget()){
 			if(c->GetTarget()->IsClient())
 				refundee = c->GetTarget()->CastToClient();
@@ -8831,31 +8653,9 @@ void command_refundaa(Client *c, const Seperator *sep){
 			c->Message(0, "You must have a target selected.");
 		}
 
-		if(refundee){
-			for(int x1=0;x1<aaHighestID;x1++){
-				curpt = refundee->GetAA(x1);
-				if(curpt > 0){
-					SendAA_Struct* curaa = zone->FindAA(x1);
-					if(curaa){
-						refundee->SetAA(x1, 0);
-						for(int x2=0;x2<curpt;x2++){ //add up all the AA points pt by pt to get the correct cost
-							refundee->GetPP().aapoints += curaa->cost + (curaa->cost_inc * x2);
-							refunded = true;
-						}
-					}
-					else //aa doesn't exist.. but if they bought it then it had at least a cost of 1 point each
-					{ //so give back what we can
-						refundee->GetPP().aapoints += curpt;
-						refundee->SetAA(x1, 0);
-						refunded = true;
-					}
-				}
-			}
+		if(refundee) {
+			refundee->RefundAA();
 		}
-	}
-	if(refunded){
-		refundee->Save(); //save of course
-		refundee->Kick(); //client gets all buggy if we don't immediatly relog so just force it on them
 	}
 }
 
@@ -9696,22 +9496,22 @@ void command_object(Client *c, const Seperator *sep)
 
 					od.object_type = atoi(row[col++]);
 					icon = atoi(row[col++]);
-					od.unknown008[0] = atoi(row[col++]);
-					od.unknown008[1] = atoi(row[col++]);
+					od.unknown008 = atoi(row[col++]);
+					od.unknown010 = atoi(row[col++]);
 					od.unknown020 = atoi(row[col++]);
 
 					switch (od.object_type)
 					{
 						case 0: // Static Object
 						case TempStaticType: // Static Object unlocked for changes
-							if (od.unknown008[0] == 0) // Unknown08 field is optional Size parameter for static objects
+							if (od.unknown008 == 0) // Unknown08 field is optional Size parameter for static objects
 							{
-								od.unknown008[0] = 100;	// Static object default Size is 100%
+								od.unknown008 = 100;	// Static object default Size is 100%
 							}
 
 							c->Message(0,
 								"- STATIC Object (%s): id %u, x %.1f, y %.1f, z %.1f, h %.1f, model %s, size %u, solidtype %u, incline %u",
-								(od.object_type == 0) ? "locked" : "unlocked", id, od.x, od.y, od.z, od.heading, od.object_name, od.unknown008[0], od.unknown008[1], od.unknown020);
+								(od.object_type == 0) ? "locked" : "unlocked", id, od.x, od.y, od.z, od.heading, od.object_name, od.unknown008, od.unknown010, od.unknown020);
 							break;
 						case OT_DROPPEDITEM: // Ground Spawn
 							c->Message(0,
@@ -9777,11 +9577,11 @@ void command_object(Client *c, const Seperator *sep)
 				case 0: // Static Object
 					if ((sep->argnum - col) > 3)
 					{
-						od.unknown008[0] = atoi(sep->arg[4 + col]); // Size specified
+						od.unknown008 = atoi(sep->arg[4 + col]); // Size specified
 
 						if ((sep->argnum - col) > 4)
 						{
-							od.unknown008[1] = atoi(sep->arg[5 + col]); // SolidType specified
+							od.unknown010 = atoi(sep->arg[5 + col]); // SolidType specified
 
 							if ((sep->argnum - col) > 5)
 							{
@@ -10168,15 +9968,15 @@ void command_object(Client *c, const Seperator *sep)
 							return;
 						}
 
-						od.unknown008[0] = atoi(sep->arg[4]);
+						od.unknown008 = atoi(sep->arg[4]);
 						o->SetObjectData(&od);
 
-						if (od.unknown008[0] == 0) // 0 == unspecified == 100%
+						if (od.unknown008 == 0) // 0 == unspecified == 100%
 						{
-							od.unknown008[0] = 100;
+							od.unknown008 = 100;
 						}
 
-						c->Message(0, "Static Object %u set to %u%% size. Size will take effect when you commit to the database with '#object Save', after which the object will be unchangeable until you unlock it again with '#object Edit' and zone out and back in.", id, od.unknown008[0]);
+						c->Message(0, "Static Object %u set to %u%% size. Size will take effect when you commit to the database with '#object Save', after which the object will be unchangeable until you unlock it again with '#object Edit' and zone out and back in.", id, od.unknown008);
 					}
 					else if (strcmp(sep->arg[3], "solidtype") == 0)
 					{
@@ -10194,10 +9994,10 @@ void command_object(Client *c, const Seperator *sep)
 							return;
 						}
 
-						od.unknown008[1] = atoi(sep->arg[4]);
+						od.unknown010 = atoi(sep->arg[4]);
 						o->SetObjectData(&od);
 
-						c->Message(0, "Static Object %u set to SolidType %u. Change will take effect when you commit to the database with '#object Save'. Support for this property is on a per-model basis, mostly seen in smaller objects such as chests and tables.", id, od.unknown008[1]);
+						c->Message(0, "Static Object %u set to SolidType %u. Change will take effect when you commit to the database with '#object Save'. Support for this property is on a per-model basis, mostly seen in smaller objects such as chests and tables.", id, od.unknown010);
 					}
 					else
 					{
@@ -10548,7 +10348,7 @@ void command_object(Client *c, const Seperator *sep)
 						zone->GetZoneID(), zone->GetInstanceVersion(),
 						od.x, od.y, od.z, od.heading,
 						od.object_name, od.object_type, icon,
-						od.unknown008[0], od.unknown008[1], od.unknown020);
+						od.unknown008, od.unknown010, od.unknown020);
 				}
 				else
 				{
@@ -10558,7 +10358,7 @@ void command_object(Client *c, const Seperator *sep)
 						id, zone->GetZoneID(), zone->GetInstanceVersion(),
 						od.x, od.y, od.z, od.heading,
 						od.object_name, od.object_type, icon,
-						od.unknown008[0], od.unknown008[1], od.unknown020);
+						od.unknown008, od.unknown010, od.unknown020);
 				}
 			}
 			else
@@ -10573,7 +10373,7 @@ void command_object(Client *c, const Seperator *sep)
 					zone->GetZoneID(), zone->GetInstanceVersion(),
 					od.x, od.y, od.z, od.heading,
 					od.object_name, od.object_type, icon,
-					od.unknown008[0], od.unknown008[1], od.unknown020,
+					od.unknown008, od.unknown010, od.unknown020,
 					id);
 			}
 
@@ -10651,12 +10451,12 @@ void command_object(Client *c, const Seperator *sep)
 
 				memcpy(door.dest_zone, "NONE", 5);
 
-				if ((door.size = od.unknown008[0]) == 0) // unknown08 = optional size percentage
+				if ((door.size = od.unknown008) == 0) // unknown08 = optional size percentage
 				{
 					door.size = 100;
 				}
 
-				switch (door.opentype = od.unknown008[1]) // unknown10 = optional request_nonsolid (0 or 1 or experimental number)
+				switch (door.opentype = od.unknown010) // unknown10 = optional request_nonsolid (0 or 1 or experimental number)
 				{
 					case 0:
 						door.opentype = 31;
@@ -10943,8 +10743,8 @@ void command_object(Client *c, const Seperator *sep)
 			strn0cpy(od.object_name, row[col++], sizeof(od.object_name));
 			od.object_type = atoi(row[col++]);
 			icon = atoi(row[col++]);
-			od.unknown008[0] = atoi(row[col++]);
-			od.unknown008[1] = atoi(row[col++]);
+			od.unknown008 = atoi(row[col++]);
+			od.unknown010 = atoi(row[col++]);
 			od.unknown020 = atoi(row[col++]);
 
 			if (od.object_type == 0)
@@ -11542,35 +11342,6 @@ void command_xtargets(Client *c, const Seperator *sep)
 		t->ShowXTargets(c);
 }
 
-void command_printquestitems(Client *c, const Seperator *sep)
-{
-	if (c->GetTarget() != 0)
-	{
-		if ( c->GetTarget()->IsNPC() )
-			c->GetTarget()->CastToNPC()->PrintOutQuestItems(c);
-		else
-			c->Message(13,"Pick a NPC target.");
-	}
-	else
-			c->Message(13,"Pick a NPC target.");
-}
-
-void command_clearquestitems(Client *c, const Seperator *sep)
-{
-	if (c->GetTarget() != 0)
-	{
-		if ( c->GetTarget()->IsNPC() )
-		{
-			c->GetTarget()->CastToNPC()->ClearQuestLists();
-			c->Message(5,"Quest item list cleared.");
-		}
-		else
-			c->Message(13,"Pick a NPC target.");
-	}
-	else
-			c->Message(13,"Pick a NPC target.");
-}
-
 void command_zopp(Client *c, const Seperator *sep)
 { // - Owner only command..non-targetable to eliminate malicious or mischievious activities.
 	if (!c)
@@ -11639,3 +11410,22 @@ void command_augmentitem(Client *c, const Seperator *sep)
 		safe_delete_array(in_augment);
 }
 
+void command_questerrors(Client *c, const Seperator *sep)
+{
+	std::list<std::string> err;
+	parse->GetErrors(err);
+	c->Message(0, "Current Quest Errors:");
+
+	auto iter = err.begin();
+	int i = 0;
+	while(iter != err.end()) {
+		if(i >= 30) {
+			c->Message(0, "Maximum of 30 Errors shown...");
+			break;
+		}
+
+		c->Message(0, iter->c_str());
+		++i;
+		++iter;
+	}
+}

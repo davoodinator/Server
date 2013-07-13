@@ -446,6 +446,7 @@ int Client::HandlePacket(const EQApplicationPacket *app)
 		ClientPacketProc p;
 		p = ConnectedOpcodes[opcode];
 		if(p == nullptr) {
+#if (EQDEBUG>=5)
 			char buffer[64];
 			app->build_header_dump(buffer);
 			mlog(CLIENT__NET_ERR, "Unhandled incoming opcode: %s", buffer);
@@ -455,6 +456,7 @@ int Client::HandlePacket(const EQApplicationPacket *app)
 				std::cout << "Dump limited to 1000 characters:\n";
 				DumpPacket(app->pBuffer, 1000);
 			}
+#endif
 			break;
 		}
 
@@ -1218,7 +1220,7 @@ void Client::Handle_OP_ClientUpdate(const EQApplicationPacket *app)
 
 	if(proximity_timer.Check()) {
 		entity_list.ProcessMove(this, ppu->x_pos, ppu->y_pos, ppu->z_pos);
-			if(RuleB(TaskSystem, EnableTaskSystem) && RuleB(TaskSystem,EnableTaskProximity))
+		if(RuleB(TaskSystem, EnableTaskSystem) && RuleB(TaskSystem,EnableTaskProximity))
 			ProcessTaskProximities(ppu->x_pos, ppu->y_pos, ppu->z_pos);
 		proximity_x = ppu->x_pos;
 		proximity_y = ppu->y_pos;
@@ -1269,11 +1271,7 @@ void Client::Handle_OP_ClientUpdate(const EQApplicationPacket *app)
 		if (gmhideme)
 			entity_list.QueueClientsStatus(this,outapp,true,Admin(),250);
 		else
-#ifdef PACKET_UPDATE_MANAGER
-			entity_list.QueueManaged(this,outapp,true,false);
-#else
 			entity_list.QueueCloseClients(this,outapp,true,300,nullptr,false);
-#endif
 		safe_delete(outapp);
 	}
 
@@ -2048,7 +2046,6 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 		)
 	)
 	{
-		//Message(13, "Error: the item effect can not be used at this time");
 		SendSpellBarEnable(spell_id);
 		return;
 	}
@@ -2059,15 +2056,11 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 	{
 		ItemInst* p_inst = (ItemInst*)inst;
 
-		if(parse->ItemHasQuestSub(p_inst, "EVENT_ITEM_CLICK"))
+		parse->EventItem(EVENT_ITEM_CLICK, this, p_inst, nullptr, "", slot_id);
+		inst = m_inv[slot_id];
+		if(!inst)
 		{
-			parse->EventItem(EVENT_ITEM_CLICK, this, p_inst, p_inst->GetID(), slot_id);
-			inst = m_inv[slot_id];
-			if (!inst)
-			{
-				// Item was deleted by the perl event
-				return;
-			}
+			return;
 		}
 
         int r;
@@ -2118,19 +2111,14 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 				}
 				if(GetLevel() >= item->Click.Level2)
 				{
-					if(parse->ItemHasQuestSub(p_inst, "EVENT_ITEM_CLICK_CAST"))
+					int i = parse->EventItem(EVENT_ITEM_CLICK_CAST, this, p_inst, nullptr, "", slot_id);
+					inst = m_inv[slot_id];
+					if(!inst)
 					{
-						//TODO: need to enforce and set recast timers here because the spell may not be cast.
-						parse->EventItem(EVENT_ITEM_CLICK_CAST, this, p_inst, p_inst->GetID(), slot_id);
-						inst = m_inv[slot_id];
-						if (!inst)
-						{
-							// Item was deleted by the perl event
-							return;
-						}
+						return;
 					}
-					else
-					{
+
+					if(i == 0) {
 						CastSpell(item->Click.Effect, target_id, 10, item->CastTime, 0, 0, slot_id);
 					}
 				}
@@ -2150,22 +2138,16 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
                 }
                 if(GetLevel() >= augitem->Click.Level2)
                 {
-                    if(parse->ItemHasQuestSub(clickaug, "EVENT_ITEM_CLICK_CAST"))
-                    {
-                        //TODO: need to enforce and set recast timers here because the spell may not be cast.
-                        parse->EventItem(EVENT_ITEM_CLICK_CAST, this, clickaug, clickaug->GetID(), slot_id);
-                        inst = m_inv[slot_id];
-                        if (!inst)
-                        {
-                            // Item was deleted by the perl event
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        //We assume augs aren't consumable
-                        CastSpell(augitem->Click.Effect, target_id, 10, augitem->CastTime, 0, 0, slot_id);
-                    }
+					int i = parse->EventItem(EVENT_ITEM_CLICK_CAST, this, clickaug, nullptr, "", slot_id);
+					inst = m_inv[slot_id];
+					if(!inst)
+					{
+						return;
+					}
+
+					if(i == 0) {
+						CastSpell(augitem->Click.Effect, target_id, 10, augitem->CastTime, 0, 0, slot_id);
+					}
                 }
                 else
                 {
@@ -3254,7 +3236,7 @@ void Client::Handle_OP_ItemLinkClick(const EQApplicationPacket *app)
 			{
 				if( !mod_saylink(response, silentsaylink) ) { return; }
 
-				if(this->GetTarget() && this->GetTarget()->IsNPC())
+				if(GetTarget() && GetTarget()->IsNPC())
 				{
 					if(silentsaylink)
 					{
@@ -3899,7 +3881,7 @@ void Client::Handle_OP_LDoNInspect(const EQApplicationPacket *app)
 void Client::Handle_OP_Dye(const EQApplicationPacket *app)
 {
 	if(app->size!=sizeof(DyeStruct))
-		printf("Wrong size of DyeStruct, Got: %i, Expected: %i\n",app->size,sizeof(DyeStruct));
+		printf("Wrong size of DyeStruct, Got: %i, Expected: %zu\n",app->size,sizeof(DyeStruct));
 	else{
 		DyeStruct* dye = (DyeStruct*)app->pBuffer;
 		DyeArmor(dye);
@@ -3970,7 +3952,7 @@ void Client::Handle_OP_GuildPublicNote(const EQApplicationPacket *app)
 
 	if (app->size < sizeof(GuildUpdate_PublicNote)) {
 		// client calls for a motd on login even if they arent in a guild
-		printf("Error: app size of %i < size of OP_GuildPublicNote of %i\n",app->size,sizeof(GuildUpdate_PublicNote));
+		printf("Error: app size of %i < size of OP_GuildPublicNote of %zu\n",app->size,sizeof(GuildUpdate_PublicNote));
 		return;
 	}
 	GuildUpdate_PublicNote* gpn=(GuildUpdate_PublicNote*)app->pBuffer;
@@ -4028,7 +4010,7 @@ void Client::Handle_OP_SetGuildMOTD(const EQApplicationPacket *app)
 
 	if (app->size != sizeof(GuildMOTD_Struct)) {
 		// client calls for a motd on login even if they arent in a guild
-		printf("Error: app size of %i != size of GuildMOTD_Struct of %i\n",app->size,sizeof(GuildMOTD_Struct));
+		printf("Error: app size of %i != size of GuildMOTD_Struct of %zu\n",app->size,sizeof(GuildMOTD_Struct));
 		return;
 	}
 	if(!IsInAGuild()) {
@@ -4577,7 +4559,7 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 		LogFile->write(EQEMuLog::Debug, "cs_unknown2: 16 %p %u %u", &castspell->cs_unknown, *(uint16*) castspell->cs_unknown, *(uint16*) castspell->cs_unknown+sizeof(uint16) );
 		LogFile->write(EQEMuLog::Debug, "cs_unknown2: 16 %p %i %i", &castspell->cs_unknown, *(uint16*) castspell->cs_unknown, *(uint16*) castspell->cs_unknown+sizeof(uint16) );
 #endif
-	LogFile->write(EQEMuLog::Debug, "OP CastSpell: slot=%d, spell=%d, target=%d, inv=%lx", castspell->slot, castspell->spell_id, castspell->target_id, (unsigned long)castspell->inventoryslot);
+LogFile->write(EQEMuLog::Debug, "OP CastSpell: slot=%d, spell=%d, target=%d, inv=%lx", castspell->slot, castspell->spell_id, castspell->target_id, (unsigned long)castspell->inventoryslot);
 
 	if ((castspell->slot == USE_ITEM_SPELL_SLOT) || (castspell->slot == POTION_BELT_SPELL_SLOT))	// this means item
 	{
@@ -4610,15 +4592,13 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 						if(GetLevel() >= item->Click.Level2)
 						{
 							ItemInst* p_inst = (ItemInst*)inst;
-							if(parse->ItemHasQuestSub(p_inst, "EVENT_ITEM_CLICK_CAST"))
-							{
-								parse->EventItem(EVENT_ITEM_CLICK_CAST, this, p_inst, p_inst->GetID(), castspell->inventoryslot);
-								SendSpellBarEnable(castspell->spell_id);
-								return;
-							}
-							else
-							{
+							int i = parse->EventItem(EVENT_ITEM_CLICK_CAST, this, p_inst, nullptr, "", castspell->inventoryslot);
+
+							if(i == 0) {
 								CastSpell(item->Click.Effect, castspell->target_id, castspell->slot, item->CastTime, 0, 0, castspell->inventoryslot);
+							} else {
+								InterruptSpell(castspell->spell_id);
+								return;
 							}
 						}
 						else
@@ -4631,15 +4611,13 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 					else
 					{
 						ItemInst* p_inst = (ItemInst*)inst;
-						if(parse->ItemHasQuestSub(p_inst, "EVENT_ITEM_CLICK_CAST"))
-						{
-							parse->EventItem(EVENT_ITEM_CLICK_CAST, this, p_inst, p_inst->GetID(), castspell->inventoryslot);
-							SendSpellBarEnable(castspell->spell_id);
-							return;
-						}
-						else
-						{
+						int i = parse->EventItem(EVENT_ITEM_CLICK_CAST, this, p_inst, nullptr, "", castspell->inventoryslot);
+
+						if(i == 0) {
 							CastSpell(item->Click.Effect, castspell->target_id, castspell->slot, item->CastTime, 0, 0, castspell->inventoryslot);
+						} else {
+							InterruptSpell(castspell->spell_id);
+							return;
 						}
 					}
 				}
@@ -4690,22 +4668,28 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 			else
 				spell_to_cast = SPELL_HARM_TOUCH2;
 			p_timers.Start(pTimerHarmTouch, HarmTouchReuseTime);
-		} else if(castspell->slot == DISCIPLINE_SPELL_SLOT) {
+		}
+
+		//handle disciplines, OLD, they keep changing this
+		if(castspell->slot == DISCIPLINE_SPELL_SLOT) {
 			if(!UseDiscipline(castspell->spell_id, castspell->target_id)) {
 				printf("Unknown ability being used by %s, spell being cast is: %i\n",GetName(),castspell->spell_id);
 				InterruptSpell(castspell->spell_id);
 			}
 			return;
-		} else if(castspell->slot < MAX_PP_MEMSPELL) {
+		}
+
+		if(castspell->slot < MAX_PP_MEMSPELL)
+		{
 			spell_to_cast = m_pp.mem_spells[castspell->slot];
 			if(spell_to_cast != castspell->spell_id)
 			{
 				InterruptSpell(castspell->spell_id); //CHEATER!!!
 				return;
 			}
-		} else {
-			//If we get to here this slot should be invalid invalid
-			InterruptSpell(castspell->spell_id);
+		}
+		else {
+			InterruptSpell();
 			return;
 		}
 
@@ -5778,7 +5762,7 @@ void Client::Handle_OP_ShopPlayerBuy(const EQApplicationPacket *app)
 	if ((RuleB(Character, EnableDiscoveredItems)))
 	{
 		if(!GetGM() && !IsDiscovered(item_id))
-		DiscoverItem(item_id);
+			DiscoverItem(item_id);
 	}
 
 	t1.stop();
@@ -6028,15 +6012,18 @@ void Client::Handle_OP_ClickObject(const EQApplicationPacket *app)
 
 	ClickObject_Struct* click_object = (ClickObject_Struct*)app->pBuffer;
 	Entity* entity = entity_list.GetID(click_object->drop_id);
-	//TODO: should enforce range checking here.
 	if (entity && entity->IsObject()) {
 		Object* object = entity->CastToObject();
+
 		object->HandleClick(this, click_object);
+
+		std::vector<void*> args;
+		args.push_back(object);
 
 		char buf[10];
 		snprintf(buf, 9, "%u", click_object->drop_id);
 		buf[9] = '\0';
-		parse->EventPlayer(EVENT_CLICK_OBJECT, this, buf, 0);
+		parse->EventPlayer(EVENT_CLICK_OBJECT, this, buf, 0, &args);
 	}
 
 	// Observed in RoF after OP_ClickObjectAction:
@@ -6242,12 +6229,6 @@ void Client::Handle_OP_AugmentItem(const EQApplicationPacket *app)
 			sizeof(AugmentItem_Struct), app->size);
 		return;
 	}
-	/*if (m_tradeskill_object == nullptr) {
-		Message(13, "Error: Server is not aware of the tradeskill container you are attempting to use");
-		return;
-	}*/
-
-	//fixed this to work for non-world objects
 
 	// Delegate to tradeskill object to perform combine
 	AugmentItem_Struct* in_augment = (AugmentItem_Struct*)app->pBuffer;
@@ -6270,9 +6251,11 @@ void Client::Handle_OP_ClickDoor(const EQApplicationPacket *app)
 	}
 
 	char buf[20];
-	snprintf(buf, 19, "%u %u", cd->doorid, zone->GetInstanceVersion());
+	snprintf(buf, 19, "%u", cd->doorid);
 	buf[19] = '\0';
-	parse->EventPlayer(EVENT_CLICKDOOR, this, buf, 0);
+	std::vector<void*> args;
+	args.push_back(currentdoor);
+	parse->EventPlayer(EVENT_CLICK_DOOR, this, buf, 0, &args);
 
 	currentdoor->HandleClick(this,0);
 	return;
@@ -6913,7 +6896,7 @@ void Client::Handle_OP_DeleteSpell(const EQApplicationPacket *app)
 void Client::Handle_OP_LoadSpellSet(const EQApplicationPacket *app)
 {
 	if(app->size!=sizeof(LoadSpellSet_Struct)) {
-		printf("Wrong size of LoadSpellSet_Struct! Expected: %i, Got: %i\n",sizeof(LoadSpellSet_Struct),app->size);
+		printf("Wrong size of LoadSpellSet_Struct! Expected: %zu, Got: %i\n",sizeof(LoadSpellSet_Struct),app->size);
 		return;
 	}
 	int i;
@@ -6928,7 +6911,7 @@ void Client::Handle_OP_LoadSpellSet(const EQApplicationPacket *app)
 void Client::Handle_OP_PetitionBug(const EQApplicationPacket *app)
 {
 	if(app->size!=sizeof(PetitionBug_Struct))
-		printf("Wrong size of BugStruct! Expected: %i, Got: %i\n",sizeof(PetitionBug_Struct),app->size);
+		printf("Wrong size of BugStruct! Expected: %zu, Got: %i\n",sizeof(PetitionBug_Struct),app->size);
 	else{
 		Message(0, "Petition Bugs are not supported, please use /bug.");
 	}
@@ -6938,7 +6921,7 @@ void Client::Handle_OP_PetitionBug(const EQApplicationPacket *app)
 void Client::Handle_OP_Bug(const EQApplicationPacket *app)
 {
 	if(app->size!=sizeof(BugStruct))
-		printf("Wrong size of BugStruct got %d expected %i!\n", app->size, sizeof(BugStruct));
+		printf("Wrong size of BugStruct got %d expected %zu!\n", app->size, sizeof(BugStruct));
 	else{
 		BugStruct* bug=(BugStruct*)app->pBuffer;
 		database.UpdateBug(bug);
@@ -8334,7 +8317,7 @@ void Client::Handle_OP_OpenTributeMaster(const EQApplicationPacket *app)
 	_pkt(TRIBUTE__IN, app);
 
 	if(app->size != sizeof(StartTribute_Struct))
-		printf("Error in OP_OpenTributeMaster. Expected size of: %i, but got: %i\n",sizeof(StartTribute_Struct),app->size);
+		printf("Error in OP_OpenTributeMaster. Expected size of: %zu, but got: %i\n",sizeof(StartTribute_Struct),app->size);
 	else {
 		//Opens the tribute master window
 		StartTribute_Struct* st = (StartTribute_Struct*)app->pBuffer;
@@ -8359,7 +8342,7 @@ void Client::Handle_OP_OpenGuildTributeMaster(const EQApplicationPacket *app)
 	_pkt(TRIBUTE__IN, app);
 
 	if(app->size != sizeof(StartTribute_Struct))
-		printf("Error in OP_OpenGuildTributeMaster. Expected size of: %i, but got: %i\n",sizeof(StartTribute_Struct),app->size);
+		printf("Error in OP_OpenGuildTributeMaster. Expected size of: %zu, but got: %i\n",sizeof(StartTribute_Struct),app->size);
 	else {
 		//Opens the guild tribute master window
 		StartTribute_Struct* st = (StartTribute_Struct*)app->pBuffer;
@@ -8385,7 +8368,7 @@ void Client::Handle_OP_TributeItem(const EQApplicationPacket *app)
 
 	//player donates an item...
 	if(app->size != sizeof(TributeItem_Struct))
-		printf("Error in OP_TributeItem. Expected size of: %i, but got: %i\n",sizeof(StartTribute_Struct),app->size);
+		printf("Error in OP_TributeItem. Expected size of: %zu, but got: %i\n",sizeof(StartTribute_Struct),app->size);
 	else {
 		TributeItem_Struct* t = (TributeItem_Struct*)app->pBuffer;
 
@@ -8414,7 +8397,7 @@ void Client::Handle_OP_TributeMoney(const EQApplicationPacket *app)
 
 	//player donates money
 	if(app->size != sizeof(TributeMoney_Struct))
-		printf("Error in OP_TributeMoney. Expected size of: %i, but got: %i\n",sizeof(StartTribute_Struct),app->size);
+		printf("Error in OP_TributeMoney. Expected size of: %zu, but got: %i\n",sizeof(StartTribute_Struct),app->size);
 	else {
 		TributeMoney_Struct* t = (TributeMoney_Struct*)app->pBuffer;
 
@@ -8562,13 +8545,11 @@ void Client::Handle_OP_Ignore(const EQApplicationPacket *app)
 void Client::Handle_OP_FindPersonRequest(const EQApplicationPacket *app)
 {
 	if(app->size != sizeof(FindPersonRequest_Struct))
-		printf("Error in FindPersonRequest_Struct. Expected size of: %i, but got: %i\n",sizeof(FindPersonRequest_Struct),app->size);
+		printf("Error in FindPersonRequest_Struct. Expected size of: %zu, but got: %i\n",sizeof(FindPersonRequest_Struct),app->size);
 	else {
 		FindPersonRequest_Struct* t = (FindPersonRequest_Struct*)app->pBuffer;
 
 		std::vector<FindPerson_Point> points;
-
-		Message(13, "Searched for NPC ID: %d\n", t->npc_id);
 		Mob* target = entity_list.GetMob(t->npc_id);
 
 		if(target == nullptr) {
@@ -8583,8 +8564,6 @@ void Client::Handle_OP_FindPersonRequest(const EQApplicationPacket *app)
 			Message(15, "Moving you to Trader %s", target->GetName());
 			MovePC(zone->GetZoneID(), zone->GetInstanceID(), target->GetX(), target->GetY(), target->GetZ() , 0.0f);
 		}
-		else
-			Message(13, "Found NPC '%s'\n", target->GetName());
 
 		if(!RuleB(Pathing, Find) || !zone->pathing)
 		{
@@ -9596,10 +9575,11 @@ void Client::CompleteConnect()
 
 	SendDisciplineTimers();
 
-	parse->EventPlayer(EVENT_ENTERZONE, this, "", 0);
+	parse->EventPlayer(EVENT_ENTER_ZONE, this, "", 0);
 
+	//This sub event is for if a player logs in for the first time since entering world.
 	if(firstlogon == 1)
-		parse->EventPlayer(EVENT_CONNECT, this, "", 0); //This sub event is for if a player logs in for the first time since entering world.
+		parse->EventPlayer(EVENT_CONNECT, this, "", 0);
 
 	if(zone)
 	{
@@ -9637,7 +9617,8 @@ void Client::CompleteConnect()
 	SendAltCurrencies();
 	database.LoadAltCurrencyValues(CharacterID(), alternate_currency);
 	SendAlternateCurrencyValues();
-	CalcItemScale(true);
+	CalcItemScale();
+	DoItemEnterZone();
 
 	if(zone->GetZoneID() == RuleI(World, GuildBankZoneID) && GuildBanks)
 		GuildBanks->SendGuildBank(this);
@@ -10486,11 +10467,9 @@ void Client::Handle_OP_Translocate(const EQApplicationPacket *app) {
 	if(its->Complete == 1) {
 
 		int SpellID = PendingTranslocateData.SpellID;
-		if(parse->SpellHasQuestSub(SpellID, "EVENT_SPELL_EFFECT_TRANSLOCATE_COMPLETE"))
-		{
-			parse->EventSpell(EVENT_SPELL_EFFECT_TRANSLOCATE_COMPLETE, nullptr, this, SpellID, 0);
-		}
-		else
+		int i = parse->EventSpell(EVENT_SPELL_EFFECT_TRANSLOCATE_COMPLETE, nullptr, this, SpellID, 0);
+
+		if(i == 0)
 		{
 			// If the spell has a translocate to bind effect, AND we are already in the zone the client
 			// is bound in, use the GoToBind method. If we send OP_Translocate in this case, the client moves itself
@@ -10635,17 +10614,15 @@ void Client::Handle_OP_PopupResponse(const EQApplicationPacket *app) {
 			break;
 	}
 
-	char *buf = 0;
-	MakeAnyLenString(&buf, "%d", prs->popupid);
+	char buf[16];
+	sprintf(buf, "%d\0", prs->popupid);
 
-	parse->EventPlayer(EVENT_POPUPRESPONSE, this, buf, 0);
+	parse->EventPlayer(EVENT_POPUP_RESPONSE, this, buf, 0);
 
 	Mob* Target = GetTarget();
 	if(Target && Target->IsNPC()) {
-		parse->EventNPC(EVENT_POPUPRESPONSE, Target->CastToNPC(), this, buf, 0);
+		parse->EventNPC(EVENT_POPUP_RESPONSE, Target->CastToNPC(), this, buf, 0);
 	}
-
-	safe_delete_array(buf);
 }
 
 void Client::Handle_OP_PotionBelt(const EQApplicationPacket *app) {

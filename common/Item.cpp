@@ -30,6 +30,7 @@
 #include <sstream>
 #include <iostream>
 
+std::list<ItemInst*> dirty_inst;
 int32 NextItemInstSerialNumber = 1;
 
 static inline int32 GetNextItemInstSerialNumber() {
@@ -65,6 +66,13 @@ ItemInst::ItemInst(const Item_Struct* item, int16 charges) {
 		m_color = 0;
 	m_merchantcount = 1;
 	m_SerialNumber = GetNextItemInstSerialNumber();
+
+	m_exp = 0;
+	m_evolveLvl = 0;
+	m_activated = false;
+	m_scaledItem = nullptr;
+	m_evolveInfo = nullptr;
+	m_scaling = false;
 }
 
 ItemInst::ItemInst(SharedDatabase *db, uint32 item_id, int16 charges) {
@@ -80,6 +88,13 @@ ItemInst::ItemInst(SharedDatabase *db, uint32 item_id, int16 charges) {
 		m_color = 0;
 	m_merchantcount = 1;
 	m_SerialNumber = GetNextItemInstSerialNumber();
+
+	m_exp = 0;
+	m_evolveLvl = 0;
+	m_activated = false;
+	m_scaledItem = nullptr;
+	m_evolveInfo = nullptr;
+	m_scaling = false;
 }
 
 ItemInstQueue::~ItemInstQueue() {
@@ -95,7 +110,6 @@ ItemInstQueue::~ItemInstQueue() {
 
 Inventory::~Inventory() {
 	std::map<int16, ItemInst*>::iterator cur,end;
-
 
 	cur = m_worn.begin();
 	end = m_worn.end();
@@ -170,12 +184,30 @@ ItemInst::ItemInst(const ItemInst& copy)
 	}
 	m_SerialNumber = copy.m_SerialNumber;
 	m_custom_data = copy.m_custom_data;
+	m_timers = copy.m_timers;
+
+	m_exp = copy.m_exp;
+	m_evolveLvl = copy.m_evolveLvl;
+	m_activated = copy.m_activated;
+	if (copy.m_scaledItem)
+		m_scaledItem = new Item_Struct(*copy.m_scaledItem);
+	else
+		m_scaledItem = nullptr;
+
+	if(copy.m_evolveInfo)
+		m_evolveInfo = new EvolveInfo(*copy.m_evolveInfo);
+	else
+		m_evolveInfo = nullptr;
+
+	m_scaling = copy.m_scaling;
 }
 
 // Clean up container contents
 ItemInst::~ItemInst()
 {
 	Clear();
+	safe_delete(m_scaledItem);
+	safe_delete(m_evolveInfo);
 }
 
 // Clone a type of ItemInst object
@@ -631,6 +663,153 @@ std::string ItemInst::GetCustomData(std::string identifier) {
 	return "";
 }
 
+void ItemInst::SetTimer(std::string name, uint32 time) {
+	Timer t(time);
+	t.Start(time, false);
+	m_timers[name] = t;
+}
+
+void ItemInst::StopTimer(std::string name) {
+	auto iter = m_timers.find(name);
+	if(iter != m_timers.end()) {
+		m_timers.erase(iter);
+	}
+}
+
+void ItemInst::ClearTimers() {
+	m_timers.clear();
+}
+
+const Item_Struct* ItemInst::GetItem() const {
+	if(!m_scaledItem)
+		return m_item;
+	else
+		return m_scaledItem;
+}
+
+const Item_Struct* ItemInst::GetUnscaledItem() const {
+	return m_item;
+}
+
+void ItemInst::Initialize(SharedDatabase *db) {
+	// if there's no actual item, don't do anything
+	if(!m_item)
+		return;
+
+	// initialize scaling items
+	if (m_item->CharmFileID != 0) {
+		m_scaling = true;
+		ScaleItem();
+	}
+
+	// initialize evolving items
+	else if ((db) && m_item->LoreGroup >= 1000 && m_item->LoreGroup != -1) {
+		// not complete yet
+	}
+}
+
+void ItemInst::ScaleItem() {
+	if(m_scaledItem) {
+		memcpy(m_scaledItem, m_item, sizeof(Item_Struct));
+	} else {
+		m_scaledItem = new Item_Struct(*m_item);
+	}
+
+	float Mult = (float)(GetExp())/10000;	// scaling is determined by exp, with 10,000 being full stats
+
+	m_scaledItem->AStr = (int8)((float)m_item->AStr*Mult);
+	m_scaledItem->ASta = (int8)((float)m_item->ASta*Mult);
+	m_scaledItem->AAgi = (int8)((float)m_item->AAgi*Mult);
+	m_scaledItem->ADex = (int8)((float)m_item->ADex*Mult);
+	m_scaledItem->AInt = (int8)((float)m_item->AInt*Mult);
+	m_scaledItem->AWis = (int8)((float)m_item->AWis*Mult);
+	m_scaledItem->ACha = (int8)((float)m_item->ACha*Mult);
+
+	m_scaledItem->MR = (int8)((float)m_item->MR*Mult);
+	m_scaledItem->PR = (int8)((float)m_item->PR*Mult);
+	m_scaledItem->DR = (int8)((float)m_item->DR*Mult);
+	m_scaledItem->CR = (int8)((float)m_item->CR*Mult);
+	m_scaledItem->FR = (int8)((float)m_item->FR*Mult);
+
+	m_scaledItem->HP = (int32)((float)m_item->HP*Mult);
+	m_scaledItem->Mana = (int32)((float)m_item->Mana*Mult);
+	m_scaledItem->AC = (int32)((float)m_item->AC*Mult);
+
+	m_scaledItem->SkillModValue = (int32)((float)m_item->SkillModValue*Mult);
+	m_scaledItem->BaneDmgAmt = (int8)((float)m_item->BaneDmgAmt*Mult);
+	m_scaledItem->BardValue = (int32)((float)m_item->BardValue*Mult);
+	m_scaledItem->ElemDmgAmt = (uint8)((float)m_item->ElemDmgAmt*Mult);
+	m_scaledItem->Damage = (uint32)((float)m_item->Damage*Mult);
+
+	m_scaledItem->CombatEffects = (int8)((float)m_item->CombatEffects*Mult);
+	m_scaledItem->Shielding = (int8)((float)m_item->Shielding*Mult);
+	m_scaledItem->StunResist = (int8)((float)m_item->StunResist*Mult);
+	m_scaledItem->StrikeThrough = (int8)((float)m_item->StrikeThrough*Mult);
+	m_scaledItem->ExtraDmgAmt = (uint32)((float)m_item->ExtraDmgAmt*Mult);
+	m_scaledItem->SpellShield = (int8)((float)m_item->SpellShield*Mult);
+	m_scaledItem->Avoidance = (int8)((float)m_item->Avoidance*Mult);
+	m_scaledItem->Accuracy = (int8)((float)m_item->Accuracy*Mult);
+
+	m_scaledItem->FactionAmt1 = (int32)((float)m_item->FactionAmt1*Mult);
+	m_scaledItem->FactionAmt2 = (int32)((float)m_item->FactionAmt2*Mult);
+	m_scaledItem->FactionAmt3 = (int32)((float)m_item->FactionAmt3*Mult);
+	m_scaledItem->FactionAmt4 = (int32)((float)m_item->FactionAmt4*Mult);
+
+	m_scaledItem->Endur = (uint32)((float)m_item->Endur*Mult);
+	m_scaledItem->DotShielding = (uint32)((float)m_item->DotShielding*Mult);
+	m_scaledItem->Attack = (uint32)((float)m_item->Attack*Mult);
+	m_scaledItem->Regen = (uint32)((float)m_item->Regen*Mult);
+	m_scaledItem->ManaRegen = (uint32)((float)m_item->ManaRegen*Mult);
+	m_scaledItem->EnduranceRegen = (uint32)((float)m_item->EnduranceRegen*Mult);
+	m_scaledItem->Haste = (uint32)((float)m_item->Haste*Mult);
+	m_scaledItem->DamageShield = (uint32)((float)m_item->DamageShield*Mult);
+
+	m_scaledItem->Purity = (uint32)((float)m_item->Purity*Mult);
+	m_scaledItem->BackstabDmg = (uint32)((float)m_item->BackstabDmg*Mult);
+	m_scaledItem->DSMitigation = (uint32)((float)m_item->DSMitigation*Mult);
+	m_scaledItem->HeroicStr = (int32)((float)m_item->HeroicStr*Mult);
+	m_scaledItem->HeroicInt = (int32)((float)m_item->HeroicInt*Mult);
+	m_scaledItem->HeroicWis = (int32)((float)m_item->HeroicWis*Mult);
+	m_scaledItem->HeroicAgi = (int32)((float)m_item->HeroicAgi*Mult);
+	m_scaledItem->HeroicDex = (int32)((float)m_item->HeroicDex*Mult);
+	m_scaledItem->HeroicSta = (int32)((float)m_item->HeroicSta*Mult);
+	m_scaledItem->HeroicCha = (int32)((float)m_item->HeroicCha*Mult);
+	m_scaledItem->HeroicMR = (int32)((float)m_item->HeroicMR*Mult);
+	m_scaledItem->HeroicFR = (int32)((float)m_item->HeroicFR*Mult);
+	m_scaledItem->HeroicCR = (int32)((float)m_item->HeroicCR*Mult);
+	m_scaledItem->HeroicDR = (int32)((float)m_item->HeroicDR*Mult);
+	m_scaledItem->HeroicPR = (int32)((float)m_item->HeroicPR*Mult);
+	m_scaledItem->HeroicSVCorrup = (int32)((float)m_item->HeroicSVCorrup*Mult);
+	m_scaledItem->HealAmt = (int32)((float)m_item->HealAmt*Mult);
+	m_scaledItem->SpellDmg = (int32)((float)m_item->SpellDmg*Mult);
+	m_scaledItem->Clairvoyance = (uint32)((float)m_item->Clairvoyance*Mult);
+
+	m_scaledItem->CharmFileID = 0;	// this stops the client from trying to scale the item itself.
+}
+
+bool ItemInst::EvolveOnAllKills() const {
+	return (m_evolveInfo && m_evolveInfo->AllKills);
+}
+
+int8 ItemInst::GetMaxEvolveLvl() const {
+	if(m_evolveInfo)
+		return m_evolveInfo->MaxLvl;
+	else
+		return 0;
+}
+
+uint32 ItemInst::GetKillsNeeded(uint8 currentlevel) {
+	uint32 kills = -1;	// default to -1 (max uint32 value) because this value is usually divided by, so we don't want to ever return zero.
+	if (m_evolveInfo)
+		if (currentlevel != m_evolveInfo->MaxLvl)
+			kills = m_evolveInfo->LvlKills[currentlevel-1];
+
+	if (kills == 0)
+		kills = -1;
+
+	return kills;
+}
+
 // Retrieve item at specified position within bag
 ItemInst* Inventory::GetItem(int16 slot_id, uint8 bagidx) const
 {
@@ -937,7 +1116,7 @@ bool Inventory::DeleteItem(int16 slot_id, uint8 quantity)
 				(!item_to_delete->IsStackable() &&
 				((item_to_delete->GetItem()->MaxCharges == 0) || item_to_delete->IsExpendable()))) {
 				// Item can now be destroyed
-				safe_delete(item_to_delete);
+				Inventory::MarkDirty(item_to_delete);
 				return true;
 			}
 		}
@@ -947,8 +1126,7 @@ bool Inventory::DeleteItem(int16 slot_id, uint8 quantity)
 		return false;
 	}
 
-	safe_delete(item_to_delete);
-
+	Inventory::MarkDirty(item_to_delete);
 	return true;
 
 }
@@ -1072,6 +1250,61 @@ void Inventory::dumpBagContents(ItemInst *inst, iter_inst *it) {
 
 }
 
+int Inventory::GetSlotByItemInst(ItemInst *inst) {
+	if(!inst)
+		return -1;
+
+	int i = GetSlotByItemInstCollection(m_worn, inst);
+	if(i != -1) {
+		return i;
+	}
+
+	i = GetSlotByItemInstCollection(m_inv, inst);
+	if(i != -1) {
+		return i;
+	}
+
+	i = GetSlotByItemInstCollection(m_bank, inst);
+	if(i != -1) {
+		return i;
+	}
+
+	i = GetSlotByItemInstCollection(m_shbank, inst);
+	if(i != -1) {
+		return i;
+	}
+
+	i = GetSlotByItemInstCollection(m_trade, inst);
+	if(i != -1) {
+		return i;
+	}
+
+	if(m_cursor.peek_front() == inst) {
+		return SLOT_CURSOR;
+	}
+
+	return -1;
+}
+
+int Inventory::GetSlotByItemInstCollection(const std::map<int16, ItemInst*> &collection, ItemInst *inst) {
+	for(auto iter = collection.begin(); iter != collection.end(); ++iter) {
+		ItemInst *t_inst = iter->second;
+		if(t_inst == inst) {
+			return iter->first;
+		}
+
+		if(t_inst && !t_inst->IsType(ItemClassContainer)) {
+			for(auto b_iter = t_inst->_begin(); b_iter != t_inst->_end(); ++b_iter) {
+				if(b_iter->second == inst) {
+					return Inventory::CalcSlotId(iter->first, b_iter->first);
+				}
+			}
+		}
+	}
+
+	return -1;
+}
+
 void Inventory::dumpItemCollection(const std::map<int16, ItemInst*> &collection) {
 	iter_inst it;
 	iter_contents itb;
@@ -1079,7 +1312,6 @@ void Inventory::dumpItemCollection(const std::map<int16, ItemInst*> &collection)
 	
 	for (it=collection.begin(); it!=collection.end(); it++) {
 		inst = it->second;
-		it->first;
 		if(!inst || !inst->GetItem())
 			continue;
 		
@@ -1185,7 +1417,7 @@ int16 Inventory::_PutItem(int16 slot_id, ItemInst* inst)
 
 	if (result == SLOT_INVALID) {
 		LogFile->write(EQEMuLog::Error, "Inventory::_PutItem: Invalid slot_id specified (%i)", slot_id);
-		safe_delete(inst); // Slot not found, clean up
+		Inventory::MarkDirty(inst); // Slot not found, clean up
 	}
 
 	return result;
@@ -1638,222 +1870,6 @@ bool Inventory::CanItemFitInContainer(const Item_Struct *ItemToTry, const Item_S
 	return true;
 }
 
-// Methods for EvoItemInst, the extended ItemInst for evolving/scaling items
-// Copy constructors
-EvoItemInst::EvoItemInst(const EvoItemInst &copy) {
-	m_use_type=copy.m_use_type;
-	m_item=copy.m_item;
-	m_charges=copy.m_charges;
-	m_price=copy.m_price;
-	m_color=copy.m_color;
-	m_merchantslot=copy.m_merchantslot;
-	m_currentslot=copy.m_currentslot;
-	m_instnodrop=copy.m_instnodrop;
-	m_merchantcount=copy.m_merchantcount;
-	// Copy container contents
-	iter_contents it;
-	for (it=copy.m_contents.begin(); it!=copy.m_contents.end(); it++) {
-		ItemInst* inst_old = it->second;
-		ItemInst* inst_new = nullptr;
-
-		if (inst_old) {
-			inst_new = inst_old->Clone();
-		}
-
-		if (inst_new != nullptr) {
-			m_contents[it->first] = inst_new;
-		}
-	}
-	std::map<std::string, std::string>::const_iterator iter;
-	for (iter = copy.m_custom_data.begin(); iter != copy.m_custom_data.end(); iter++) {
-		m_custom_data[iter->first] = iter->second;
-	}
-	m_SerialNumber = copy.m_SerialNumber;
-	m_exp = copy.m_exp;
-	m_evolveLvl = copy.m_evolveLvl;
-	m_activated = copy.m_activated;
-	m_evolveInfo = nullptr;
-	if (copy.m_scaledItem)
-		m_scaledItem = new Item_Struct(*copy.m_scaledItem);
-	else
-		m_scaledItem = nullptr;
-}
-
-EvoItemInst::EvoItemInst(const ItemInst &basecopy) {
-	EvoItemInst* copy = (EvoItemInst*)&basecopy;
-
-	m_use_type=copy->m_use_type;
-	m_item=copy->m_item;
-	m_charges=copy->m_charges;
-	m_price=copy->m_price;
-	m_color=copy->m_color;
-	m_merchantslot=copy->m_merchantslot;
-	m_currentslot=copy->m_currentslot;
-	m_instnodrop=copy->m_instnodrop;
-	m_merchantcount=copy->m_merchantcount;
-	// Copy container contents
-	iter_contents it;
-	for (it=copy->m_contents.begin(); it!=copy->m_contents.end(); it++) {
-		ItemInst* inst_old = it->second;
-		ItemInst* inst_new = nullptr;
-
-		if (inst_old) {
-			inst_new = inst_old->Clone();
-		}
-
-		if (inst_new != nullptr) {
-			m_contents[it->first] = inst_new;
-		}
-	}
-
-	std::map<std::string, std::string>::const_iterator iter;
-	for (iter = copy->m_custom_data.begin(); iter != copy->m_custom_data.end(); iter++) {
-		m_custom_data[iter->first] = iter->second;
-	}
-	m_SerialNumber = copy->m_SerialNumber;
-	m_exp = 0;
-	m_evolveLvl = 0;
-	m_activated = false;
-	m_evolveInfo = nullptr;
-	m_scaledItem = nullptr;
-}
-
-EvoItemInst::EvoItemInst(const Item_Struct* item, int16 charges) {
-	m_use_type = ItemUseNormal;
-	m_item = item;
-	m_charges = charges;
-	m_price = 0;
-	m_instnodrop = false;
-	m_merchantslot = 0;
-	if(m_item &&m_item->ItemClass == ItemClassCommon)
-		m_color = m_item->Color;
-	else
-		m_color = 0;
-	m_merchantcount = 1;
-	m_SerialNumber = GetNextItemInstSerialNumber();
-	m_exp = 0;
-	m_evolveLvl = 0;
-	m_activated = false;
-	m_evolveInfo = nullptr;
-	m_scaledItem = nullptr;
-}
-
-EvoItemInst::~EvoItemInst() {
-	safe_delete(m_scaledItem);
-}
-
-EvoItemInst* EvoItemInst::Clone() const {
-	return new EvoItemInst(*this);
-}
-
-const Item_Struct* EvoItemInst::GetItem() const {
-	if(!m_scaledItem)
-		return m_item;
-	else
-		return m_scaledItem;
-}
-
-const Item_Struct* EvoItemInst::GetUnscaledItem() const {
-	return m_item;
-}
-
-void EvoItemInst::Initialize(SharedDatabase *db) {
-	// if there's no actual item, don't do anything
-	if(!m_item) return;
-
-	// initialize scaling items
-	if (m_item->CharmFileID != 0) {
-		m_evolveLvl = -1;
-		this->ScaleItem();
-	}
-
-	// initialize evolving items
-	else if ((db) && m_item->LoreGroup >= 1000 && m_item->LoreGroup != -1) {
-		// not complete yet
-	}
-}
-
-void EvoItemInst::ScaleItem() {
-	// free memory from any previously scaled item data
-	safe_delete(m_scaledItem);
-
-	m_scaledItem = new Item_Struct(*m_item);
-	float Mult = (float)(GetExp())/10000;	// scaling is determined by exp, with 10,000 being full stats
-
-	m_scaledItem->AStr = (int8)((float)m_item->AStr*Mult);
-	m_scaledItem->ASta = (int8)((float)m_item->ASta*Mult);
-	m_scaledItem->AAgi = (int8)((float)m_item->AAgi*Mult);
-	m_scaledItem->ADex = (int8)((float)m_item->ADex*Mult);
-	m_scaledItem->AInt = (int8)((float)m_item->AInt*Mult);
-	m_scaledItem->AWis = (int8)((float)m_item->AWis*Mult);
-	m_scaledItem->ACha = (int8)((float)m_item->ACha*Mult);
-
-	m_scaledItem->MR = (int8)((float)m_item->MR*Mult);
-	m_scaledItem->PR = (int8)((float)m_item->PR*Mult);
-	m_scaledItem->DR = (int8)((float)m_item->DR*Mult);
-	m_scaledItem->CR = (int8)((float)m_item->CR*Mult);
-	m_scaledItem->FR = (int8)((float)m_item->FR*Mult);
-
-	m_scaledItem->HP = (int32)((float)m_item->HP*Mult);
-	m_scaledItem->Mana = (int32)((float)m_item->Mana*Mult);
-	m_scaledItem->AC = (int32)((float)m_item->AC*Mult);
-
-	m_scaledItem->SkillModValue = (int32)((float)m_item->SkillModValue*Mult);
-	m_scaledItem->BaneDmgAmt = (int8)((float)m_item->BaneDmgAmt*Mult);
-	m_scaledItem->BardValue = (int32)((float)m_item->BardValue*Mult);
-	m_scaledItem->ElemDmgAmt = (uint8)((float)m_item->ElemDmgAmt*Mult);
-	m_scaledItem->Damage = (uint32)((float)m_item->Damage*Mult);
-
-	m_scaledItem->CombatEffects = (int8)((float)m_item->CombatEffects*Mult);
-	m_scaledItem->Shielding = (int8)((float)m_item->Shielding*Mult);
-	m_scaledItem->StunResist = (int8)((float)m_item->StunResist*Mult);
-	m_scaledItem->StrikeThrough = (int8)((float)m_item->StrikeThrough*Mult);
-	m_scaledItem->ExtraDmgAmt = (uint32)((float)m_item->ExtraDmgAmt*Mult);
-	m_scaledItem->SpellShield = (int8)((float)m_item->SpellShield*Mult);
-	m_scaledItem->Avoidance = (int8)((float)m_item->Avoidance*Mult);
-	m_scaledItem->Accuracy = (int8)((float)m_item->Accuracy*Mult);
-
-	m_scaledItem->FactionAmt1 = (int32)((float)m_item->FactionAmt1*Mult);
-	m_scaledItem->FactionAmt2 = (int32)((float)m_item->FactionAmt2*Mult);
-	m_scaledItem->FactionAmt3 = (int32)((float)m_item->FactionAmt3*Mult);
-	m_scaledItem->FactionAmt4 = (int32)((float)m_item->FactionAmt4*Mult);
-
-	m_scaledItem->Endur = (uint32)((float)m_item->Endur*Mult);
-	m_scaledItem->DotShielding = (uint32)((float)m_item->DotShielding*Mult);
-	m_scaledItem->Attack = (uint32)((float)m_item->Attack*Mult);
-	m_scaledItem->Regen = (uint32)((float)m_item->Regen*Mult);
-	m_scaledItem->ManaRegen = (uint32)((float)m_item->ManaRegen*Mult);
-	m_scaledItem->EnduranceRegen = (uint32)((float)m_item->EnduranceRegen*Mult);
-	m_scaledItem->Haste = (uint32)((float)m_item->Haste*Mult);
-	m_scaledItem->DamageShield = (uint32)((float)m_item->DamageShield*Mult);
-
-
-	m_scaledItem->CharmFileID = 0;	// this stops the client from trying to scale the item itself.
-}
-
-bool EvoItemInst::EvolveOnAllKills() const {
-	return (m_evolveInfo && m_evolveInfo->AllKills);
-}
-
-int8 EvoItemInst::GetMaxEvolveLvl() const {
-	if(m_evolveInfo)
-		return m_evolveInfo->MaxLvl;
-	else
-		return 0;
-}
-
-uint32 EvoItemInst::GetKillsNeeded(uint8 currentlevel) {
-	uint32 kills = -1;	// default to -1 (max uint32 value) because this value is usually divided by, so we don't want to ever return zero.
-	if (m_evolveInfo)
-		if (currentlevel != m_evolveInfo->MaxLvl)
-			kills = m_evolveInfo->LvlKills[currentlevel-1];
-
-	if (kills == 0)
-		kills = -1;
-
-	return kills;
-}
-
 EvolveInfo::EvolveInfo() {
 	// nothing here yet
 }
@@ -1871,6 +1887,9 @@ EvolveInfo::EvolveInfo(uint32 first, uint8 max, bool allkills, uint32 L2, uint32
 	LvlKills[6] = L8;
 	LvlKills[7] = L9;
 	LvlKills[8] = L10;
+}
+
+EvolveInfo::~EvolveInfo() {
 }
 
 bool Item_Struct::IsEquipable(uint16 Race, uint16 Class_) const
@@ -1913,4 +1932,19 @@ bool Item_Struct::IsEquipable(uint16 Race, uint16 Class_) const
 	}
 	if (Race_ == 69) {IsRace = true;}
 	return (IsRace && IsClass);
+}
+
+void Inventory::CleanDirty() {
+	auto iter = dirty_inst.begin();
+	while(iter != dirty_inst.end()) {
+		delete (*iter);
+		++iter;
+	}
+	dirty_inst.clear();
+}
+
+void Inventory::MarkDirty(ItemInst *inst) {
+	if(inst) {
+		dirty_inst.push_back(inst);
+	}
 }

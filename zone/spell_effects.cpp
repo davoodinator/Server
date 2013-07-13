@@ -141,18 +141,20 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 	if(IsNPC())
 	{
-		if(parse->SpellHasQuestSub(spell_id, "EVENT_SPELL_EFFECT_NPC"))
-		{
-			parse->EventSpell(EVENT_SPELL_EFFECT_NPC, CastToNPC(), nullptr, spell_id, caster ? caster->GetID() : 0);
+		std::vector<void*> args;
+		args.push_back(&buffslot);
+		int i = parse->EventSpell(EVENT_SPELL_EFFECT_NPC, CastToNPC(), nullptr, spell_id, caster ? caster->GetID() : 0, &args);
+		if(i != 0){
 			CalcBonuses();
 			return true;
 		}
 	}
 	else if(IsClient())
 	{
-		if(parse->SpellHasQuestSub(spell_id, "EVENT_SPELL_EFFECT_CLIENT"))
-		{
-			parse->EventSpell(EVENT_SPELL_EFFECT_CLIENT, nullptr, CastToClient(), spell_id, caster ? caster->GetID() : 0);
+		std::vector<void*> args;
+		args.push_back(&buffslot);
+		int i = parse->EventSpell(EVENT_SPELL_EFFECT_CLIENT, nullptr, CastToClient(), spell_id, caster ? caster->GetID() : 0, &args);
+		if(i != 0){
 			CalcBonuses();
 			return true;
 		}
@@ -644,7 +646,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				if (max_level == 0)
 					max_level = RuleI(Spells, BaseImmunityLevel);
 				// NPCs get to ignore max_level for their spells.
-				if(SpecAttacks[UNSTUNABLE] ||
+				if(GetSpecialAbility(UNSTUNABLE) ||
 					((GetLevel() > max_level)
 					&& caster && (!caster->IsNPC() || (caster->IsNPC() && !RuleB(Spells, NPCIgnoreBaseImmunity)))))
 				{
@@ -987,7 +989,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "Cancel Magic: %d", effect_value);
 #endif
-				if(SpecAttacks[UNDISPELLABLE]){
+				if(GetSpecialAbility(UNDISPELLABLE)){
 					caster->Message_StringID(MT_SpellFailure, SPELL_NO_EFFECT, spells[spell_id].name);
 					break;
 				}
@@ -1011,7 +1013,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "Dispel Detrimental: %d", effect_value);
 #endif
-				if(SpecAttacks[UNDISPELLABLE]){
+				if(GetSpecialAbility(UNDISPELLABLE)){
 					caster->Message_StringID(MT_SpellFailure, SPELL_NO_EFFECT, spells[spell_id].name);
 					break;
 				}
@@ -1035,7 +1037,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "Dispel Beneficial: %d", effect_value);
 #endif
-				if(SpecAttacks[UNDISPELLABLE]){
+				if(GetSpecialAbility(UNDISPELLABLE)){
 					caster->Message_StringID(MT_SpellFailure, SPELL_NO_EFFECT, spells[spell_id].name);
 					break;
 				}
@@ -1375,7 +1377,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					max_level = RuleI(Spells, BaseImmunityLevel); // Default max is 55 level limit
 
 				// NPCs ignore level limits in their spells
-				if(SpecAttacks[UNSTUNABLE] ||
+				if(GetSpecialAbility(UNSTUNABLE) ||
 					((GetLevel() > max_level)
 					&& caster && (!caster->IsNPC() || (caster->IsNPC() && !RuleB(Spells, NPCIgnoreBaseImmunity)))))
 				{
@@ -3003,7 +3005,7 @@ void Mob::BuffProcess()
 	{
 		if (buffs[buffs_i].spellid != SPELL_UNKNOWN)
 		{
-			DoBuffTic(buffs[buffs_i].spellid, buffs[buffs_i].ticsremaining, buffs[buffs_i].casterlevel, entity_list.GetMob(buffs[buffs_i].casterid));
+			DoBuffTic(buffs[buffs_i].spellid, buffs_i, buffs[buffs_i].ticsremaining, buffs[buffs_i].casterlevel, entity_list.GetMob(buffs[buffs_i].casterid));
 			// If the Mob died during DoBuffTic, then the buff we are currently processing will have been removed
 			if(buffs[buffs_i].spellid == SPELL_UNKNOWN)
 				continue;
@@ -3053,7 +3055,7 @@ void Mob::BuffProcess()
 	}
 }
 
-void Mob::DoBuffTic(uint16 spell_id, uint32 ticsremaining, uint8 caster_level, Mob* caster) {
+void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caster_level, Mob* caster) {
 	_ZP(Mob_DoBuffTic);
 
 	int effect, effect_value;
@@ -3068,17 +3070,23 @@ void Mob::DoBuffTic(uint16 spell_id, uint32 ticsremaining, uint8 caster_level, M
 
 	if(IsNPC())
 	{
-		if(parse->SpellHasQuestSub(spell_id, "EVENT_SPELL_EFFECT_BUFF_TIC_NPC"))
-		{
-			parse->EventSpell(EVENT_SPELL_EFFECT_BUFF_TIC_NPC, CastToNPC(), nullptr, spell_id, caster ? caster->GetID() : 0);
+		std::vector<void*> args;
+		args.push_back(&ticsremaining);
+		args.push_back(&caster_level);
+		args.push_back(&slot);
+		int i = parse->EventSpell(EVENT_SPELL_BUFF_TIC_NPC, CastToNPC(), nullptr, spell_id, caster ? caster->GetID() : 0, &args);
+		if(i != 0) {
 			return;
 		}
 	}
 	else
 	{
-		if(parse->SpellHasQuestSub(spell_id, "EVENT_SPELL_EFFECT_BUFF_TIC_CLIENT"))
-		{
-			parse->EventSpell(EVENT_SPELL_EFFECT_BUFF_TIC_CLIENT, nullptr, CastToClient(), spell_id, caster ? caster->GetID() : 0);
+		std::vector<void*> args;
+		args.push_back(&ticsremaining);
+		args.push_back(&caster_level);
+		args.push_back(&slot);
+		int i = parse->EventSpell(EVENT_SPELL_BUFF_TIC_CLIENT, nullptr, CastToClient(), spell_id, caster ? caster->GetID() : 0, &args);
+		if(i != 0) {
 			return;
 		}
 	}
@@ -3088,7 +3096,7 @@ void Mob::DoBuffTic(uint16 spell_id, uint32 ticsremaining, uint8 caster_level, M
 	if(IsClient())
 		CastToClient()->CheckAAEffect(aaEffectRampage);
 
-	for (int i=0; i < EFFECT_COUNT; i++)
+	for (int i = 0; i < EFFECT_COUNT; i++)
 	{
 		if(IsBlankSpellEffect(spell_id, i))
 			continue;
@@ -3335,6 +3343,18 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 			viral_timer.Disable();
 			has_virus = false;
 		}
+	}
+
+	if(IsClient()) {
+		std::vector<void*> args;
+		args.push_back(&buffs[slot].casterid);
+
+		parse->EventSpell(EVENT_SPELL_FADE, nullptr, CastToClient(), buffs[slot].spellid, slot, &args);
+	} else if(IsNPC()) {
+		std::vector<void*> args;
+		args.push_back(&buffs[slot].casterid);
+
+		parse->EventSpell(EVENT_SPELL_FADE, CastToNPC(), nullptr, buffs[slot].spellid, slot, &args);
 	}
 
 	for (int i=0; i < EFFECT_COUNT; i++)

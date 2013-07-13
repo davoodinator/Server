@@ -175,7 +175,6 @@ void Client::Handle_OP_ZoneChange(const EQApplicationPacket *app) {
 	buf[9] = '\0';
 	parse->EventPlayer(EVENT_ZONE, this, buf, 0);
 
-
 	//handle circumvention of zone restrictions
 	//we need the value when creating the outgoing packet as well.
 	uint8 ignorerestrictions = zonesummon_ignorerestrictions;
@@ -617,7 +616,7 @@ void Client::ZonePC(uint32 zoneID, uint32 instance_id, float x, float y, float z
 			safe_delete(outapp);
 		}
 		else {
-			if(zoneID == this->GetZoneID()) {
+			if(zoneID == GetZoneID()) {
 				//properly handle proximities
 				entity_list.ProcessMove(this, x_pos, y_pos, z_pos);
 				proximity_x = x_pos;
@@ -626,11 +625,6 @@ void Client::ZonePC(uint32 zoneID, uint32 instance_id, float x, float y, float z
 
 				//send out updates to people in zone.
 				SendPosition();
-
-#ifdef PACKET_UPDATE_MANAGER
-				//flush our position queues because we dont know where we will end up
-				update_manager.FlushQueues();
-#endif
 			}
 
 			EQApplicationPacket* outapp = new EQApplicationPacket(OP_RequestClientZoneChange, sizeof(RequestClientZoneChange_Struct));
@@ -648,7 +642,7 @@ void Client::ZonePC(uint32 zoneID, uint32 instance_id, float x, float y, float z
 			safe_delete(outapp);
 		}
 
-		LogFile->write(EQEMuLog::Debug, "Player %s has requested a zoning to LOC x=%f, y=%f, z=%f, heading=%f in zoneid=%i", GetName(), x, y, z, heading, zoneID);
+		_log(NET__DEBUG, "Player %s has requested a zoning to LOC x=%f, y=%f, z=%f, heading=%f in zoneid=%i", GetName(), x, y, z, heading, zoneID);
 		//Clear zonesummon variables if we're zoning to our own zone
 		//Client wont generate a zone change packet to the server in this case so
 		//They aren't needed and it keeps behavior on next zone attempt from being undefined.

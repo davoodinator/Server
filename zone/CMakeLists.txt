@@ -14,9 +14,44 @@ SET(zone_sources
 	client_packet.cpp
 	client_process.cpp
 	command.cpp
+	corpse.cpp
 	doors.cpp
 	effects.cpp
 	embparser.cpp
+	embparser_api.cpp
+	embperl.cpp
+	embxs.cpp
+	entity.cpp
+	exp.cpp
+	fearpath.cpp
+	forage.cpp
+	groups.cpp
+	guild.cpp
+	guild_mgr.cpp
+	hate_list.cpp
+	horse.cpp
+	inventory.cpp
+	loottables.cpp
+	lua_bit.cpp
+	lua_corpse.cpp
+	lua_client.cpp
+	lua_door.cpp
+	lua_entity.cpp
+	lua_entity_list.cpp
+	lua_general.cpp
+	lua_group.cpp
+	lua_hate_list.cpp
+	lua_inventory.cpp
+	lua_item.cpp
+	lua_iteminst.cpp
+	lua_mob.cpp
+	lua_npc.cpp
+	lua_object.cpp
+	lua_parser.cpp
+	lua_parser_events.cpp
+	lua_raid.cpp
+	lua_spawn.cpp
+	lua_spell.cpp
 	embperl.cpp
 	embxs.cpp
 	entity.cpp
@@ -34,11 +69,11 @@ SET(zone_sources
 	merc.cpp
 	mob.cpp
 	MobAI.cpp
+	mod_functions.cpp
 	net.cpp
 	npc.cpp
 	NpcAI.cpp
 	Object.cpp
-	parser.cpp
 	pathing.cpp
 	perl_client.cpp
 	perl_doors.cpp
@@ -53,10 +88,8 @@ SET(zone_sources
 	perl_questitem.cpp
 	perl_raids.cpp
 	perlpacket.cpp
-	perlparser.cpp
 	petitions.cpp
 	pets.cpp
-	PlayerCorpse.cpp
 	QGlobals.cpp
 	questmgr.cpp
 	QuestParserCollection.cpp
@@ -73,7 +106,6 @@ SET(zone_sources
 	trading.cpp
 	trap.cpp
 	tribute.cpp
-	updatemgr.cpp
 	watermap.cpp
 	waypoints.cpp
 	worldserver.cpp
@@ -84,7 +116,6 @@ SET(zone_sources
 	zonedb.cpp
 	zonedbasync.cpp
 	zoning.cpp
-	mod_functions.cpp
 )
 
 SET(zone_headers
@@ -98,6 +129,7 @@ SET(zone_headers
 	client_packet.h
 	command.h
 	common.h
+	corpse.h
 	doors.h
 	embparser.h
 	embperl.h
@@ -110,6 +142,26 @@ SET(zone_headers
 	guild_mgr.h
 	hate_list.h
 	horse.h
+	lua_bit.h
+	lua_client.h
+	lua_corpse.h
+	lua_entity.h
+	lua_entity_list.h
+	lua_general.h
+	lua_group.h
+	lua_hate_list.h
+	lua_inventory.h
+	lua_item.h
+	lua_iteminst.h
+	lua_mob.h
+	lua_npc.h
+	lua_object.h
+	lua_parser.h
+	lua_parser_events.h
+	lua_ptr.h
+	lua_raid.h
+	lua_spawn.h
+	lua_spell.h
 	map.h
 	masterentity.h
 	maxskill.h
@@ -120,13 +172,10 @@ SET(zone_headers
 	npc.h
 	NpcAI.h
 	object.h
-	parser.h
 	pathing.h
 	perlpacket.h
-	perlparser.h
 	petitions.h
 	pets.h
-	PlayerCorpse.h
 	QGlobals.h
 	QuestInterface.h
 	questmgr.h
@@ -141,7 +190,6 @@ SET(zone_headers
 	tasks.h
 	titles.h
 	trap.h
-	updatemgr.h
 	watermap.h
 	worldserver.h
 	zone.h
@@ -158,7 +206,12 @@ INSTALL(TARGETS zone RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 ADD_DEFINITIONS(-DZONE)
 
-TARGET_LINK_LIBRARIES(zone Common ${PERL_LIBRARY} debug ${MySQL_LIBRARY_DEBUG} optimized ${MySQL_LIBRARY_RELEASE} ${ZLIB_LIBRARY})
+TARGET_LINK_LIBRARIES(zone Common ${PERL_LIBRARY} debug ${MySQL_LIBRARY_DEBUG} optimized ${MySQL_LIBRARY_RELEASE} ${ZLIB_LIBRARY} ${LUA_LIBRARY})
+
+IF(EQEMU_BUILD_LUA)
+	TARGET_LINK_LIBRARIES(zone luabind)
+ENDIF(EQEMU_BUILD_LUA)
+
 
 IF(MSVC)
 	SET_TARGET_PROPERTIES(zone PROPERTIES LINK_FLAGS_RELEASE "/OPT:REF /OPT:ICF")
@@ -180,4 +233,6 @@ IF(UNIX)
 	ADD_DEFINITIONS(-fPIC)
 ENDIF(UNIX)
 
-SET(EXECUTABLE_OUTPUT_PATH ../Bin)
+INCLUDE_DIRECTORIES(${VLD_INCLUDE_DIR})
+
+SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/Bin)

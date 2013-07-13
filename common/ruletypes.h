@@ -382,10 +382,9 @@ RULE_BOOL ( NPC, EnableNPCQuestJournal, false)
 RULE_INT ( NPC, LastFightingDelayMovingMin, 10000)
 RULE_INT ( NPC, LastFightingDelayMovingMax, 20000)
 RULE_BOOL ( NPC, SmartLastFightingDelayMoving, true)
-RULE_BOOL ( NPC, ReturnNonQuestNoDropItems, false)	// Returns NO DROP items on NPCs that don't have an EVENT_ITEM sub in their script
+RULE_BOOL ( NPC, ReturnNonQuestNoDropItems, false)	// Returns NO DROP items on NPCs that don't have an EVENT_TRADE sub in their script
 RULE_INT ( NPC, StartEnrageValue, 9) // % HP that an NPC will begin to enrage
 RULE_BOOL ( NPC, LiveLikeEnrage, false) // If set to true then only player controlled pets will enrage
-RULE_BOOL (NPC, UseMultiQuest, false) // If true, NPC will remember items handed to them for classic multiquest support.
 RULE_CATEGORY_END()
 
 RULE_CATEGORY ( Aggro )
@@ -430,7 +429,6 @@ RULE_BOOL ( Chat, ServerWideAuction, true)
 RULE_BOOL ( Chat, EnableVoiceMacros, true)
 RULE_BOOL ( Chat, EnableMailKeyIPVerification, true)
 RULE_BOOL ( Chat, EnableAntiSpam, true)
-RULE_BOOL ( Chat, FlowCommandstoPerl_EVENT_SAY, false) // Allows you to parse #commands into EVENT_SAY (Useful in global_player.pl) that aren't found in the source - should probably be individual scripts per command sometime
 RULE_INT ( Chat, MinStatusToBypassAntiSpam, 100)
 RULE_INT ( Chat, MinimumMessagesPerInterval, 4)
 RULE_INT ( Chat, MaximumMessagesPerInterval, 12)
@@ -499,13 +497,6 @@ RULE_CATEGORY_END()
 
 RULE_CATEGORY( Console )
 RULE_INT ( Console, SessionTimeOut, 600000 )	// Amount of time in ms for the console session to time out
-RULE_CATEGORY_END()
-
-RULE_CATEGORY( EQStream )
-RULE_INT ( EQStream, RetransmitTimeoutMax, 5000 ) // maximum retransmit timeout before retransmitting unacked packets
-RULE_INT ( EQStream, AverageDeltaMax, 2500 ) // maximum average rtt where we will still recalculate transmit rates
-RULE_REAL ( EQStream, RetransmitTimeoutMult, 3.0 ) // multiplier applied to rtt stats to generate a retransmit timeout value
-RULE_BOOL ( EQStream, RetransmitAckedPackets, true ) // should we restransmit packets that were already acked?
 RULE_CATEGORY_END()
 
 RULE_CATEGORY( QueryServ )

@@ -82,10 +82,6 @@ bool Client::Process() {
 			SendAllPackets();
 		}
 
-#ifdef PACKET_UPDATE_MANAGER
-		update_manager.Process();
-#endif
-
 		if(adventure_request_timer)
 		{
 			if(adventure_request_timer->Check())
@@ -159,7 +155,7 @@ bool Client::Process() {
 			Save();
 
 			Group *mygroup = GetGroup();
-			if (mygroup)	// && zone.GetZoneID() != m_pp.binds[0].zoneId
+			if (mygroup)
 			{
 				entity_list.MessageGroup(this,true,15,"%s died.", GetName());
 				mygroup->MemberZoned(this);
@@ -423,7 +419,7 @@ bool Client::Process() {
 
 					//triple attack: rangers, monks, warriors, berserkers over level 60
 					if((((GetClass() == MONK || GetClass() == WARRIOR || GetClass() == RANGER || GetClass() == BERSERKER)
-						&& GetLevel() >= 60) || SpecAttacks[SPECATK_TRIPLE])
+						&& GetLevel() >= 60) || GetSpecialAbility(SPECATK_TRIPLE))
 						&& CheckDoubleAttack(true))
 					{
 						tripleAttackSuccess = true;
@@ -431,7 +427,7 @@ bool Client::Process() {
 					}
 
 					//quad attack, does this belong here??
-					if(SpecAttacks[SPECATK_QUAD] && CheckDoubleAttack(true))
+					if(GetSpecialAbility(SPECATK_QUAD) && CheckDoubleAttack(true))
 					{
 						Attack(auto_attack_target, 13, false);
 					}
@@ -641,9 +637,14 @@ bool Client::Process() {
 			}
 
 			if(ItemTickTimer.Check())
-            {
-                TickItemCheck();
-            }
+			{
+				TickItemCheck();
+			}
+
+			if(ItemQuestTimer.Check())
+			{
+				ItemTimerCheck();
+			}
 		}
 	}
 
@@ -691,14 +692,9 @@ bool Client::Process() {
 	/************ Get all packets from packet manager out queue and process them ************/
 	adverrorinfo = 5;
 
-	EQApplicationPacket *app = 0;
-//	if(eqs->GetState()==CLOSING && eqs->CheckActive())
-	if(eqs->CheckState(CLOSING))
+	EQApplicationPacket *app = nullptr;
+	if(!eqs->CheckState(CLOSING))
 	{
-		//eqs->Close();
-		//return false;
-		//handled below
-	} else {
 		while(ret && (app = (EQApplicationPacket *)eqs->PopPacket())) {
 			if(app)
 				ret = HandlePacket(app);
@@ -786,11 +782,7 @@ void Client::OnDisconnect(bool hard_disconnect) {
 		if (MyRaid)
 			MyRaid->MemberZoned(this);
 
-		if(this->IsClient()){
-			if(parse->PlayerHasQuestSub("EVENT_DISCONNECT")) {
-				parse->EventPlayer(EVENT_DISCONNECT, this, "", 0);
-			}
-		}
+		parse->EventPlayer(EVENT_DISCONNECT, this, "", 0);
 	}
 
 	Mob *Other = trade->With();
