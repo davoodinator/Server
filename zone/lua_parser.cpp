@@ -29,6 +29,7 @@
 #include "lua_object.h"
 #include "lua_door.h"
 #include "lua_spawn.h"
+#include "lua_packet.h"
 #include "lua_general.h"
 #include "questmgr.h"
 #include "zone.h"
@@ -112,7 +113,8 @@ const char *LuaEvents[_LargestEventID] = {
 	"event_enter_area",
 	"event_leave_area",
 	"event_respawn",
-	"event_death_complete"
+	"event_death_complete",
+	"event_unhandled_opcode"
 };
 
 extern Zone *zone;
@@ -189,6 +191,7 @@ LuaParser::LuaParser() {
 	PlayerArgumentDispatch[EVENT_ENTER_AREA] = handle_player_area;
 	PlayerArgumentDispatch[EVENT_LEAVE_AREA] = handle_player_area;
 	PlayerArgumentDispatch[EVENT_RESPAWN] = handle_player_respawn;
+	PlayerArgumentDispatch[EVENT_UNHANDLED_OPCODE] = handle_player_packet;
 
 	ItemArgumentDispatch[EVENT_ITEM_CLICK] = handle_item_click;
 	ItemArgumentDispatch[EVENT_ITEM_CLICK_CAST] = handle_item_click;
@@ -957,7 +960,9 @@ void LuaParser::MapFunctions(lua_State *L) {
 			lua_register_raid(),
 			lua_register_corpse(),
 			lua_register_door(),
-			lua_register_object()
+			lua_register_object(),
+			lua_register_packet(),
+			lua_register_packet_opcodes()
 		];
 	
 	} catch(std::exception &ex) {
