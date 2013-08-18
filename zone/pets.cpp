@@ -331,18 +331,18 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower, c
 		switch(GetBaseRace())
 		{
 		case VAHSHIR: 
-			npc_type->race = 439; //super cats
-			npc_type->texture = MakeRandomInt(0,7);
+			npc_type->race = 63; //tiger
+			npc_type->texture = 0;
 			//npc_type->size *= 0.8f; 
 			break;
-		case 330: //froglock
+		case 330: //froglok
 			npc_type->race = 456;  //fungoid... 13 varieties !
 			npc_type->texture = MakeRandomInt(0,12);
 			//npc_type->size *= 2.5f; 
 			break;
 		case TROLL: 
-			npc_type->race = 435;  //BASILISK
-			npc_type->texture = MakeRandomInt(0,1);
+			npc_type->race = 87;  //armadillo
+			npc_type->texture = 0;
 			//npc_type->size *= 2.5f; 
 			break;
 		case DRAKKIN: 
@@ -352,52 +352,59 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower, c
 			npc_type->texture = MakeRandomInt(0,5);
 			break;
 		case OGRE: 
-			npc_type->race = BEAR; 
-			npc_type->texture = MakeRandomInt(0,1); 
+			npc_type->race = 43; 
+			npc_type->texture = 1; 
 			npc_type->gender = 2; 
 			break;
-		case DARK_ELF:  //dark elves enslave various races so lets just throw a bunch in there
-			npc_type->race = MakeRandomInt(1,12); 
-			npc_type->texture = MakeRandomInt(0,3);
-			npc_type->gender = MakeRandomInt(0,1);
+		case DARK_ELF:  //dire wolf
+			npc_type->race = 171; 
+			npc_type->texture = 0;
+			npc_type->gender = 2;
 			break;
 		case HALFLING: 
-			npc_type->race = 520; //sexybixie
-		    //npc_type->race = 79; //fatbixie
+			npc_type->race = 22; //fire beetle
 			npc_type->texture = 0;
-			//npc_type->texture = MakeRandomInt(0,2);
+			npc_type->gender = 2;
 			break;
 		case HIGH_ELF: 
-		    npc_type->race = 509; //unicorn
+		    npc_type->race = 124; //unicorn
 			npc_type->texture = 0;
+			npc_type->gender = 2;
 			break;
 		case GNOME: 
-		    npc_type->race = 457; //gnomebot
-			npc_type->texture = MakeRandomInt(0,6);
+		    npc_type->race = 83; //skunk
+			npc_type->texture = 0;
+			npc_type->gender = 2;
 			break;
 		case DWARF: 
-		    npc_type->race = 409; //bazu
+		    npc_type->race = 50; //puma
 			npc_type->texture = 0;
+			npc_type->gender = 2;
 			break;
 		case HALF_ELF: 
-		    npc_type->race =440; //super spider
-			npc_type->texture = MakeRandomInt(0,6);
+		    npc_type->race =36; //rat
+			npc_type->texture = 0;
+			npc_type->gender = 2;
 			break;
 		case ERUDITE: 
-			npc_type->race = 464;  //garg
-			npc_type->texture = MakeRandomInt(0,3);
+			npc_type->race = 37;  //snake
+			npc_type->texture = 0;
+			npc_type->gender = 2;
 			break;
 		case BARBARIAN: 
-			npc_type->race = 580; //rapewolf
-			npc_type->texture = MakeRandomInt(0,2);
+			npc_type->race = 38; //snow spider
+			npc_type->texture = 5;
+			npc_type->gender = 2;
 			break;
 		case 4: //wood elf
-		    npc_type->race = 473; //faerie
-			npc_type->texture = MakeRandomInt(0,1);
+		    npc_type->race = 34; //bat
+			npc_type->texture = 0;
+			npc_type->gender = 2;
 			break;
 		case IKSAR: 
 			npc_type->race = 163; //raptor
-			npc_type->texture = MakeRandomInt(0,1);
+			npc_type->texture = 0;
+			npc_type->gender = 2;
 			// npc_type->gender = 1; 
 			// npc_type->size *= 2.0f;
 			// npc_type->luclinface = 0;
