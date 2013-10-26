@@ -496,7 +496,8 @@ int GetMinLevel(uint16 spell_id) {
 
 	//if we can't cast the spell return 0
 	//just so it wont screw up calculations used in other areas of the code
-	if(min == 255)
+	//seen 127, 254, 255
+	if(min >= 127)
 		return 0;
 	else
 		return(min);
@@ -987,6 +988,13 @@ bool IsSelfConversionSpell(uint16 spell_id) {
 		return false;
 }
 
+// returns true for both detrimental and beneficial buffs
+bool IsBuffSpell(uint16 spell_id) {
+	if(IsValidSpell(spell_id) && (spells[spell_id].buffduration || spells[spell_id].buffdurationformula))
+		return true;
+	return false;
+}
+
 uint32 GetMorphTrigger(uint32 spell_id)
 {
 	for(int i = 0; i < EFFECT_COUNT; ++i)
@@ -1099,6 +1107,21 @@ bool IsShortDurationBuff(uint16 spell_id)
 		if(spells[spell_id].short_buff_box != 0)
 			return true;
 	}
+	return false;
+}
+
+bool IsSpellUsableThisZoneType(uint16 spell_id, uint8 zone_type)
+{
+	if((spell_id > 0) && (spell_id < SPDAT_RECORDS))
+	{
+		//check if spell can be cast in any zone (-1 or 255), then if spell zonetype matches zone's zonetype
+		if(spells[spell_id].zonetype == -1
+			|| spells[spell_id].zonetype == 255
+			|| spells[spell_id].zonetype == zone_type) { 
+			return true; 
+		}
+	}
+
 	return false;
 }
 

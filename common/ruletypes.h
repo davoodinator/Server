@@ -294,6 +294,7 @@ RULE_INT ( Spells, DeathSaveCharismaMod, 3) //Determines how much charisma effec
 RULE_INT ( Spells, DivineInterventionHeal, 8000) //Divine intervention heal amount.
 RULE_BOOL ( Spells, AdditiveBonusValues, false) //Allow certain bonuses to be calculated by adding together the value from each item, instead of taking the highest value. (ie Add together all Cleave Effects)
 RULE_BOOL ( Spells, UseCHAScribeHack, false) //ScribeSpells and TrainDiscs quest functions will ignore entries where field 12 is CHA.  What's the best way to do this?
+RULE_BOOL ( Spells, BuffLevelRestrictions, true) //Buffs will not land on low level toons like live
 RULE_CATEGORY_END()
 
 RULE_CATEGORY( Combat )
@@ -422,6 +423,7 @@ RULE_BOOL ( Bots, BotGroupBuffing, false ) // Bots will cast single target buffs
 RULE_BOOL ( Bots, BotSpellQuest, false ) // Anita Thrall's (Anita_Thrall.pl) Bot Spell Scriber quests.
 RULE_INT ( Bots, BotAAExpansion, 8 ) // Bots get AAs through this expansion
 RULE_BOOL ( Bots, BotGroupXP, false ) // Determines whether client gets xp for bots outside their group.
+RULE_BOOL ( Bots, BotBardUseOutOfCombatSongs, true) // Determines whether bard bots use additional out of combat songs.
 RULE_CATEGORY_END()
 #endif
 

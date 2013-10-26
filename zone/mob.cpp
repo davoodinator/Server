@@ -2049,7 +2049,7 @@ void Mob::SetAttackTimer() {
 						const ItemInst *pi = CastToClient()->GetInv().GetItem(r);
 						if(!pi)
 							continue;
-						if(pi->IsType(ItemClassContainer) && pi->GetItem()->BagType == bagTypeQuiver)
+						if(pi->IsType(ItemClassContainer) && pi->GetItem()->BagType == BagType_Quiver)
 						{
 							float temp_wr = ( pi->GetItem()->BagWR / RuleI(Combat, QuiverWRHasteDiv) );
 							if(temp_wr > max_quiver)
@@ -3031,15 +3031,6 @@ void Mob::SetDeltas(float dx, float dy, float dz, float dh) {
 	delta_y = dy;
 	delta_z = dz;
 	delta_heading = static_cast<int>(dh);
-}
-
-
-bool Mob::HasBuffIcon(Mob *caster, Mob *target, uint16 spell_id)
-{
-	if((caster->CalcBuffDuration(caster, target, spell_id)-1) > 0)
-		return true;
-	else
-		return false;
 }
 
 void Mob::SetEntityVariable(const char *id, const char *m_var)

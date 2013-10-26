@@ -1818,7 +1818,14 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			if (isproc) {
 				SpellOnTarget(spell_id, spell_target, false, true, resist_adjust, true);
 			} else {
-				SpellOnTarget(spell_id, spell_target, false, true, resist_adjust, false);
+				if(!SpellOnTarget(spell_id, spell_target, false, true, resist_adjust, false)) {
+					if(IsBuffSpell(spell_id) && IsBeneficialSpell(spell_id)) {
+						// Prevent mana usage/timers being set for beneficial buffs
+            if(casting_spell_type == 1)
+              InterruptSpell();
+						return false;
+					}
+				}
 			}
 			if(IsPlayerIllusionSpell(spell_id)
 			&& IsClient()
@@ -2257,7 +2264,7 @@ void Mob::BardPulse(uint16 spell_id, Mob *caster) {
 			{
 				if(IsClient())
 				{
-					if(HasBuffIcon(caster, this, spell_id) == false)
+					if(!IsBuffSpell(spell_id))
 					{
 						CastToClient()->SetKnockBackExemption(true);
 
@@ -2364,14 +2371,6 @@ int Mob::CalcBuffDuration(Mob *caster, Mob *target, uint16 spell_id, int32 caste
 		castlevel = caster_level_override;
 
 	int res = CalcBuffDuration_formula(castlevel, formula, duration);
-	// Only need this for clients, since the change was for bard songs, I assume we should keep non bard songs getting +1
-	// However if its bard or not and is mez, charm or fear, we need to add 1 so that client is in sync
-	if(!IsShortDurationBuff(spell_id) ||
-		IsFearSpell(spell_id) ||
-		IsCharmSpell(spell_id) ||
-		IsMezSpell(spell_id) ||
-		IsBlindSpell(spell_id))
-		res += 1;
 	
 	res = mod_buff_duration(res, caster, target, spell_id);
 
@@ -2710,6 +2709,41 @@ int Mob::CheckStackConflict(uint16 spellid1, int caster_level1, uint16 spellid2,
 	return 0;
 }
 
+// Check Spell Level Restrictions
+// returns true if they meet the restrictions, false otherwise
+// derived from http://samanna.net/eq.general/buffs.shtml
+// spells 1-50: no restrictons
+// 51-65: SpellLevel/2+15
+// 66+L Group Spells 62, Single Target 61
+bool Mob::CheckSpellLevelRestriction(uint16 spell_id)
+{
+	return true;
+}
+
+bool Client::CheckSpellLevelRestriction(uint16 spell_id)
+{
+	int SpellLevel = GetMinLevel(spell_id);
+
+	// Only check for beneficial buffs, if it's a bard song, only if it's short duration
+	if(IsBuffSpell(spell_id) && IsBeneficialSpell(spell_id) &&
+			!(IsBardSong(spell_id) && !IsShortDurationBuff(spell_id)))
+	{
+		if(SpellLevel > 65)
+		{
+			if(IsGroupSpell(spell_id) && GetLevel() < 62)
+				return false;
+			else if(GetLevel() < 61)
+				return false;
+		}
+		else if(SpellLevel > 50) // 51-65
+		{
+			if(GetLevel() < (SpellLevel/2+15))
+				return false;
+		}
+	}
+
+	return true;
+}
 
 // returns the slot the buff was added to, -1 if it wasn't added due to
 // stacking problems, and -2 if this is not a buff
@@ -2980,7 +3014,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 
 	if(IsDetrimentalSpell(spell_id) && !IsAttackAllowed(spelltar) && !IsResurrectionEffects(spell_id)) {
 		if(!IsClient() || !CastToClient()->GetGM()) {
-			Message_StringID(MT_Shout, SPELL_NO_HOLD);
+			Message_StringID(MT_SpellFailure, SPELL_NO_HOLD);
 			return false;
 		}
 	}
@@ -3117,7 +3151,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	{
 		if(spelltar->invisible)
 		{
-			spelltar->Message_StringID(MT_Shout, ALREADY_INVIS, GetCleanName());
+			spelltar->Message_StringID(MT_SpellFailure, ALREADY_INVIS, GetCleanName());
 			safe_delete(action_packet);
 			return false;
 		}
@@ -3127,7 +3161,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	{
 		if(spelltar->invisible_undead)
 		{
-			spelltar->Message_StringID(MT_Shout, ALREADY_INVIS, GetCleanName());
+			spelltar->Message_StringID(MT_SpellFailure, ALREADY_INVIS, GetCleanName());
 			safe_delete(action_packet);
 			return false;
 		}
@@ -3137,7 +3171,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	{
 		if(spelltar->invisible_animals)
 		{
-			spelltar->Message_StringID(MT_Shout, ALREADY_INVIS, GetCleanName());
+			spelltar->Message_StringID(MT_SpellFailure, ALREADY_INVIS, GetCleanName());
 			safe_delete(action_packet);
 			return false;
 		}
@@ -3218,7 +3252,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 						mlog(SPELLS__CASTING_ERR, "Beneficial ae bard song %d can't take hold %s -> %s, IBA? %d", spell_id, GetName(), spelltar->GetName(), IsBeneficialAllowed(spelltar));
 					} else {
 						mlog(SPELLS__CASTING_ERR, "Beneficial spell %d can't take hold %s -> %s, IBA? %d", spell_id, GetName(), spelltar->GetName(), IsBeneficialAllowed(spelltar));
-						Message_StringID(MT_Shout, SPELL_NO_HOLD);
+						Message_StringID(MT_SpellFailure, SPELL_NO_HOLD);
 					}
 					safe_delete(action_packet);
 					return false;
@@ -3228,7 +3262,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 		else if	( !IsAttackAllowed(spelltar, true) && !IsResurrectionEffects(spell_id)) // Detrimental spells - PVP check
 		{
 			mlog(SPELLS__CASTING_ERR, "Detrimental spell %d can't take hold %s -> %s", spell_id, GetName(), spelltar->GetName());
-			spelltar->Message_StringID(MT_Shout, YOU_ARE_PROTECTED, GetCleanName());
+			spelltar->Message_StringID(MT_SpellFailure, YOU_ARE_PROTECTED, GetCleanName());
 			safe_delete(action_packet);
 			return false;
 		}
@@ -3253,6 +3287,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 			spelltar->GetBodyType() != BT_Undead &&
 			spelltar->GetBodyType() != BT_Vampire)
 		{
+			safe_delete(action_packet);
 			return false;
 		}
 	}
@@ -3265,7 +3300,8 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 				focus = CalcFocusEffect(focusBlockNextSpell, buffs[b].spellid, spell_id);
 				if(focus) {
 					CheckHitsRemaining(b);
-					Message_StringID(MT_Shout, SPELL_WOULDNT_HOLD);
+					Message_StringID(MT_SpellFailure, SPELL_WOULDNT_HOLD);
+					safe_delete(action_packet);
 					return false;
 				}
 			}
@@ -3313,6 +3349,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 		if(reflect_chance) {
 			Message_StringID(MT_Spells, SPELL_REFLECT, GetCleanName(), spelltar->GetCleanName());
 			SpellOnTarget(spell_id, this, true, use_resist_adjust, resist_adjust);
+			safe_delete(action_packet);
 			return false;
 		}
 	}
@@ -3480,13 +3517,24 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	else if (IsBeneficialSpell(spell_id) && !IsSummonPCSpell(spell_id))
 		entity_list.AddHealAggro(spelltar, this, CheckHealAggroAmount(spell_id, (spelltar->GetMaxHP() - spelltar->GetHP())));
 
+	// make sure spelltar is high enough level for the buff
+	if(RuleB(Spells, BuffLevelRestrictions) && !spelltar->CheckSpellLevelRestriction(spell_id))
+	{
+		mlog(SPELLS__BUFFS, "Spell %d failed: recipient did not meet the level restrictions", spell_id);
+		if(!IsBardSong(spell_id))
+			Message_StringID(MT_SpellFailure, SPELL_TOO_POWERFUL);
+		safe_delete(action_packet);
+		return false;
+	}
+
 	// cause the effects to the target
 	if(!spelltar->SpellEffect(this, spell_id, spell_effectiveness))
 	{
 		// if SpellEffect returned false there's a problem applying the
 		// spell. It's most likely a buff that can't stack.
 		mlog(SPELLS__CASTING_ERR, "Spell %d could not apply its effects %s -> %s\n", spell_id, GetName(), spelltar->GetName());
-		Message_StringID(MT_Shout, SPELL_NO_HOLD);
+		if(casting_spell_type != 1) // AA is handled differently
+			Message_StringID(MT_SpellFailure, SPELL_NO_HOLD);
 		safe_delete(action_packet);
 		return false;
 	}
@@ -3505,7 +3553,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	{
 		if(spelltar->IsClient())
 		{
-			if(HasBuffIcon(this, spelltar, spell_id) == false)
+			if(!IsBuffSpell(spell_id))
 			{
 				spelltar->CastToClient()->SetKnockBackExemption(true);
 

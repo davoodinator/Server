@@ -216,6 +216,7 @@ Client(EQStreamInterface * ieqs);
 virtual void Damage(Mob* from, int32 damage, uint16 spell_id, SkillType attack_skill, bool avoidable = true, int8 buffslot = -1, bool iBuffTic = false);
 	virtual bool Attack(Mob* other, int Hand = 13, bool FromRiposte = false, bool IsStrikethrough = false, bool IsFromSpell = false,
 		ExtraAttackOptions *opts = nullptr);
+<<<<<<< HEAD
 virtual bool HasRaid() { return (GetRaid() ? true : false); }
 virtual bool HasGroup() { return (GetGroup() ? true : false); }
 virtual Raid* GetRaid() { return entity_list.GetRaidByClient(this); }
@@ -700,6 +701,493 @@ void SetFeigned(bool in_feigned);
 /// this cures timing issues cuz dead animation isn't done but server side feigning is?
 inline bool GetFeigned() const { return(feigned); }
 EQStreamInterface* Connection() { return eqs; }
+=======
+	virtual bool HasRaid() { return (GetRaid() ? true : false); }
+	virtual bool HasGroup() { return (GetGroup() ? true : false); }
+	virtual Raid* GetRaid() { return entity_list.GetRaidByClient(this); }
+	virtual Group* GetGroup() { return entity_list.GetGroupByClient(this); }
+
+	void	AI_Init();
+	void	AI_Start(uint32 iMoveDelay = 0);
+	void	AI_Stop();
+	void	AI_Process();
+	void	AI_SpellCast();
+	void	Trader_ShowItems();
+	void	Trader_CustomerBrowsing(Client *Customer);
+	void	Trader_EndTrader();
+	void	Trader_StartTrader();
+	uint8	WithCustomer(uint16 NewCustomer);
+	void	KeyRingLoad();
+	void	KeyRingAdd(uint32 item_id);
+	bool	KeyRingCheck(uint32 item_id);
+	void	KeyRingList();
+	virtual bool IsClient() const { return true; }
+	virtual void DBAWComplete(uint8 workpt_b1, DBAsyncWork* dbaw);
+	bool	FinishConnState2(DBAsyncWork* dbaw);
+	void	CompleteConnect();
+	bool	TryStacking(ItemInst* item, uint8 type = ItemPacketTrade, bool try_worn = true, bool try_cursor = true);
+	void	SendTraderPacket(Client* trader, uint32 Unknown72 = 51);
+	void	SendBuyerPacket(Client* Buyer);
+	GetItems_Struct* GetTraderItems();
+	void	SendBazaarWelcome();
+	void	DyeArmor(DyeStruct* dye);
+	uint8	SlotConvert(uint8 slot,bool bracer=false);
+	void	Message_StringID(uint32 type, uint32 string_id, uint32 distance = 0);
+	void	Message_StringID(uint32 type, uint32 string_id, const char* message,const char* message2=0,const char* message3=0,const char* message4=0,const char* message5=0,const char* message6=0,const char* message7=0,const char* message8=0,const char* message9=0, uint32 distance = 0);
+	void	SendBazaarResults(uint32 trader_id,uint32 class_,uint32 race,uint32 stat,uint32 slot,uint32 type,char name[64],uint32 minprice,uint32 maxprice);
+	void	SendTraderItem(uint32 item_id,uint16 quantity);
+	uint16	FindTraderItem(int32 SerialNumber,uint16 Quantity);
+	ItemInst* FindTraderItemBySerialNumber(int32 SerialNumber);
+	void	FindAndNukeTraderItem(int32 item_id,uint16 quantity,Client* customer,uint16 traderslot);
+	void	NukeTraderItem(uint16 slot,int16 charges,uint16 quantity,Client* customer,uint16 traderslot, int uniqueid);
+	void	ReturnTraderReq(const EQApplicationPacket* app,int16 traderitemcharges);
+	void	TradeRequestFailed(const EQApplicationPacket* app);
+	void	BuyTraderItem(TraderBuy_Struct* tbs,Client* trader,const EQApplicationPacket* app);
+	void	TraderUpdate(uint16 slot_id,uint32 trader_id);
+	void	FinishTrade(Mob* with, ServerPacket* qspack = nullptr, bool finalizer = false);
+	void	SendZonePoints();
+
+	void	SendBuyerResults(char *SearchQuery, uint32 SearchID);
+	void	ShowBuyLines(const EQApplicationPacket *app);
+	void	SellToBuyer(const EQApplicationPacket *app);
+	void	ToggleBuyerMode(bool TurnOn);
+	void	UpdateBuyLine(const EQApplicationPacket *app);
+	void	BuyerItemSearch(const EQApplicationPacket *app);
+	void	SetBuyerWelcomeMessage(const char* WelcomeMessage) { BuyerWelcomeMessage = WelcomeMessage; }
+	const	char* GetBuyerWelcomeMessage() { return BuyerWelcomeMessage.c_str(); }
+
+	void	FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho);
+	virtual bool Process();
+	void	LogMerchant(Client* player, Mob* merchant, uint32 quantity, uint32 price, const Item_Struct* item, bool buying);
+	void	SendPacketQueue(bool Block = true);
+	void	QueuePacket(const EQApplicationPacket* app, bool ack_req = true, CLIENT_CONN_STATUS = CLIENT_CONNECTINGALL, eqFilterType filter=FilterNone);
+	void	FastQueuePacket(EQApplicationPacket** app, bool ack_req = true, CLIENT_CONN_STATUS = CLIENT_CONNECTINGALL);
+	void	ChannelMessageReceived(uint8 chan_num, uint8 language, uint8 lang_skill, const char* orig_message, const char* targetname=nullptr);
+	void	ChannelMessageSend(const char* from, const char* to, uint8 chan_num, uint8 language, const char* message, ...);
+	void	ChannelMessageSend(const char* from, const char* to, uint8 chan_num, uint8 language, uint8 lang_skill, const char* message, ...);
+	void	Message(uint32 type, const char* message, ...);
+	void	QuestJournalledMessage(const char *npcname, const char* message);
+	void	VoiceMacroReceived(uint32 Type, char *Target, uint32 MacroNumber);
+	void	SendSound();
+	void	LearnRecipe(uint32 recipeID);
+	bool	CanIncreaseTradeskill(SkillType tradeskill);
+
+	EQApplicationPacket*	ReturnItemPacket(int16 slot_id, const ItemInst* inst, ItemPacketType packet_type);
+
+	bool			GetRevoked() const { return revoked; }
+	void			SetRevoked(bool rev) { revoked = rev; }
+	inline uint32	GetIP()			const { return ip; }
+	inline bool		GetHideMe()			const { return gmhideme; }
+	void			SetHideMe(bool hm);
+	inline uint16	GetPort()		const { return port; }
+	bool			IsDead() const { return(dead); }
+	inline bool		IsLFP() { return LFP; }
+	void			UpdateLFP();
+
+	virtual bool	Save() { return Save(0); }
+			bool	Save(uint8 iCommitNow); // 0 = delayed, 1=async now, 2=sync now
+			void	SaveBackup();
+
+	inline bool ClientDataLoaded() const { return client_data_loaded; }
+	inline bool	Connected()		const { return (client_state == CLIENT_CONNECTED); }
+	inline bool	InZone()		const { return (client_state == CLIENT_CONNECTED || client_state == CLIENT_LINKDEAD); }
+	inline void	Kick()			{ client_state = CLIENT_KICKED; }
+	inline void	Disconnect()	{ eqs->Close(); client_state = DISCONNECTED; }
+	inline bool IsLD()			const { return (bool) (client_state == CLIENT_LINKDEAD); }
+	void	WorldKick();
+	inline uint8	GetAnon()		const { return m_pp.anon; }
+	inline PlayerProfile_Struct& GetPP()	{ return m_pp; }
+	inline ExtendedProfile_Struct& GetEPP()	{ return m_epp; }
+	inline Inventory& GetInv()				{ return m_inv; }
+	inline const Inventory& GetInv() const	{ return m_inv; }
+	inline PetInfo* GetPetInfo(uint16 pet)	{ return (pet==1)?&m_suspendedminion:&m_petinfo; }
+	inline InspectMessage_Struct& GetInspectMessage() { return m_inspect_message; }
+	inline const InspectMessage_Struct& GetInspectMessage() const { return m_inspect_message; }
+
+	bool	CheckAccess(int16 iDBLevel, int16 iDefaultLevel);
+
+	void	CheckQuests(const char* zonename, const char* message, uint32 npc_id, uint32 item_id, Mob* other);
+	void	LogLoot(Client* player,Corpse* corpse,const Item_Struct* item);
+	bool	AutoAttackEnabled() const { return auto_attack; }
+	bool	AutoFireEnabled() const { return auto_fire; }
+	void	MakeCorpse(uint32 exploss);
+
+	bool	ChangeFirstName(const char* in_firstname,const char* gmname);
+
+	void	Duck();
+	void	Stand();
+
+	virtual void	SetMaxHP();
+	int32	LevelRegen();
+	void	HPTick();
+	void	SetGM(bool toggle);
+	void	SetPVP(bool toggle);
+
+	inline bool	GetPVP()	const { return zone->GetZoneID() == 77 ? true : (m_pp.pvp != 0); }
+	inline bool	GetGM()		const { return m_pp.gm != 0; }
+
+	inline void	SetBaseClass(uint32 i) { m_pp.class_=i; }
+	inline void	SetBaseRace(uint32 i) { m_pp.race=i; }
+	inline void	SetBaseGender(uint32 i) { m_pp.gender=i; }
+	inline void SetDeity(uint32 i) {m_pp.deity=i;deity=i;}
+
+	inline uint8		GetLevel2()			const { return m_pp.level2; }
+	inline uint16	GetBaseRace()		const { return m_pp.race; }
+	inline uint16	GetBaseClass()		const { return m_pp.class_; }
+	inline uint8		GetBaseGender()		const { return m_pp.gender; }
+	inline uint8		GetBaseFace()		const { return m_pp.face; }
+	inline uint8		GetBaseHairColor()	const { return m_pp.haircolor; }
+	inline uint8		GetBaseBeardColor()	const { return m_pp.beardcolor; }
+	inline uint8		GetBaseEyeColor()	const { return m_pp.eyecolor1; }
+	inline uint8		GetBaseHairStyle()	const { return m_pp.hairstyle; }
+	inline uint8		GetBaseBeard()		const { return m_pp.beard; }
+	inline uint8		GetBaseHeritage()	const { return m_pp.drakkin_heritage; }
+	inline uint8		GetBaseTattoo()		const { return m_pp.drakkin_tattoo; }
+	inline uint8		GetBaseDetails()	const { return m_pp.drakkin_details; }
+	inline const float	GetBindX(uint32 index = 0)	const { return m_pp.binds[index].x; }
+	inline const float	GetBindY(uint32 index = 0)			const { return m_pp.binds[index].y; }
+	inline const float	GetBindZ(uint32 index = 0)			const { return m_pp.binds[index].z; }
+	inline const float	GetBindHeading(uint32 index = 0)			const { return m_pp.binds[index].heading; }
+	inline uint32	GetBindZoneID(uint32 index = 0)			const { return m_pp.binds[index].zoneId; }
+	int32			CalcMaxMana();
+	int32			CalcBaseMana();
+	const int32&	SetMana(int32 amount);
+	int32			CalcManaRegenCap();
+
+	void	ServerFilter(SetServerFilter_Struct* filter);
+	void	BulkSendTraderInventory(uint32 char_id);
+	void	SendSingleTraderItem(uint32 char_id, int uniqueid);
+	void	BulkSendMerchantInventory(int merchant_id, int npcid);
+
+	inline uint8	GetLanguageSkill(uint16 n)	const { return m_pp.languages[n]; }
+
+	void	SendPickPocketResponse(Mob *from, uint32 amt, int type, const Item_Struct* item = nullptr);
+
+	inline const char*	GetLastName() const	{ return lastname; }
+
+	inline float ProximityX() const { return(proximity_x); }
+	inline float ProximityY() const { return(proximity_y); }
+	inline float ProximityZ() const { return(proximity_z); }
+	inline void ClearAllProximities() { entity_list.ProcessMove(this, FLT_MAX, FLT_MAX, FLT_MAX); proximity_x = FLT_MAX; proximity_y = FLT_MAX; proximity_z = FLT_MAX; }
+
+	/*
+		Begin client modifiers
+	*/
+
+	virtual void CalcBonuses();
+	//these are all precalculated now
+	inline virtual int16	GetAC()		const { return AC; }
+	inline virtual int16 GetATK() const { return ATK + itembonuses.ATK + spellbonuses.ATK + ((GetSTR() + GetSkill(OFFENSE)) * 9 / 10); }
+	inline virtual int16 GetATKBonus() const { return itembonuses.ATK + spellbonuses.ATK; }
+	inline virtual int	GetHaste() const { return Haste; }
+	int GetRawACNoShield(int &shield_ac) const;
+
+	inline virtual int16	GetSTR()	const { return STR; }
+	inline virtual int16	GetSTA()	const { return STA; }
+	inline virtual int16	GetDEX()	const { return DEX; }
+	inline virtual int16	GetAGI()	const { return AGI; }
+	inline virtual int16	GetINT()	const { return INT; }
+	inline virtual int16	GetWIS()	const { return WIS; }
+	inline virtual int16	GetCHA()	const { return CHA; }
+	inline virtual int16	GetMR()	const { return MR; }
+	inline virtual int16	GetFR()	const { return FR; }
+	inline virtual int16	GetDR()	const { return DR; }
+	inline virtual int16	GetPR()	const { return PR; }
+	inline virtual int16	GetCR()	const { return CR; }
+	inline virtual int16	GetCorrup()	const { return Corrup; }
+
+	int16	GetMaxStat() const;
+	int16	GetMaxResist() const;
+	int16	GetMaxSTR() const;
+	int16	GetMaxSTA() const;
+	int16	GetMaxDEX() const;
+	int16	GetMaxAGI() const;
+	int16	GetMaxINT() const;
+	int16	GetMaxWIS() const;
+	int16	GetMaxCHA() const;
+	int16	GetMaxMR() const;
+	int16	GetMaxPR() const;
+	int16	GetMaxDR() const;
+	int16	GetMaxCR() const;
+	int16	GetMaxFR() const;
+	int16	GetMaxCorrup() const;
+	inline uint8	GetBaseSTR()	const { return m_pp.STR; }
+	inline uint8	GetBaseSTA()	const { return m_pp.STA; }
+	inline uint8	GetBaseCHA()	const { return m_pp.CHA; }
+	inline uint8	GetBaseDEX()	const { return m_pp.DEX; }
+	inline uint8	GetBaseINT()	const { return m_pp.INT; }
+	inline uint8	GetBaseAGI()	const { return m_pp.AGI; }
+	inline uint8	GetBaseWIS()	const { return m_pp.WIS; }
+	inline uint8	GetBaseCorrup()	const { return 15; } // Same for all
+
+	inline virtual int16	GetHeroicSTR()	const { return itembonuses.HeroicSTR; }
+	inline virtual int16	GetHeroicSTA()	const { return itembonuses.HeroicSTA; }
+	inline virtual int16	GetHeroicDEX()	const { return itembonuses.HeroicDEX; }
+	inline virtual int16	GetHeroicAGI()	const { return itembonuses.HeroicAGI; }
+	inline virtual int16	GetHeroicINT()	const { return itembonuses.HeroicINT; }
+	inline virtual int16	GetHeroicWIS()	const { return itembonuses.HeroicWIS; }
+	inline virtual int16	GetHeroicCHA()	const { return itembonuses.HeroicCHA; }
+	inline virtual int16	GetHeroicMR()	const { return itembonuses.HeroicMR; }
+	inline virtual int16	GetHeroicFR()	const { return itembonuses.HeroicFR; }
+	inline virtual int16	GetHeroicDR()	const { return itembonuses.HeroicDR; }
+	inline virtual int16	GetHeroicPR()	const { return itembonuses.HeroicPR; }
+	inline virtual int16	GetHeroicCR()	const { return itembonuses.HeroicCR; }
+	inline virtual int16	GetHeroicCorrup()	const { return itembonuses.HeroicCorrup; }
+	// Mod2
+	inline virtual int16	GetShielding()		const { return itembonuses.MeleeMitigation; }
+	inline virtual int16	GetSpellShield()	const { return itembonuses.SpellShield; }
+	inline virtual int16	GetDoTShield()		const { return itembonuses.DoTShielding; }
+	inline virtual int16	GetStunResist()		const { return itembonuses.StunResist; }
+	inline virtual int16	GetStrikeThrough()	const { return itembonuses.StrikeThrough; }
+	inline virtual int16	GetAvoidance()		const { return itembonuses.AvoidMeleeChance; }
+	inline virtual int16	GetAccuracy()		const { return itembonuses.HitChance; }
+	inline virtual int16	GetCombatEffects()	const { return itembonuses.ProcChance; }
+	inline virtual int16	GetDS()				const { return itembonuses.DamageShield; }
+	// Mod3
+	inline virtual int16	GetHealAmt()		const { return itembonuses.HealAmt; }
+	inline virtual int16	GetSpellDmg()		const { return itembonuses.SpellDmg; }
+	inline virtual int16	GetClair()			const { return itembonuses.Clairvoyance; }
+	inline virtual int16	GetDSMit()			const { return itembonuses.DSMitigation; }
+
+	inline virtual int16	GetSingMod()		const { return itembonuses.singingMod; }
+	inline virtual int16	GetBrassMod()		const { return itembonuses.brassMod; }
+	inline virtual int16	GetPercMod()		const { return itembonuses.percussionMod; }
+	inline virtual int16	GetStringMod()		const { return itembonuses.stringedMod; }
+	inline virtual int16	GetWindMod()		const { return itembonuses.windMod; }
+
+	inline virtual int16	GetDelayDeath()		const { return aabonuses.DelayDeath + spellbonuses.DelayDeath + itembonuses.DelayDeath + 11; }
+
+	int32 Additional_SpellDmg(uint16 spell_id, bool bufftick = false);
+	int32 Additional_Heal(uint16 spell_id);
+	float GetActSpellRange(uint16 spell_id, float range, bool IsBard = false);
+	int32 GetActSpellDamage(uint16 spell_id, int32 value);
+	int32 GetActSpellHealing(uint16 spell_id, int32 value);
+	int32 GetActSpellCost(uint16 spell_id, int32);
+	int32 GetActSpellDuration(uint16 spell_id, int32);
+	int32 GetActSpellCasttime(uint16 spell_id, int32);
+	int32 GetDotFocus(uint16 spell_id, int32 value);
+	int32 GetActDoTDamage(uint16 spell_id, int32 value);
+	virtual bool CheckFizzle(uint16 spell_id);
+	virtual bool CheckSpellLevelRestriction(uint16 spell_id);
+	virtual int GetCurrentBuffSlots() const;
+	virtual int GetCurrentSongSlots() const;
+	virtual int GetCurrentDiscSlots() const { return 1; }
+	virtual int GetMaxBuffSlots() const { return 25; }
+	virtual int GetMaxSongSlots() const { return 12; }
+	virtual int GetMaxDiscSlots() const { return 1; }
+	virtual int GetMaxTotalSlots() const { return 38; }
+	virtual void InitializeBuffSlots();
+	virtual void UninitializeBuffSlots();
+
+	inline const int32	GetBaseHP() const { return base_hp; }
+
+	uint32 GetWeight() const { return(weight); }
+	inline void RecalcWeight() { weight = CalcCurrentWeight(); }
+	uint32 CalcCurrentWeight();
+	inline uint32	GetCopper()		const { return m_pp.copper; }
+	inline uint32	GetSilver()		const { return m_pp.silver; }
+	inline uint32	GetGold()		const { return m_pp.gold; }
+	inline uint32	GetPlatinum()	const { return m_pp.platinum; }
+
+
+	/*Endurance and such*/
+	void	CalcMaxEndurance();	//This calculates the maximum endurance we can have
+	int32	CalcBaseEndurance();	//Calculates Base End
+	int32	CalcEnduranceRegen();	//Calculates endurance regen used in DoEnduranceRegen()
+	int32	GetEndurance()	const {return cur_end;}	//This gets our current endurance
+	int32	GetMaxEndurance() const {return max_end;}	//This gets our endurance from the last CalcMaxEndurance() call
+	int32	CalcEnduranceRegenCap();
+	int32	CalcHPRegenCap();
+	inline uint8 GetEndurancePercent() { return (uint8)((float)cur_end / (float)max_end * 100.0f); }
+	void SetEndurance(int32 newEnd);	//This sets the current endurance to the new value
+	void DoEnduranceRegen();	//This Regenerates endurance
+	void DoEnduranceUpkeep();	//does the endurance upkeep
+
+	//This calculates total Attack Rating to match very close to what the client should show
+	uint16 GetTotalATK();
+	uint16 GetATKRating();
+	//This gets the skill value of the item type equiped in the Primary Slot
+	uint16 GetPrimarySkillValue();
+
+	bool Flurry();
+	bool Rampage();
+	void DurationRampage(uint32 duration);
+
+	inline uint32	GetEXP()		const { return m_pp.exp; }
+
+	bool	UpdateLDoNPoints(int32 points, uint32 theme);
+	void	SetPVPPoints(uint32 Points) { m_pp.PVPCurrentPoints = Points; }
+	uint32	GetPVPPoints() { return m_pp.PVPCurrentPoints; }
+	void	AddPVPPoints(uint32 Points);
+	uint32	GetRadiantCrystals() { return m_pp.currentRadCrystals; }
+	void	SetRadiantCrystals(uint32 Crystals) { m_pp.currentRadCrystals = Crystals; }
+	uint32	GetEbonCrystals() { return m_pp.currentEbonCrystals; }
+	void	SetEbonCrystals(uint32 Crystals) { m_pp.currentEbonCrystals = Crystals; }
+	void	AddCrystals(uint32 Radiant, uint32 Ebon);
+	void	SendCrystalCounts();
+
+	void	AddEXP(uint32 in_add_exp, uint8 conlevel = 0xFF, bool resexp = false);
+	void	SetEXP(uint32 set_exp, uint32 set_aaxp, bool resexp=false);
+	void	AddLevelBasedExp(uint8 exp_percentage, uint8 max_level=0);
+	void	SetLeadershipEXP(uint32 group_exp, uint32 raid_exp);
+	void	AddLeadershipEXP(uint32 group_exp, uint32 raid_exp);
+	void	SendLeadershipEXPUpdate();
+	bool	IsLeadershipEXPOn();
+	inline	int GetLeadershipAA(int AAID) { return m_pp.leader_abilities.ranks[AAID]; }
+	int	GroupLeadershipAAHealthEnhancement();
+	int	GroupLeadershipAAManaEnhancement();
+	int	GroupLeadershipAAHealthRegeneration();
+	int	GroupLeadershipAAOffenseEnhancement();
+	void	InspectBuffs(Client* Inspector, int Rank);
+	uint32	GetRaidPoints() { return(m_pp.raid_leadership_points); }
+	uint32	GetGroupPoints() { return(m_pp.group_leadership_points); }
+	uint32	GetRaidEXP() { return(m_pp.raid_leadership_exp); }
+	uint32	GetGroupEXP() { return(m_pp.group_leadership_exp); }
+	uint32	GetTotalSecondsPlayed() { return(TotalSecondsPlayed); }
+	virtual void SetLevel(uint8 set_level, bool command = false);
+	void	GoToBind(uint8 bindnum = 0);
+	void	GoToSafeCoords(uint16 zone_id, uint16 instance_id);
+	void	Gate();
+	void	SetBindPoint(int to_zone = -1, float new_x = 0.0f, float new_y = 0.0f, float new_z = 0.0f);
+	void	SetStartZone(uint32 zoneid, float x = 0.0f, float y =0.0f, float z = 0.0f);
+	uint32	GetStartZone(void);
+	void	MovePC(const char* zonename, float x, float y, float z, float heading, uint8 ignorerestrictions = 0, ZoneMode zm = ZoneSolicited);
+	void	MovePC(uint32 zoneID, float x, float y, float z, float heading, uint8 ignorerestrictions = 0, ZoneMode zm = ZoneSolicited);
+	void	MovePC(float x, float y, float z, float heading, uint8 ignorerestrictions = 0, ZoneMode zm = ZoneSolicited);
+	void	MovePC(uint32 zoneID, uint32 instanceID, float x, float y, float z, float heading, uint8 ignorerestrictions = 0, ZoneMode zm = ZoneSolicited);
+	void	AssignToInstance(uint16 instance_id);
+	void	WhoAll();
+	bool	CheckLoreConflict(const Item_Struct* item);
+	void	ChangeLastName(const char* in_lastname);
+	void	GetGroupAAs(GroupLeadershipAA_Struct *into) const;
+	void	ClearGroupAAs();
+	void	UpdateGroupAAs(int32 points, uint32 type);
+	void	SacrificeConfirm(Client* caster);
+	void	Sacrifice(Client* caster);
+	void	GoToDeath();
+	inline const int32	GetInstanceID() const { return zone->GetInstanceID(); }
+
+	FACTION_VALUE	GetReverseFactionCon(Mob* iOther);
+	FACTION_VALUE	GetFactionLevel(uint32 char_id, uint32 npc_id, uint32 p_race, uint32 p_class, uint32 p_deity, int32 pFaction, Mob* tnpc);
+	int32	GetCharacterFactionLevel(int32 faction_id);
+	int32	GetModCharacterFactionLevel(int32 faction_id);
+	bool	HatedByClass(uint32 p_race, uint32 p_class, uint32 p_deity, int32 pFaction);
+	char* BuildFactionMessage(int32 tmpvalue, int32 faction_id, int32 totalvalue, uint8 temp);
+
+	void	SetFactionLevel(uint32 char_id, uint32 npc_id, uint8 char_class, uint8 char_race, uint8 char_deity);
+	void	SetFactionLevel2(uint32 char_id, int32 faction_id, uint8 char_class, uint8 char_race, uint8 char_deity, int32 value, uint8 temp);
+	int16	GetRawItemAC();
+	uint16	GetCombinedAC_TEST();
+
+	inline uint32	LSAccountID()	const { return lsaccountid; }
+	inline uint32	GetWID()		const { return WID; }
+	inline void		SetWID(uint32 iWID) { WID = iWID; }
+	inline uint32	AccountID()		const { return account_id; }
+	inline const char* AccountName()const { return account_name; }
+	inline int16	Admin()			const { return admin; }
+	inline uint32	CharacterID()	const { return character_id; }
+	void	UpdateAdmin(bool iFromDB = true);
+	void	UpdateWho(uint8 remove = 0);
+	bool	GMHideMe(Client* client = 0);
+
+	inline bool IsInAGuild() const { return(guild_id != GUILD_NONE && guild_id != 0); }
+	inline bool IsInGuild(uint32 in_gid) const { return(in_gid == guild_id && IsInAGuild()); }
+	inline uint32	GuildID() const { return guild_id; }
+	inline uint8	GuildRank()		const { return guildrank; }
+	void	SendGuildMOTD(bool GetGuildMOTDReply = false);
+	void	SendGuildURL();
+	void	SendGuildChannel();
+	void	SendGuildSpawnAppearance();
+	void	SendGuildMembers();
+	void	SendGuildList();
+	void	SendGuildJoin(GuildJoin_Struct* gj);
+	void	RefreshGuildInfo();
+
+
+	void	SendManaUpdatePacket();
+	void	SendManaUpdate();
+	void	SendEnduranceUpdate();
+	uint8	GetFace()		const { return m_pp.face; }
+	void	WhoAll(Who_All_Struct* whom);
+	void	FriendsWho(char *FriendsString);
+
+	void	Stun(int duration);
+	void	UnStun();
+	void	ReadBook(BookRequest_Struct *book);
+	void	QuestReadBook(const char* text, uint8 type);
+	void	SendClientMoneyUpdate(uint8 type,uint32 amount);
+	void	SendMoneyUpdate();
+	bool	TakeMoneyFromPP(uint64 copper, bool updateclient=false);
+	void	AddMoneyToPP(uint64 copper,bool updateclient);
+	void	AddMoneyToPP(uint32 copper, uint32 silver, uint32 gold,uint32 platinum,bool updateclient);
+	bool	HasMoney(uint64 copper);
+	uint64	GetCarriedMoney();
+	uint64	GetAllMoney();
+
+	bool	IsDiscovered(uint32 itemid);
+	void	DiscoverItem(uint32 itemid);
+
+	bool	TGB() const { return tgb; }
+
+	void	OnDisconnect(bool hard_disconnect);
+
+	uint16	GetSkillPoints() {return m_pp.points;}
+	void	SetSkillPoints(int inp) {m_pp.points = inp;}
+
+	void	IncreaseSkill(int skill_id, int value = 1) { if (skill_id <= HIGHEST_SKILL) { m_pp.skills[skill_id] += value; } }
+	void	IncreaseLanguageSkill(int skill_id, int value = 1);
+	virtual uint16 GetSkill(SkillType skill_id) const { if (skill_id <= HIGHEST_SKILL) { return((itembonuses.skillmod[skill_id] > 0)? m_pp.skills[skill_id]*(100 + itembonuses.skillmod[skill_id])/100 : m_pp.skills[skill_id]); } return 0; }
+	uint32	GetRawSkill(SkillType skill_id) const { if (skill_id <= HIGHEST_SKILL) { return(m_pp.skills[skill_id]); } return 0; }
+	bool	HasSkill(SkillType skill_id) const;
+	bool	CanHaveSkill(SkillType skill_id) const;
+	void	SetSkill(SkillType skill_num, uint16 value);
+	void	AddSkill(SkillType skillid, uint16 value);
+	void	CheckSpecializeIncrease(uint16 spell_id);
+	void	CheckSongSkillIncrease(uint16 spell_id);
+	bool	CheckIncreaseSkill(SkillType skillid, Mob *against_who, int chancemodi = 0);
+	void	CheckLanguageSkillIncrease(uint8 langid, uint8 TeacherSkill);
+	void	SetLanguageSkill(int langid, int value);
+	void	SetHoTT(uint32 mobid);
+	void	ShowSkillsWindow();
+	void	SendStatsWindow(Client* client, bool use_window);
+
+	uint16	MaxSkill(SkillType skillid, uint16 class_, uint16 level) const;
+	inline	uint16	MaxSkill(SkillType skillid) const { return MaxSkill(skillid, GetClass(), GetLevel()); }
+	uint8	SkillTrainLevel(SkillType skillid, uint16 class_);
+
+	void TradeskillSearchResults(const char *query, unsigned long qlen, unsigned long objtype, unsigned long someid);
+	void SendTradeskillDetails(uint32 recipe_id);
+	bool TradeskillExecute(DBTradeskillRecipe_Struct *spec);
+	void CheckIncreaseTradeskill(int16 bonusstat, int16 stat_modifier, float skillup_modifier, uint16 success_modifier, SkillType tradeskill);
+
+	void GMKill();
+	inline bool	IsMedding()	const {return medding;}
+	inline uint16 GetDuelTarget() const { return duel_target; }
+	inline bool	IsDueling() const { return duelaccepted; }
+	inline void	SetDuelTarget(uint16 set_id) { duel_target=set_id; }
+	inline void	SetDueling(bool duel) { duelaccepted = duel; }
+	// use this one instead
+	void MemSpell(uint16 spell_id, int slot, bool update_client = true);
+	void UnmemSpell(int slot, bool update_client = true);
+	void UnmemSpellAll(bool update_client = true);
+	void ScribeSpell(uint16 spell_id, int slot, bool update_client = true);
+	void UnscribeSpell(int slot, bool update_client = true);
+	void UnscribeSpellAll(bool update_client = true);
+	void UntrainDisc(int slot, bool update_client = true);
+	void UntrainDiscAll(bool update_client = true);
+	bool SpellGlobalCheck(uint16 Spell_ID, uint16 Char_ID);
+	uint32 GetCharMaxLevelFromQGlobal();
+
+	inline bool	IsSitting() const {return (playeraction == 1);}
+	inline bool	IsBecomeNPC() const { return npcflag; }
+	inline uint8	GetBecomeNPCLevel() const { return npclevel; }
+	inline void	SetBecomeNPC(bool flag) { npcflag = flag; }
+	inline void	SetBecomeNPCLevel(uint8 level) { npclevel = level; }
+	void SetFeigned(bool in_feigned);
+	/// this cures timing issues cuz dead animation isn't done but server side feigning is?
+	inline bool GetFeigned() const { return(feigned); }
+	EQStreamInterface* Connection() { return eqs; }
+>>>>>>> 3c09613d01dc897f107e2df01d6b606c8fbf03dc
 #ifdef PACKET_PROFILER
 void DumpPacketProfile() { if(eqs) eqs->DumpPacketProfile(); }
 #endif
@@ -766,6 +1254,7 @@ int16 CalcAAFocus(focusType type, uint32 aa_ID, uint16 spell_id);
 	void RefundAA();
 	void IncrementAA(int aa_id);
 
+<<<<<<< HEAD
 int16 acmod();
 
 // Item methods
@@ -807,6 +1296,49 @@ void	LeaveGroup();
 
 bool	Hungry() const {if (GetGM()) return false; return m_pp.hunger_level <= 3000;}
 bool	Thirsty() const {if (GetGM()) return false; return m_pp.thirst_level <= 3000;}
+=======
+	int16 acmod();
+
+	// Item methods
+	uint32	NukeItem(uint32 itemnum, uint8 where_to_check =
+		(invWhereWorn | invWherePersonal | invWhereBank | invWhereSharedBank | invWhereTrading | invWhereCursor));
+	void	SetTint(int16 slot_id, uint32 color);
+	void	SetTint(int16 slot_id, Color_Struct& color);
+	void	SetMaterial(int16 slot_id, uint32 item_id);
+	void	Undye();
+	uint32	GetItemIDAt(int16 slot_id);
+	uint32	GetAugmentIDAt(int16 slot_id, uint8 augslot);
+	bool	PutItemInInventory(int16 slot_id, const ItemInst& inst, bool client_update = false);
+	bool	PushItemOnCursor(const ItemInst& inst, bool client_update = false);
+	void	DeleteItemInInventory(int16 slot_id, int8 quantity = 0, bool client_update = false, bool update_db = true);
+	bool	SwapItem(MoveItem_Struct* move_in);
+	void	SwapItemResync(MoveItem_Struct* move_slots);
+	void	QSSwapItemAuditor(MoveItem_Struct* move_in, bool postaction_call = false);
+	void	PutLootInInventory(int16 slot_id, const ItemInst &inst, ServerLootItem_Struct** bag_item_data = 0);
+	bool	AutoPutLootInInventory(ItemInst& inst, bool try_worn = false, bool try_cursor = true, ServerLootItem_Struct** bag_item_data = 0);
+	void	SummonItem(uint32 item_id, int16 charges = -1, uint32 aug1=0, uint32 aug2=0, uint32 aug3=0, uint32 aug4=0, uint32 aug5=0, bool attuned=false, uint16 to_slot=SLOT_CURSOR);
+	void	SetStats(uint8 type,int16 set_val);
+	void	IncStats(uint8 type,int16 increase_val);
+	void	DropItem(int16 slot_id);
+	bool	MakeItemLink(char* &ret_link, const ItemInst* inst);
+	int		GetItemLinkHash(const ItemInst* inst);
+	void	SendItemLink(const ItemInst* inst, bool sendtoall=false);
+	void	SendLootItemInPacket(const ItemInst* inst, int16 slot_id);
+	void	SendItemPacket(int16 slot_id, const ItemInst* inst, ItemPacketType packet_type);
+	bool	IsValidSlot(uint32 slot);
+	bool	IsBankSlot(uint32 slot);
+
+	inline	bool IsTrader() const { return(Trader); }
+	inline	bool IsBuyer() const { return(Buyer); }
+	eqFilterMode	GetFilter(eqFilterType filter_id) const { return ClientFilters[filter_id]; }
+	void	SetFilter(eqFilterType filter_id, eqFilterMode value) { ClientFilters[filter_id]=value; }
+
+	void	BreakInvis();
+	void	LeaveGroup();
+
+	bool	Hungry() const {if (GetGM()) return false; return m_pp.hunger_level <= 3000;}
+	bool	Thirsty() const {if (GetGM()) return false; return m_pp.thirst_level <= 3000;}
+>>>>>>> 3c09613d01dc897f107e2df01d6b606c8fbf03dc
     int32   GetHunger() const { return m_pp.hunger_level; }
     int32   GetThirst() const { return m_pp.thirst_level; }
     void    SetHunger(int32 in_hunger);

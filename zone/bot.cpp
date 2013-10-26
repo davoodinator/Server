@@ -66,6 +66,7 @@ Bot::Bot(NPCType npcTypeData, Client* botOwner) : NPC(&npcTypeData, 0, 0, 0, 0, 
 	SetHealRotationNextHealTime(0);
 	SetHealRotationTimer(0);
 	SetNumHealRotationMembers(0);
+	SetBardUseOutOfCombatSongs(GetClass() == BARD);
 	CalcChanceToCast();
 	rest_timer.Disable();
 
@@ -9509,7 +9510,7 @@ int32 Bot::GetActSpellCasttime(uint16 spell_id, int32 casttime) {
 			|| botclass == PALADIN || botclass == BEASTLORD ))
 		cast_reducer += (GetLevel()-50)*3;
 
-	if((casttime >= 4000) && BeneficialSpell(spell_id) && ((CalcBuffDuration(this,this,spell_id)-1) > 0)) {
+	if((casttime >= 4000) && BeneficialSpell(spell_id) && IsBuffSpell(spell_id)) {
 		switch (GetAA(aaSpellCastingDeftness)) {
 			case 1:
 				cast_reducer += 5;
@@ -11871,6 +11872,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 		// c->Message(0, "#bot illusion <bot/client name or target> - Enchanter Bot cast an illusion buff spell on you or your target.");
 		c->Message(0, "#bot pull [<bot name>] [target] - Bot Pulling Target NPC's");
 		c->Message(0, "#bot setinspectmessage - Copies your inspect message to a targeted bot that you own");
+		c->Message(0, "#bot bardoutofcombat [on|off] - Determines wheter bard bots use out of combat songs.");
 		return;
 	}
 
@@ -16159,6 +16161,39 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				c->Message(0, "Your target must be a bot that you own.");
 			}
 		}
+	}
+
+	if(!strcasecmp(sep->arg[1], "bardoutofcombat")) {
+		bool useOutOfCombatSongs = false;
+
+		if(sep->arg[2] && sep->arg[3]){
+			if(!strcasecmp(sep->arg[2], "on"))
+				useOutOfCombatSongs = true;
+			else if (!strcasecmp(sep->arg[2], "off"))
+				useOutOfCombatSongs = false;
+			else {
+				c->Message(0, "Usage #bot bardoutofcombat [on|off]");
+				return;
+			}
+
+			Mob *target = c->GetTarget();
+
+			if(target->IsBot() && (c == target->GetOwner()->CastToClient())) {
+				Bot* bardBot = target->CastToBot();
+
+				if(bardBot) {
+					bardBot->SetBardUseOutOfCombatSongs(useOutOfCombatSongs);
+					c->Message(0, "Bard use of out of combat songs updated.");
+				}
+			}
+			else {
+				c->Message(0, "Your target must be a bot that you own.");
+			}
+		}
+		else {
+			c->Message(0, "Usage #bot bardoutofcombat [on|off]");
+		}
+		return;
 	}
 }
 
