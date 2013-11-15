@@ -325,6 +325,9 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 			case SE_CurrentMana:
 			{
+				// Bards don't get mana from effects, good or bad.
+				if(GetClass() == BARD)
+					break;
 				if(IsManaTapSpell(spell_id)) {
 					if(GetCasterClass() != 'N') {
 #ifdef SPELL_EFFECT_SPAM
@@ -352,6 +355,9 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 			case SE_CurrentManaOnce:
 			{
+				// Bards don't get mana from effects, good or bad.
+				if(GetClass() == BARD)
+					break;
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "Current Mana Once: %+i", effect_value);
 #endif
@@ -2113,11 +2119,11 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 				switch(spells[spell_id].skill)
 				{
-					case THROWING:
+					case SkillThrowing:
 						caster->DoThrowingAttackDmg(this, nullptr, nullptr, spells[spell_id].base[i],spells[spell_id].base2[i], focus);
 					break;
 
-					case ARCHERY:
+					case SkillArchery:
 						caster->DoArcheryAttackDmg(this, nullptr, nullptr, spells[spell_id].base[i],spells[spell_id].base2[i],focus);
 					break;
 
@@ -2727,6 +2733,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			case SE_ImprovedBindWound:
 			case SE_MaxBindWound:
 			case SE_CombatStability:
+			case SE_AddSingingMod:
 			case SE_PetAvoidance:
 			case SE_GiveDoubleRiposte:
 			case SE_Ambidexterity:
@@ -3238,11 +3245,11 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 						double break_chance = 2.0;
 						if(caster)
 						{
-							break_chance -= (2 * (((double)caster->GetSkill(DIVINATION) + ((double)caster->GetLevel() * 3.0)) / 650.0));
+							break_chance -= (2 * (((double)caster->GetSkill(SkillDivination) + ((double)caster->GetLevel() * 3.0)) / 650.0));
 						}
 						else
 						{
-							break_chance -= (2 * (((double)GetSkill(DIVINATION) + ((double)GetLevel() * 3.0)) / 650.0));
+							break_chance -= (2 * (((double)GetSkill(SkillDivination) + ((double)GetLevel() * 3.0)) / 650.0));
 						}
 
 						if(MakeRandomFloat(0.0, 100.0) < break_chance)
