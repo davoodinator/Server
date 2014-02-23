@@ -279,16 +279,19 @@ Client::Client(EQStreamInterface* ieqs)
 	m_KnockBackExemption = 0;
 	m_PortExemption = 0;
 	m_SenseExemption = 0;
+	m_AssistExemption = 0;
 	m_CheatDetectMoved = false;
 	CanUseReport = true;
 	aa_los_me.x = 0;
 	aa_los_me.y = 0;
 	aa_los_me.z = 0;
+	aa_los_me_heading = 0;
 	aa_los_them.x = 0;
 	aa_los_them.y = 0;
 	aa_los_them.z = 0;
 	aa_los_them_mob = nullptr;
 	los_status = false;
+	los_status_facing = false;
 	qGlobals = nullptr;
 	HideCorpseMode = HideCorpseNone;
 	PendingGuildInvitation = false;
@@ -320,6 +323,7 @@ Client::Client(EQStreamInterface* ieqs)
 	LoadAccountFlags();
 
 	initial_respawn_selection = 0;
+	alternate_currency_loaded = false;
 }
 
 Client::~Client() {
@@ -423,7 +427,6 @@ Client::~Client() {
 	eqs->Close();
 	eqs->ReleaseFromUse();
 
-	entity_list.RemoveClient(this);
 	UninitializeBuffSlots();
 }
 
@@ -578,6 +581,7 @@ bool Client::Save(uint8 iCommitNow) {
 		m_petinfo.Mana = pet->GetMana();
 		pet->GetPetState(m_petinfo.Buffs, m_petinfo.Items, m_petinfo.Name);
 		m_petinfo.petpower = pet->GetPetPower();
+		m_petinfo.size = pet->GetSize();
 	} else {
 		memset(&m_petinfo, 0, sizeof(struct PetInfo));
 	}
@@ -1018,7 +1022,7 @@ void Client::ChannelMessageReceived(uint8 chan_num, uint8 language, uint8 lang_s
 			if(command_dispatch(this, message) == -2) {
 				if(parse->PlayerHasQuestSub(EVENT_COMMAND)) {
 					int i = parse->EventPlayer(EVENT_COMMAND, this, message, 0);
-					if(i != 0) {
+					if(i == 0) {
 						Message(13, "Command '%s' not recognized.", message);
 					}
 				} else {
@@ -1077,7 +1081,13 @@ void Client::ChannelMessageReceived(uint8 chan_num, uint8 language, uint8 lang_s
 	case 22:
 	{
 		// Emotes for Underfoot and later.
-		EQApplicationPacket* outapp = new EQApplicationPacket(OP_Emote, 4 + strlen(message) + strlen(GetName()) + 2);
+		// crash protection -- cheater
+		message[1023] = '\0';
+		size_t msg_len = strlen(message);
+		if (msg_len > 512)
+			message[512] = '\0';
+
+		EQApplicationPacket* outapp = new EQApplicationPacket(OP_Emote, 4 + msg_len + strlen(GetName()) + 2);
 		Emote_Struct* es = (Emote_Struct*)outapp->pBuffer;
 		char *Buffer = (char *)es;
 		Buffer += 4;
@@ -4740,7 +4750,7 @@ void Client::ShowSkillsWindow()
 		Skills[SkillName[i]] = (SkillUseTypes)i;
 
 	// print out all available skills
-	for(it = Skills.begin(); it != Skills.end(); it++) {
+	for(it = Skills.begin(); it != Skills.end(); ++it) {
 		if(GetSkill(it->second) > 0 || MaxSkill(it->second) > 0) {
 			WindowText += it->first;
 			// line up the values
@@ -5134,7 +5144,7 @@ void Client::SendRewards()
 				{
 					break;
 				}
-				iter++;
+				++iter;
 			}
 
 			if(iter != zone->VeteranRewards.end())
@@ -5224,7 +5234,7 @@ bool Client::TryReward(uint32 claim_id)
 		{
 			break;
 		}
-		iter++;
+		++iter;
 	}
 
 	if(iter == zone->VeteranRewards.end())
@@ -5430,7 +5440,7 @@ void Client::SuspendMinion()
 		if(m_suspendedminion.SpellID > 0)
 		{
 			MakePoweredPet(m_suspendedminion.SpellID, spells[m_suspendedminion.SpellID].teleport_zone,
-				m_suspendedminion.petpower, m_suspendedminion.Name);
+				m_suspendedminion.petpower, m_suspendedminion.Name, m_suspendedminion.size);
 
 			CurrentPet = GetPet()->CastToNPC();
 
@@ -5490,6 +5500,7 @@ void Client::SuspendMinion()
 
 				m_suspendedminion.Mana = CurrentPet->GetMana();
 				m_suspendedminion.petpower = CurrentPet->GetPetPower();
+				m_suspendedminion.size = CurrentPet->GetSize();
 
 				if(AALevel >= 2)
 					CurrentPet->GetPetState(m_suspendedminion.Buffs, m_suspendedminion.Items, m_suspendedminion.Name);
@@ -6034,11 +6045,10 @@ void Client::NPCSpawn(NPC *target_npc, const char *identifier, uint32 extra)
 	}
 }
 
-bool Client::IsDraggingCorpse(const char *CorpseName)
+bool Client::IsDraggingCorpse(uint16 CorpseID)
 {
-	for(std::list<std::string>::iterator Iterator = DraggedCorpses.begin(); Iterator != DraggedCorpses.end(); ++Iterator)
-	{
-		if(!strcasecmp((*Iterator).c_str(), CorpseName))
+	for (auto It = DraggedCorpses.begin(); It != DraggedCorpses.end(); ++It) {
+		if (It->second == CorpseID)
 			return true;
 	}
 
@@ -6047,20 +6057,22 @@ bool Client::IsDraggingCorpse(const char *CorpseName)
 
 void Client::DragCorpses()
 {
-	for(std::list<std::string>::iterator Iterator = DraggedCorpses.begin(); Iterator != DraggedCorpses.end(); ++Iterator)
-	{
-		Mob* corpse = entity_list.GetMob((*Iterator).c_str());
+	for (auto It = DraggedCorpses.begin(); It != DraggedCorpses.end(); ++It) {
+		Mob *corpse = entity_list.GetMob(It->second);
 
-		if(corpse && corpse->IsPlayerCorpse() && (DistNoRootNoZ(*corpse) <= RuleR(Character, DragCorpseDistance)))
+		if (corpse && corpse->IsPlayerCorpse() &&
+				(DistNoRootNoZ(*corpse) <= RuleR(Character, DragCorpseDistance)))
 			continue;
 
-		if(!corpse || !corpse->IsPlayerCorpse() || corpse->CastToCorpse()->IsBeingLooted() || !corpse->CastToCorpse()->Summon(this, false, false))
-		{
+		if (!corpse || !corpse->IsPlayerCorpse() ||
+				corpse->CastToCorpse()->IsBeingLooted() ||
+				!corpse->CastToCorpse()->Summon(this, false, false)) {
 			Message_StringID(MT_DefaultText, CORPSEDRAG_STOP);
-			Iterator = DraggedCorpses.erase(Iterator);
+			It = DraggedCorpses.erase(It);
 		}
 	}
 }
+
 void Client::Doppelganger(uint16 spell_id, Mob *target, const char *name_override, int pet_count, int pet_duration)
 {
 	if(!target || !IsValidSpell(spell_id) || this->GetID() == target->GetID())
@@ -6633,7 +6645,7 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 
 	for(std::map <uint32, int32>::iterator iter = item_faction_bonuses.begin();
 		iter != item_faction_bonuses.end();
-		iter++)
+		++iter)
 	{
 		memset(&faction_buf, 0, sizeof(faction_buf));
 
@@ -6755,7 +6767,7 @@ void Client::SendAltCurrencies() {
 				altc->entries[i].stack_size = 1000;
 			}
 			i++;
-			iter++;
+			++iter;
 		}
 
 		FastQueuePacket(&outapp);
@@ -6772,6 +6784,11 @@ void Client::SetAlternateCurrencyValue(uint32 currency_id, uint32 new_amount)
 void Client::AddAlternateCurrencyValue(uint32 currency_id, int32 amount)
 {
 	if(amount == 0) {
+		return;
+	}
+
+	if(!alternate_currency_loaded) {
+		alternate_currency_queued_operations.push(std::make_pair(currency_id, amount));
 		return;
 	}
 
@@ -6798,7 +6815,7 @@ void Client::SendAlternateCurrencyValues()
 	std::list<AltCurrencyDefinition_Struct>::iterator iter = zone->AlternateCurrencies.begin();
 	while(iter != zone->AlternateCurrencies.end()) {
 		SendAlternateCurrencyValue((*iter).id, false);
-		iter++;
+		++iter;
 	}
 }
 
@@ -6824,6 +6841,16 @@ uint32 Client::GetAlternateCurrencyValue(uint32 currency_id) const
 		return 0;
 	} else {
 		return (*iter).second;
+	}
+}
+
+void Client::ProcessAlternateCurrencyQueue() {
+	while(!alternate_currency_queued_operations.empty()) {
+		std::pair<uint32, int32> op = alternate_currency_queued_operations.front();
+
+		AddAlternateCurrencyValue(op.first, op.second);
+
+		alternate_currency_queued_operations.pop();
 	}
 }
 
@@ -7264,7 +7291,7 @@ void Client::SendMercPersonalInfo()
 						mdus->MercData[i].Stances[stanceindex].StanceIndex = stanceindex;
 						mdus->MercData[i].Stances[stanceindex].Stance = (iter->StanceID);
 						stanceindex++;
-						iter++;
+						++iter;
 					}
 				}
 
@@ -7330,7 +7357,7 @@ void Client::SendMercPersonalInfo()
 						mml->Mercs[i].Stances[stanceindex].StanceIndex = stanceindex;
 						mml->Mercs[i].Stances[stanceindex].Stance = (iter->StanceID);
 						stanceindex++;
-						iter++;
+						++iter;
 					}
 				}
 				FastQueuePacket(&outapp);
@@ -7565,10 +7592,7 @@ void Client::SetFactionLevel(uint32 char_id, uint32 npc_id, uint8 char_class, ui
 				if(tmpValue <= MIN_FACTION)
 					tmpValue = MIN_FACTION;
 
-				char* msg = BuildFactionMessage(npc_value[i],faction_id[i],tmpValue,temp[i]);
-				if (msg != 0)
-					Message(0, msg);
-				safe_delete_array(msg);
+				SendFactionMessage(npc_value[i], faction_id[i], tmpValue, temp[i]);
 			}
 		}
 	}
@@ -7585,11 +7609,7 @@ void Client::SetFactionLevel2(uint32 char_id, int32 faction_id, uint8 char_class
 		if(!(database.SetCharacterFactionLevel(char_id, faction_id, current_value, temp, factionvalues)))
 			return;
 
-		char* msg = BuildFactionMessage(value, faction_id, current_value, temp);
-		if (msg != 0)
-			Message(0, msg);
-		safe_delete(msg);
-
+		SendFactionMessage(value, faction_id, current_value, temp);
 	}
 	return;
 }
@@ -7643,52 +7663,30 @@ bool Client::HatedByClass(uint32 p_race, uint32 p_class, uint32 p_deity, int32 p
 }
 
 //o--------------------------------------------------------------
-//| Name: BuildFactionMessage; rembrant, Dec. 16, 2001
+//| Name: SendFactionMessage
 //o--------------------------------------------------------------
-//| Purpose: duh?
+//| Purpose: Send faction change message to client
 //o--------------------------------------------------------------
-char* Client::BuildFactionMessage(int32 tmpvalue, int32 faction_id, int32 totalvalue, uint8 temp)
+void Client::SendFactionMessage(int32 tmpvalue, int32 faction_id, int32 totalvalue, uint8 temp)
 {
-/*
-
-This should be replaced to send string-ID based messages using:
-#define FACTION_WORST 469 //Your faction standing with %1 could not possibly get any worse.
-#define FACTION_WORSE 470 //Your faction standing with %1 got worse.
-#define FACTION_BEST 471 //Your faction standing with %1 could not possibly get any better.
-#define FACTION_BETTER 472 //Your faction standing with %1 got better.
-
-some day.
-
-*/
-	//tmpvalue is the change as best I can tell.
-	char *faction_message = 0;
-
 	char name[50];
 
-	if(database.GetFactionName(faction_id, name, sizeof(name)) == false) {
+	// default to Faction# if we couldn't get the name from the ID
+	if (database.GetFactionName(faction_id, name, sizeof(name)) == false)
 		snprintf(name, sizeof(name),"Faction%i",faction_id);
-	}
 
-	if(tmpvalue == 0 || temp == 1 || temp == 2) {
-		return 0;
-	}
-	else if (totalvalue >= MAX_FACTION) {
-		MakeAnyLenString(&faction_message, "Your faction standing with %s could not possibly get any better!", name);
-		return faction_message;
-	}
-	else if(tmpvalue > 0 && totalvalue < MAX_FACTION) {
-		MakeAnyLenString(&faction_message, "Your faction standing with %s has gotten better!", name);
-		return faction_message;
-	}
-	else if(tmpvalue < 0 && totalvalue > MIN_FACTION) {
-		MakeAnyLenString(&faction_message, "Your faction standing with %s has gotten worse!", name);
-		return faction_message;
-	}
-	else if(totalvalue <= MIN_FACTION) {
-		MakeAnyLenString(&faction_message, "Your faction standing with %s could not possibly get any worse!", name);
-		return faction_message;
-	}
-	return 0;
+	if (tmpvalue == 0 || temp == 1 || temp == 2)
+		return;
+	else if (totalvalue >= MAX_FACTION)
+		Message_StringID(0, FACTION_BEST, name);
+	else if (tmpvalue > 0 && totalvalue < MAX_FACTION)
+		Message_StringID(0, FACTION_BETTER, name);
+	else if (tmpvalue < 0 && totalvalue > MIN_FACTION)
+		Message_StringID(0, FACTION_WORSE, name);
+	else if (totalvalue <= MIN_FACTION)
+		Message_StringID(0, FACTION_WORST, name);
+
+	return;
 }
 
 void Client::LoadAccountFlags()
@@ -7976,7 +7974,7 @@ bool Client::RemoveRespawnOption(std::string option_name)
 		opt = &(*itr);
 		if (opt->name.compare(option_name) == 0)
 		{
-			respawn_options.erase(itr); 
+			itr = respawn_options.erase(itr);
 			had = true;
 			//could be more with the same name, so keep going...
 		}
@@ -8105,11 +8103,41 @@ void Client::Consume(const Item_Struct *item, uint8 type, int16 slot, bool auto_
         m_pp.thirst_level += tchange;
         DeleteItemInInventory(slot, 1, false);
 
-        if(auto_consume) //no message if the client consumed for us
+        if(!auto_consume) //no message if the client consumed for us
             entity_list.MessageClose_StringID(this, true, 50, 0, DRINKING_MESSAGE, GetName(), item->Name);
 
 #if EQDEBUG >= 1
         LogFile->write(EQEMuLog::Debug, "Drinking from slot:%i", (int)slot);
 #endif
    }
+}
+
+void Client::SendMarqueeMessage(uint32 type, uint32 priority, uint32 fade_in, uint32 fade_out, uint32 duration, std::string msg)
+{
+	if(duration == 0 || msg.length() == 0) {
+		return;
+	}
+
+	EQApplicationPacket outapp(OP_Marquee, sizeof(ClientMarqueeMessage_Struct) + msg.length());
+	ClientMarqueeMessage_Struct *cms = (ClientMarqueeMessage_Struct*)outapp.pBuffer;
+
+	cms->type = type;
+	cms->unk04 = 10;
+	cms->priority = priority;
+	cms->fade_in_time = fade_in;
+	cms->fade_out_time = fade_out;
+	cms->duration = duration;
+	strcpy(cms->msg, msg.c_str());
+
+	QueuePacket(&outapp);
+}
+
+void Client::PlayMP3(const char* fname)
+{
+	std::string filename = fname;
+	EQApplicationPacket *outapp = new EQApplicationPacket(OP_PlayMP3, filename.length() + 1);
+	PlayMP3_Struct* buf = (PlayMP3_Struct*)outapp->pBuffer;
+	strncpy(buf->filename, fname, filename.length());
+	QueuePacket(outapp);
+	safe_delete(outapp);
 }

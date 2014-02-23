@@ -220,6 +220,8 @@ public:
 	virtual bool HasGroup() { return (GetGroup() ? true : false); }
 	virtual Raid* GetRaid() { return entity_list.GetRaidByClient(this); }
 	virtual Group* GetGroup() { return entity_list.GetGroupByClient(this); }
+	virtual inline bool IsBerserk() { return berserk; }
+	virtual int32 GetMeleeMitDmg(Mob *attacker, int32 damage, int32 minhit, float mit_rating, float atk_rating);
 
 	void	AI_Init();
 	void	AI_Start(uint32 iMoveDelay = 0);
@@ -471,16 +473,14 @@ public:
 
 	inline virtual int16	GetDelayDeath()		const { return aabonuses.DelayDeath + spellbonuses.DelayDeath + itembonuses.DelayDeath + 11; }
 
-	int32 Additional_SpellDmg(uint16 spell_id, bool bufftick = false);
-	int32 Additional_Heal(uint16 spell_id);
 	float GetActSpellRange(uint16 spell_id, float range, bool IsBard = false);
-	int32 GetActSpellDamage(uint16 spell_id, int32 value);
-	int32 GetActSpellHealing(uint16 spell_id, int32 value);
+	int32 GetActSpellDamage(uint16 spell_id, int32 value, Mob* target = nullptr);
+	int32 GetActSpellHealing(uint16 spell_id, int32 value, Mob* target = nullptr);
 	int32 GetActSpellCost(uint16 spell_id, int32);
 	int32 GetActSpellDuration(uint16 spell_id, int32);
 	int32 GetActSpellCasttime(uint16 spell_id, int32);
 	int32 GetDotFocus(uint16 spell_id, int32 value);
-	int32 GetActDoTDamage(uint16 spell_id, int32 value);
+	int32 GetActDoTDamage(uint16 spell_id, int32 value, Mob* target = nullptr);
 	virtual bool CheckFizzle(uint16 spell_id);
 	virtual bool CheckSpellLevelRestriction(uint16 spell_id);
 	virtual int GetCurrentBuffSlots() const;
@@ -586,7 +586,7 @@ public:
 	int32	GetCharacterFactionLevel(int32 faction_id);
 	int32	GetModCharacterFactionLevel(int32 faction_id);
 	bool	HatedByClass(uint32 p_race, uint32 p_class, uint32 p_deity, int32 pFaction);
-	char* BuildFactionMessage(int32 tmpvalue, int32 faction_id, int32 totalvalue, uint8 temp);
+	void	SendFactionMessage(int32 tmpvalue, int32 faction_id, int32 totalvalue, uint8 temp);
 
 	void	SetFactionLevel(uint32 char_id, uint32 npc_id, uint8 char_class, uint8 char_race, uint8 char_deity);
 	void	SetFactionLevel2(uint32 char_id, int32 faction_id, uint8 char_class, uint8 char_race, uint8 char_deity, int32 value, uint8 temp);
@@ -818,6 +818,7 @@ public:
 	void	LinkDead();
 	void	Insight(uint32 t_id);
 	bool	CheckDoubleAttack(bool tripleAttack = false);
+	bool	CheckDoubleRangedAttack();
 
 	//remove charges/multiple objects from inventory:
 	//bool	DecreaseByType(uint32 type, uint8 amt);
@@ -827,8 +828,8 @@ public:
 	void	RemoveNoRent(bool client_update = true);
 	void	RemoveDuplicateLore(bool client_update = true);
 	void	MoveSlotNotAllowed(bool client_update = true);
-	virtual void	RangedAttack(Mob* other);
-	virtual void	ThrowingAttack(Mob* other);
+	virtual void	RangedAttack(Mob* other, bool CanDoubleAttack = false);
+	virtual void	ThrowingAttack(Mob* other,  bool CanDoubleAttack = false);
 	void	DoClassAttacks(Mob *ca_target, uint16 skill = -1, bool IsRiposte=false);
 
 	void	SetZoneFlag(uint32 zone_id);
@@ -866,10 +867,12 @@ public:
 	void SetKnockBackExemption(bool v);
 	void SetPortExemption(bool v);
 	void SetSenseExemption(bool v) { m_SenseExemption = v; }
+	void SetAssistExemption(bool v) { m_AssistExemption = v; }
 	const bool IsShadowStepExempted() const { return m_ShadowStepExemption; }
 	const bool IsKnockBackExempted() const { return m_KnockBackExemption; }
 	const bool IsPortExempted() const { return m_PortExemption; }
 	const bool IsSenseExempted() const { return m_SenseExemption; }
+	const bool IsAssistExempted() const { return m_AssistExemption; }
 	const bool GetGMSpeed() const { return (gmspeed > 0); }
 	void CheatDetected(CheatTypes CheatType, float x, float y, float z);
 	const bool IsMQExemptedArea(uint32 zoneID, float x, float y, float z) const;
@@ -1075,7 +1078,7 @@ public:
 	void ClearHover();
 	inline bool IsBlockedBuff(int16 SpellID) { return PlayerBlockedBuffs.find(SpellID) != PlayerBlockedBuffs.end(); }
 	inline bool IsBlockedPetBuff(int16 SpellID) { return PetBlockedBuffs.find(SpellID) != PetBlockedBuffs.end(); }
-	bool IsDraggingCorpse(const char* CorpseName);
+	bool IsDraggingCorpse(uint16 CorpseID);
 	inline bool IsDraggingCorpse() { return (DraggedCorpses.size() > 0); }
 	void DragCorpses();
 	inline void ClearDraggedCorpses() { DraggedCorpses.clear(); }
@@ -1085,6 +1088,7 @@ public:
 	void SendAlternateCurrencyValues();
 	void SendAlternateCurrencyValue(uint32 currency_id, bool send_if_null = true);
 	uint32 GetAlternateCurrencyValue(uint32 currency_id) const;
+	void ProcessAlternateCurrencyQueue();
 	void OpenLFGuildWindow();
 	void HandleLFGuildResponse(ServerPacket *pack);
 	void SendLFGuildStatus();
@@ -1134,6 +1138,7 @@ public:
 	const char* GetRacePlural(Client* client);
 	const char* GetClassPlural(Client* client);
 	void SendWebLink(const char* website);
+	void SendMarqueeMessage(uint32 type, uint32 priority, uint32 fade_in, uint32 fade_out, uint32 duration, std::string msg);
 
 	void DuplicateLoreMessage(uint32 ItemID);
 	void GarbleMessage(char *, uint8);
@@ -1155,6 +1160,7 @@ public:
 	void SetAccountFlag(std::string flag, std::string val);
 	std::string GetAccountFlag(std::string flag);    float GetDamageMultiplier(SkillUseTypes);
 	void Consume(const Item_Struct *item, uint8 type, int16 slot, bool auto_consume);
+	void PlayMP3(const char* fname);
 	int mod_client_damage(int damage, SkillUseTypes skillinuse, int hand, const ItemInst* weapon, Mob* other);
 	bool mod_client_message(char* message, uint8 chan_num);
 	bool mod_can_increase_skill(SkillUseTypes skillid, Mob* against_who);
@@ -1198,6 +1204,8 @@ protected:
 	VERTEX aa_los_them;
 	Mob *aa_los_them_mob;
 	bool los_status;
+	float aa_los_me_heading;
+	bool los_status_facing;
 	QGlobalCache *qGlobals;
 
 	/** Adventure Variables **/
@@ -1442,7 +1450,10 @@ private:
 	bool m_KnockBackExemption;
 	bool m_PortExemption;
 	bool m_SenseExemption;
+	bool m_AssistExemption;
+	bool alternate_currency_loaded;
 	std::map<uint32, uint32> alternate_currency;
+	std::queue<std::pair<uint32, int32>> alternate_currency_queued_operations;
 
 	//Connecting debug code.
 	enum { //connecting states, used for debugging only
@@ -1470,7 +1481,7 @@ private:
 
 	std::set<uint32> PlayerBlockedBuffs;
 	std::set<uint32> PetBlockedBuffs;
-	std::list<std::string> DraggedCorpses;
+	std::list<std::pair<std::string, uint16> > DraggedCorpses;
 
 	uint8 MaxXTargets;
 	bool XTargetAutoAddHaters;

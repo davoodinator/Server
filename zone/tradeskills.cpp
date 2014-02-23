@@ -1082,7 +1082,7 @@ bool Client::TradeskillExecute(DBTradeskillRecipe_Struct *spec) {
 			}
 			if(RuleB(TaskSystem, EnableTaskSystem))
 				UpdateTasksForItem(ActivityTradeSkill, itr->first, itr->second);
-			itr++;
+			++itr;
 		}
 		return(true);
 	} else {
@@ -1103,7 +1103,7 @@ bool Client::TradeskillExecute(DBTradeskillRecipe_Struct *spec) {
 		while(itr != spec->onfail.end()) {
 			//should we check these arguments?
 			SummonItem(itr->first, itr->second);
-			itr++;
+			++itr;
 		}
 
 		// Rolls on each item, is possible to return everything
@@ -1116,7 +1116,7 @@ bool Client::TradeskillExecute(DBTradeskillRecipe_Struct *spec) {
 				for(sc = 0; sc < itr->second; sc++)
 					if(MakeRandomInt(0,99) < SalvageChance)
 						SummonItem(itr->first, 1);
-				itr++;
+				++itr;
 			}
 		}
 
@@ -1600,30 +1600,35 @@ bool Client::CanIncreaseTradeskill(SkillUseTypes tradeskill) {
 	return true;
 }
 
-void ZoneDatabase::EnableRecipe(uint32 recipe_id)
+bool ZoneDatabase::EnableRecipe(uint32 recipe_id)
 {
 	char *query = 0;
 	uint32 qlen;
 	char errbuf[MYSQL_ERRMSG_SIZE];
+	uint32 affected_rows = 0;
 
 	qlen = MakeAnyLenString(&query, "UPDATE tradeskill_recipe SET enabled = 1 WHERE id = %u;", recipe_id);
 
-	if (!RunQuery(query, qlen, errbuf)) {
+	if (!RunQuery(query, qlen, errbuf, 0, &affected_rows)) {
 		LogFile->write(EQEMuLog::Error, "Error in EnableRecipe query '%s': %s", query, errbuf);
 	}
 	safe_delete_array(query);
+
+	return (affected_rows > 0);
 }
 
-void ZoneDatabase::DisableRecipe(uint32 recipe_id)
+bool ZoneDatabase::DisableRecipe(uint32 recipe_id)
 {
 	char *query = 0;
 	uint32 qlen;
 	char errbuf[MYSQL_ERRMSG_SIZE];
+	uint32 affected_rows = 0;
 
 	qlen = MakeAnyLenString(&query, "UPDATE tradeskill_recipe SET enabled = 0 WHERE id = %u;", recipe_id);
 
-	if (!RunQuery(query, qlen, errbuf)) {
+	if (!RunQuery(query, qlen, errbuf, 0, &affected_rows)) {
 		LogFile->write(EQEMuLog::Error, "Error in DisableRecipe query '%s': %s", query, errbuf);
 	}
 	safe_delete_array(query);
+	return (affected_rows > 0);
 }

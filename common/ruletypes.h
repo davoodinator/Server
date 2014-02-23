@@ -98,6 +98,7 @@ RULE_BOOL ( Character, EnableXTargetting, true) // Enable Extended Targetting Wi
 RULE_BOOL ( Character, KeepLevelOverMax, false) // Don't delevel a character that has somehow gone over the level cap
 RULE_INT ( Character, FoodLossPerUpdate, 35) // How much food/water you lose per stamina update
 RULE_INT ( Character, BaseInstrumentSoftCap, 36) // Softcap for instrument mods, 36 commonly referred to as "3.6" as well.
+RULE_INT ( Character, BaseRunSpeedCap, 158) // Base Run Speed Cap, on live it's 158% which will give you a runspeed of 1.580 hard capped to 225.
 RULE_CATEGORY_END()
 
 RULE_CATEGORY( Mercs )
@@ -195,6 +196,7 @@ RULE_INT ( Zone, ReservedInstances, 30 ) //Will reserve this many instance ids f
 RULE_INT ( Zone, EbonCrystalItemID, 40902)
 RULE_INT ( Zone, RadiantCrystalItemID, 40903)
 RULE_BOOL ( Zone, LevelBasedEXPMods, false) // Allows you to use the level_exp_mods table in consideration to your players EXP hits
+RULE_INT ( Zone, WeatherTimer, 600) // Weather timer when no duration is available
 RULE_CATEGORY_END()
 
 RULE_CATEGORY( Map )
@@ -331,6 +333,8 @@ RULE_REAL ( Combat, ArcheryBaseDamageBonus, 1) // % Modifier to Base Archery Dam
 RULE_REAL ( Combat, ArcheryNPCMultiplier, 1.0) // this is multiplied by the regular dmg to get the archery dmg
 RULE_BOOL ( Combat, AssistNoTargetSelf, true) //when assisting a target that does not have a target: true = target self, false = leave target as was before assist (false = live like)
 RULE_INT ( Combat, MaxRampageTargets, 3) //max number of people hit with rampage
+RULE_INT ( Combat, DefaultRampageTargets, 1) // default number of people to hit with rampage
+RULE_BOOL ( Combat, RampageHitsTarget, false) // rampage will hit the target if it still has targets left
 RULE_INT ( Combat, MaxFlurryHits, 2) //max number of extra hits from flurry
 RULE_INT ( Combat, MonkDamageTableBonus, 5) //% bonus monks get to their damage table calcs
 RULE_INT ( Combat, FlyingKickBonus, 25) //% Modifier that this skill gets to str and skill bonuses
@@ -353,6 +357,14 @@ RULE_REAL ( Combat, LowPlateChainACSoftcapReturn, 0.23)
 RULE_REAL ( Combat, LowChainLeatherACSoftcapReturn, 0.17)
 RULE_REAL ( Combat, CasterACSoftcapReturn, 0.06)
 RULE_REAL ( Combat, MiscACSoftcapReturn, 0.3)
+RULE_BOOL ( Combat, OldACSoftcapRules, false) // use old softcaps
+RULE_BOOL ( Combat, UseOldDamageIntervalRules, false) // use old damage formulas for everything
+RULE_REAL ( Combat, WarACSoftcapReturn, 0.3448) // new AC returns
+RULE_REAL ( Combat, ClrRngMnkBrdACSoftcapReturn, 0.3030)
+RULE_REAL ( Combat, PalShdACSoftcapReturn, 0.3226)
+RULE_REAL ( Combat, DruNecWizEncMagACSoftcapReturn, 0.2000)
+RULE_REAL ( Combat, RogShmBstBerACSoftcapReturn, 0.2500)
+RULE_REAL ( Combat, SoftcapFactor, 1.88)
 RULE_REAL ( Combat, ACthac0Factor, 0.55)
 RULE_REAL ( Combat, ACthac20Factor, 0.55)
 RULE_INT ( Combat, HitCapPre20, 40) // live has it capped at 40 for whatever dumb reason... this is mainly for custom servers
@@ -370,6 +382,8 @@ RULE_INT ( Combat, ClientStunLevel, 55) //This is the level where client kicks a
 RULE_INT ( Combat, QuiverWRHasteDiv, 3) //Weight Reduction is divided by this to get haste contribution for quivers
 RULE_BOOL ( Combat, UseArcheryBonusRoll, false) //Make the 51+ archery bonus require an actual roll
 RULE_INT ( Combat, ArcheryBonusChance, 50)
+RULE_INT ( Combat, BerserkerFrenzyStart, 35)
+RULE_INT ( Combat, BerserkerFrenzyEnd, 45)
 RULE_CATEGORY_END()
 
 RULE_CATEGORY( NPC )

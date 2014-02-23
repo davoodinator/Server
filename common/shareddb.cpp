@@ -150,7 +150,7 @@ bool ret=true;
 	char* query = 0;
 	// Delete cursor items
 	if ((ret = RunQuery(query, MakeAnyLenString(&query, "DELETE FROM inventory WHERE charid=%i AND ( (slotid >=8000 and slotid<=8999) or slotid=30 or (slotid>=331 and slotid<=340))", char_id), errbuf))) {
-		for(it=start,i=8000;it!=end;it++,i++) {
+		for(it=start,i=8000;it!=end;++it,i++) {
 			ItemInst *inst=*it;
 			if (!(ret=SaveInventory(char_id,inst,(i==8000) ? 30 : i)))
 				break;
@@ -1702,18 +1702,22 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 
 			sp[tempid].uninterruptable=atoi(row[146]);
 			sp[tempid].ResistDiff=atoi(row[147]);
+			sp[tempid].dot_stacking_exempt=atoi(row[148]);
 			sp[tempid].RecourseLink = atoi(row[150]);
+			sp[tempid].no_partial_resist = atoi(row[151]) != 0;
 
 			sp[tempid].short_buff_box = atoi(row[154]);
 			sp[tempid].descnum = atoi(row[155]);
 			sp[tempid].effectdescnum = atoi(row[157]);
 
+			sp[tempid].reflectable = atoi(row[161]) != 0;
 			sp[tempid].bonushate=atoi(row[162]);
 
 			sp[tempid].EndurCost=atoi(row[166]);
 			sp[tempid].EndurTimerIndex=atoi(row[167]);
 			sp[tempid].HateAdded=atoi(row[173]);
 			sp[tempid].EndurUpkeep=atoi(row[174]);
+			sp[tempid].numhitstype = atoi(row[175]);
 			sp[tempid].numhits = atoi(row[176]);
 			sp[tempid].pvpresistbase=atoi(row[177]);
 			sp[tempid].pvpresistcalc=atoi(row[178]);
@@ -1728,10 +1732,15 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			sp[tempid].NimbusEffect = atoi(row[193]);
 			sp[tempid].directional_start = (float)atoi(row[194]);
 			sp[tempid].directional_end = (float)atoi(row[195]);
+			sp[tempid].not_extendable = atoi(row[197]) != 0;
+			sp[tempid].suspendable = atoi(row[200]) != 0;
 			sp[tempid].spellgroup=atoi(row[207]);
 			sp[tempid].powerful_flag=atoi(row[209]);
 			sp[tempid].CastRestriction = atoi(row[211]);
 			sp[tempid].AllowRest = atoi(row[212]) != 0;
+			sp[tempid].NotOutofCombat = atoi(row[213]) != 0;
+			sp[tempid].NotInCombat = atoi(row[214]) != 0;
+			sp[tempid].persistdeath = atoi(row[224]) != 0;
 			sp[tempid].DamageShieldType = 0;
 		}
 		mysql_free_result(result);

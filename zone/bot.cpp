@@ -1971,8 +1971,8 @@ void Bot::ApplyAABonuses(uint32 aaid, uint32 slots, StatBonuses* newbon)
 			{
 				newbon->CriticalSpellChance += base1;
 
-				if (base2 > 100)
-					newbon->SpellCritDmgIncrease += (base2 - 100);
+				if (base2 > newbon->SpellCritDmgIncrease)
+					newbon->SpellCritDmgIncrease = base2;
 
 				break;
 			}
@@ -2620,7 +2620,7 @@ void Bot::SaveBuffs() {
 
 			if(!database.RunQuery(Query, MakeAnyLenString(&Query, "INSERT INTO botbuffs (BotId, SpellId, CasterLevel, DurationFormula, "
 				"TicsRemaining, PoisonCounters, DiseaseCounters, CurseCounters, CorruptionCounters, HitCount, MeleeRune, MagicRune, "
-				"DeathSaveSuccessChance, CasterAARank, Persistent) VALUES (%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u);",
+				"dot_rune, caston_x, Persistent, caston_y, caston_z, ExtraDIChance) VALUES (%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %i, %u, %i, %i, %i);",
 				GetBotID(), buffs[BuffCount].spellid, buffs[BuffCount].casterlevel, spells[buffs[BuffCount].spellid].buffdurationformula,
 				buffs[BuffCount].ticsremaining,
 				CalculatePoisonCounters(buffs[BuffCount].spellid) > 0 ? buffs[BuffCount].counters : 0,
@@ -2628,8 +2628,12 @@ void Bot::SaveBuffs() {
 				CalculateCurseCounters(buffs[BuffCount].spellid) > 0 ? buffs[BuffCount].counters : 0,
 				CalculateCorruptionCounters(buffs[BuffCount].spellid) > 0 ? buffs[BuffCount].counters : 0,
 				buffs[BuffCount].numhits, buffs[BuffCount].melee_rune, buffs[BuffCount].magic_rune,
-				buffs[BuffCount].deathSaveSuccessChance,
-				buffs[BuffCount].deathsaveCasterAARank, IsPersistent), TempErrorMessageBuffer)) {
+				buffs[BuffCount].dot_rune,
+				buffs[BuffCount].caston_x, 
+				IsPersistent, 
+				buffs[BuffCount].caston_y,
+				buffs[BuffCount].caston_z, 
+				buffs[BuffCount].ExtraDIChance), TempErrorMessageBuffer)) {
 				errorMessage = std::string(TempErrorMessageBuffer);
 				safe_delete(Query);
 				Query = 0;
@@ -2659,7 +2663,7 @@ void Bot::LoadBuffs() {
 
 	bool BuffsLoaded = false;
 
-	if(!database.RunQuery(Query, MakeAnyLenString(&Query, "SELECT SpellId, CasterLevel, DurationFormula, TicsRemaining, PoisonCounters, DiseaseCounters, CurseCounters, CorruptionCounters, HitCount, MeleeRune, MagicRune, DeathSaveSuccessChance, CasterAARank, Persistent FROM botbuffs WHERE BotId = %u", GetBotID()), TempErrorMessageBuffer, &DatasetResult)) {
+	if(!database.RunQuery(Query, MakeAnyLenString(&Query, "SELECT SpellId, CasterLevel, DurationFormula, TicsRemaining, PoisonCounters, DiseaseCounters, CurseCounters, CorruptionCounters, HitCount, MeleeRune, MagicRune, dot_rune, caston_x, Persistent, caston_y, caston_z, ExtraDIChance FROM botbuffs WHERE BotId = %u", GetBotID()), TempErrorMessageBuffer, &DatasetResult)) {
 		errorMessage = std::string(TempErrorMessageBuffer);
 	}
 	else {
@@ -2685,14 +2689,18 @@ void Bot::LoadBuffs() {
 			buffs[BuffCount].numhits = atoi(DataRow[8]);
 			buffs[BuffCount].melee_rune = atoi(DataRow[9]);
 			buffs[BuffCount].magic_rune = atoi(DataRow[10]);
-			buffs[BuffCount].deathSaveSuccessChance = atoi(DataRow[11]);
-			buffs[BuffCount].deathsaveCasterAARank = atoi(DataRow[12]);
+			buffs[BuffCount].dot_rune = atoi(DataRow[11]);
+			buffs[BuffCount].caston_x = atoi(DataRow[12]);
 			buffs[BuffCount].casterid = 0;
 
 			bool IsPersistent = false;
 
 			if(atoi(DataRow[13]))
 				IsPersistent = true;
+
+			buffs[BuffCount].caston_y = atoi(DataRow[14]);
+			buffs[BuffCount].caston_z = atoi(DataRow[15]);
+			buffs[BuffCount].ExtraDIChance = atoi(DataRow[16]);
 
 			buffs[BuffCount].persistant_buff = IsPersistent;
 
@@ -3479,7 +3487,7 @@ void Bot::DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes 
 			if(damage > 0) {
 				damage += damage*focus/100;
 				ApplyMeleeDamageBonus(skillinuse, damage);
-				damage += other->GetAdditionalDamage(this, 0, true, skillinuse);
+				damage += other->GetFcDamageAmtIncoming(this, 0, true, skillinuse);
 				damage += (itembonuses.HeroicSTR / 10) + (damage * other->GetSkillDmgTaken(skillinuse) / 100) + GetSkillDmgAmt(skillinuse);
 				TryCriticalHit(other, skillinuse, damage, nullptr);
 			}
@@ -3520,6 +3528,9 @@ void Bot::DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes 
 
 	if (HasDied())
 		return;
+
+	if (damage > 0)
+		CheckNumHitsRemaining(5);
 
 	if((skillinuse == SkillDragonPunch) && GetAA(aaDragonPunch) && MakeRandomInt(0, 99) < 25){
 		SpellFinished(904, other, 10, 0, -1, spells[904].ResistDiff);
@@ -3935,7 +3946,7 @@ void Bot::AI_Process() {
 					{
 						if(MakeRandomInt(0, 100) < flurrychance)
 						{
-							Message_StringID(MT_NPCFlurry, 128);
+							Message_StringID(MT_NPCFlurry, YOU_FLURRY);
 							Attack(GetTarget(), SLOT_PRIMARY, false);
 							Attack(GetTarget(), SLOT_PRIMARY, false);
 						}
@@ -4918,7 +4929,7 @@ void Bot::LoadAndSpawnAllZonedBots(Client* botOwner) {
 				std::list<uint32> ActiveBots = Bot::GetGroupedBotsByGroupId(botOwner->GetGroup()->GetID(), &errorMessage);
 
 				if(errorMessage.empty() && !ActiveBots.empty()) {
-					for(std::list<uint32>::iterator itr = ActiveBots.begin(); itr != ActiveBots.end(); itr++) {
+					for(std::list<uint32>::iterator itr = ActiveBots.begin(); itr != ActiveBots.end(); ++itr) {
 						Bot* activeBot = Bot::LoadBot(*itr, &errorMessage);
 
 						if(!errorMessage.empty()) {
@@ -6773,21 +6784,10 @@ bool Bot::Attack(Mob* other, int Hand, bool FromRiposte, bool IsStrikethrough, b
 
 	if (GetHP() < 0) return false;
 
-	if(damage > 0 && (spellbonuses.MeleeLifetap || itembonuses.MeleeLifetap))
-	{
-		int lifetap_amt = spellbonuses.MeleeLifetap + itembonuses.MeleeLifetap;
-		if(lifetap_amt > 100)
-			lifetap_amt = 100;
+	MeleeLifeTap(damage);
 
-		lifetap_amt = damage * lifetap_amt / 100;
-
-		mlog(COMBAT__DAMAGE, "Melee lifetap healing for %d damage.", damage);
-		//heal self for damage done..
-		HealDamage(lifetap_amt);
-
-		if (spellbonuses.MeleeLifetap)
-			CheckHitsRemaining(0, false,false, SE_MeleeLifetap);
-	}
+	if (damage > 0)
+		CheckNumHitsRemaining(5);
 
 	//break invis when you attack
 	if(invisible) {
@@ -6919,7 +6919,7 @@ int16 Bot::CalcBotAAFocus(BotfocusType type, uint32 aa_ID, uint16 spell_id)
 				if((spell.classes[(GetClass()%16) - 1]) < base1)
 					LimitFound = true;
 			break;
-			case SE_LimitCastTime:
+			case SE_LimitCastTimeMin:
 				if (spell.cast_time < base1)
 					LimitFound = true;
 			break;
@@ -6965,7 +6965,7 @@ int16 Bot::CalcBotAAFocus(BotfocusType type, uint32 aa_ID, uint16 spell_id)
 				}
 			break;
 
-			case SE_LimitManaCost:
+			case SE_LimitManaMin:
 				if(spell.mana < base1)
 					LimitFound = true;
 			break;
@@ -6983,7 +6983,7 @@ int16 Bot::CalcBotAAFocus(BotfocusType type, uint32 aa_ID, uint16 spell_id)
 			}
 			break;
 
-			case SE_CombatSkills:
+			case SE_LimitCombatSkills:
 				// 1 is for disciplines only
 				if(base1 == 1 && !IsDiscipline(spell_id))
 					LimitFound = true;
@@ -7000,18 +7000,11 @@ int16 Bot::CalcBotAAFocus(BotfocusType type, uint32 aa_ID, uint16 spell_id)
 			break;
 
 
-			case SE_LimitSpellSkill:
+			case SE_LimitCastingSkill:
 				LimitSpellSkill = true;
 				if(base1 == spell.skill)
 					SpellSkill_Found = true;
 			break;
-
-			case SE_LimitExcludeSkill:{
-			int16 spell_skill = spell.skill * -1;
-			if(base1 == spell_skill)
-				LimitFound = true;
-			break;
-			}
 
 			case SE_LimitClass:
 			//Do not use this limit more then once per spell. If multiple class, treat value like items would.
@@ -7124,7 +7117,7 @@ int16 Bot::CalcBotAAFocus(BotfocusType type, uint32 aa_ID, uint16 spell_id)
 				}
 				break;
 			}
-			case SE_SpellVulnerability:
+			case SE_FcSpellVulnerability:
 			{
 				if(type == focusSpellVulnerability)
 				{
@@ -7141,7 +7134,7 @@ int16 Bot::CalcBotAAFocus(BotfocusType type, uint32 aa_ID, uint16 spell_id)
 				}
 				break;
 			}
-			case SE_Twincast:
+			case SE_FcTwincast:
 			{
 				if(type == focusTwincast)
 				{
@@ -7169,78 +7162,71 @@ int16 Bot::CalcBotAAFocus(BotfocusType type, uint32 aa_ID, uint16 spell_id)
 				break;
 			}
 			*/
-			case SE_SpellDamage:
+			case SE_FcDamageAmt:
 			{
-				if(type == focusSpellDamage)
+				if(type == focusFcDamageAmt)
 					value = base1;
 
 				break;
 			}
 
-			case SE_FF_Damage_Amount:
+			case SE_FcDamageAmtCrit:
 			{
-				if(type == focusFF_Damage_Amount)
+				if(type == focusFcDamageAmtCrit)
 					value = base1;
 
 				break;
 			}
 
-			case SE_Empathy:
+			case SE_FcDamageAmtIncoming:
 			{
-				if(type == focusAdditionalDamage)
+				if(type == focusFcDamageAmtIncoming)
 					value = base1;
 
 				break;
 			}
 
-			case SE_CriticalHealRate:
+			case SE_FcHealAmtIncoming:
+				if(type == focusFcHealAmtIncoming)
+					value = base1;
+				break;
+
+			case SE_FcHealPctCritIncoming:
+				if (type == focusFcHealPctCritIncoming)
+					value = base1;
+				break;
+
+			case SE_FcHealAmtCrit:
+				if(type == focusFcHealAmtCrit)
+					value = base1;
+				break;
+
+			case  SE_FcHealAmt:
+				if(type == focusFcHealAmt)
+					value = base1;
+				break;
+
+			case SE_FcHealPctIncoming:
+				if(type == focusFcHealPctIncoming)
+					value = base1;
+				break;
+
+			case SE_FcBaseEffects:
 			{
-				if (type == focusCriticalHealRate)
+				if (type == focusFcBaseEffects)
+					value = base1;
+
+				break;
+			}
+			case SE_FcDamagePctCrit:
+			{
+				if(type == focusFcDamagePctCrit)
 					value = base1;
 
 				break;
 			}
 
-			case SE_AdditionalHeal:
-			{
-				if(type == focusAdditionalHeal)
-					value = base1;
-
-				break;
-			}
-
-			case SE_AdditionalHeal2:
-			{
-				if(type == focusAdditionalHeal2)
-					value = base1;
-
-				break;
-			}
-
-			case SE_HealRate2:
-			{
-				if(type == focusHealRate)
-					value = base1;
-
-				break;
-			}
-
-			case SE_IncreaseSpellPower:
-			{
-				if (type == focusSpellEffectiveness)
-					value = base1;
-
-				break;
-			}
-			case SE_ImprovedDamage2:
-			{
-				if(type == focusImprovedDamage2)
-					value = base1;
-
-				break;
-			}
-
-			case SE_IncreaseNumHits:
+			case SE_FcIncreaseNumHits:
 			{
 				if(type == focusIncreaseNumHits)
 					value = base1;
@@ -7263,7 +7249,7 @@ int16 Bot::CalcBotAAFocus(BotfocusType type, uint32 aa_ID, uint16 spell_id)
 }
 
 int16 Bot::GetBotFocusEffect(BotfocusType bottype, uint16 spell_id) {
-	if (IsBardSong(spell_id) && bottype != BotfocusSpellEffectiveness)
+	if (IsBardSong(spell_id) && bottype != BotfocusFcBaseEffects)
 		return 0;
 
 	int16 realTotal = 0;
@@ -7521,7 +7507,7 @@ int16 Bot::CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spel
 				return(0);
 			break;
 
-		case SE_LimitCastTime:
+		case SE_LimitCastTimeMin:
 			if (spells[spell_id].cast_time < (uint16)focus_spell.base[i])
 				return(0);
 			break;
@@ -7581,7 +7567,7 @@ int16 Bot::CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spel
 			}
 			break;
 
-		case SE_LimitManaCost:
+		case SE_LimitManaMin:
 				if(spell.mana < focus_spell.base[i])
 					return 0;
 			break;
@@ -7596,7 +7582,7 @@ int16 Bot::CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spel
 
 			break;
 
-		case SE_CombatSkills:
+		case SE_LimitCombatSkills:
 				// 1 is for disciplines only
 				if(focus_spell.base[i] == 1 && !IsDiscipline(spell_id))
 					return 0;
@@ -7612,18 +7598,11 @@ int16 Bot::CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spel
 					return 0;
 			break;
 
-		case SE_LimitSpellSkill:
+		case SE_LimitCastingSkill:
 				LimitSpellSkill = true;
 				if(focus_spell.base[i] == spell.skill)
 					SpellSkill_Found = true;
 			break;
-
-		case SE_LimitExcludeSkill:{
-			int16 spell_skill = spell.skill * -1;
-			if(focus_spell.base[i] == spell_skill)
-				return 0;
-			break;
-			}
 
 		case SE_LimitClass:
 			//Do not use this limit more then once per spell. If multiple class, treat value like items would.
@@ -7785,7 +7764,7 @@ int16 Bot::CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spel
 
 			break;
 		}
-		case SE_SpellVulnerability:
+		case SE_FcSpellVulnerability:
 		{
 			if(bottype == BotfocusSpellVulnerability)
 			{
@@ -7802,7 +7781,7 @@ int16 Bot::CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spel
 			}
 			break;
 		}
-		case SE_Twincast:
+		case SE_FcTwincast:
 		{
 			if(bottype == BotfocusTwincast)
 			{
@@ -7827,78 +7806,63 @@ int16 Bot::CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spel
 			}
 			break;
 		}
-		case SE_SpellDamage:
+		case SE_FcDamageAmt:
 		{
-			if(bottype == BotfocusSpellDamage)
+			if(bottype == BotfocusFcDamageAmt)
 				value = focus_spell.base[i];
 
 			break;
 		}
 
-		case SE_FF_Damage_Amount:
+		case SE_FcDamageAmtCrit:
 		{
-			if(bottype == BotfocusFF_Damage_Amount)
+			if(bottype == BotfocusFcDamageAmtCrit)
 				value = focus_spell.base[i];
 
 			break;
 		}
 
-		case SE_Empathy:
+		case SE_FcHealAmtIncoming:
+			if(bottype == BotfocusFcHealAmtIncoming)
+				value = focus_spell.base[i];
+			break;
+
+		case SE_FcHealPctCritIncoming:
+			if (bottype == BotfocusFcHealPctCritIncoming)
+				value = focus_spell.base[i];
+			break;
+
+		case SE_FcHealAmtCrit:
+			if(bottype == BotfocusFcHealAmtCrit)
+				value = focus_spell.base[i];
+			break;
+
+		case  SE_FcHealAmt:
+			if(bottype == BotfocusFcHealAmt)
+				value = focus_spell.base[i];
+			break;
+
+		case SE_FcHealPctIncoming:
+			if(bottype == BotfocusFcHealPctIncoming)
+				value = focus_spell.base[i];
+			break;
+
+		case SE_FcBaseEffects:
 		{
-			if(bottype == BotfocusAdditionalDamage)
+			if (bottype == BotfocusFcBaseEffects)
+				value = focus_spell.base[i];
+
+			break;
+		}
+		case SE_FcDamagePctCrit:
+		{
+			if(bottype == BotfocusFcDamagePctCrit)
 				value = focus_spell.base[i];
 
 			break;
 		}
 
-		case SE_CriticalHealRate:
-		{
-			if (bottype == BotfocusCriticalHealRate)
-				value = focus_spell.base[i];
-
-			break;
-		}
-
-		case SE_AdditionalHeal:
-		{
-			if(bottype == BotfocusAdditionalHeal)
-				value = focus_spell.base[i];
-
-			break;
-		}
-
-		case SE_AdditionalHeal2:
-		{
-			if(bottype == BotfocusAdditionalHeal2)
-				value = focus_spell.base[i];
-
-			break;
-		}
-
-		case SE_HealRate2:
-		{
-			if(bottype == BotfocusHealRate)
-				value = focus_spell.base[i];
-
-			break;
-		}
-
-		case SE_IncreaseSpellPower:
-		{
-			if (bottype == BotfocusSpellEffectiveness)
-				value = focus_spell.base[i];
-
-			break;
-		}
-		case SE_ImprovedDamage2:
-		{
-			if(bottype == BotfocusImprovedDamage2)
-				value = focus_spell.base[i];
-
-			break;
-		}
-
-		case SE_IncreaseNumHits:
+		case SE_FcIncreaseNumHits:
 		{
 			if(bottype == BotfocusIncreaseNumHits)
 				value = focus_spell.base[i];
@@ -8274,7 +8238,7 @@ void Bot::DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage,
 
 		if(max_damage > 0) {
 			ApplyMeleeDamageBonus(skill, max_damage);
-			max_damage += who->GetAdditionalDamage(this, 0, true, skill);
+			max_damage += who->GetFcDamageAmtIncoming(this, 0, true, skill);
 			max_damage += (itembonuses.HeroicSTR / 10) + (max_damage * who->GetSkillDmgTaken(skill) / 100) + GetSkillDmgAmt(skill);
 			TryCriticalHit(who, skill, max_damage);
 		}
@@ -8287,6 +8251,9 @@ void Bot::DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage,
 
 	if(!GetTarget())return;
 	if (HasDied())	return;
+
+	if (max_damage > 0)
+		CheckNumHitsRemaining(5);
 
 	//[AA Dragon Punch] value[0] = 100 for 25%, chance value[1] = skill
 	if(aabonuses.SpecialAttackKBProc[0] && aabonuses.SpecialAttackKBProc[1] == skill){
@@ -8992,7 +8959,7 @@ void Bot::BotOrderCampAll(Client* c) {
 	if(c) {
 		std::list<Bot*> BotList = entity_list.GetBotsByBotOwnerCharacterID(c->CharacterID());
 
-		for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); botListItr++) {
+		for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); ++botListItr) {
 			(*botListItr)->Camp();
 		}
 	}
@@ -9302,200 +9269,157 @@ void Bot::SetAttackTimer() {
 	}
 }
 
-int32 Bot::Additional_SpellDmg(uint16 spell_id, bool bufftick)
-{
-	int32 spell_dmg = 0;
-	spell_dmg += GetBotFocusEffect(BotfocusFF_Damage_Amount, spell_id);
-	spell_dmg += GetBotFocusEffect(BotfocusSpellDamage, spell_id);
+int32 Bot::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
+	
+	if (spells[spell_id].targettype == ST_Self)
+		return value;
 
-	//For DOTs you need to apply the damage over the duration of the dot to each tick (this is how live did it)
-	if (bufftick){
-		int duration = CalcBuffDuration(this, this, spell_id);
-		if (duration > 0)
-			return spell_dmg /= duration;
-		else
-			return 0;
-	}
-	return spell_dmg;
-}
+	bool Critical = false;
+	int32 value_BaseEffect = 0;
 
-int32 Bot::GetActSpellDamage(uint16 spell_id, int32 value) {
-	// Important variables:
-	// value: the actual damage after resists, passed from Mob::SpellEffect
-	// modifier: modifier to damage (from spells & focus effects?)
-	// ratio: % of the modifier to apply (from AAs & natural bonus?)
-	// chance: critital chance %
-
-	int32 modifier = 100;
-	int16 spell_dmg = 0;
-
-	//Dunno if this makes sense:
-	if (spells[spell_id].resisttype > 0)
-		modifier += GetBotFocusEffect((BotfocusType)(0-spells[spell_id].resisttype), spell_id);
-
-
-	int tt = spells[spell_id].targettype;
-	if (tt == ST_UndeadAE || tt == ST_Undead || tt == ST_Summoned) {
-		//undead/summoned spells
-		modifier += GetBotFocusEffect(BotfocusImprovedUndeadDamage, spell_id);
-	} else {
-		//damage spells.
-		modifier += GetBotFocusEffect(BotfocusImprovedDamage, spell_id);
-		modifier += GetBotFocusEffect(BotfocusSpellEffectiveness, spell_id);
-		modifier += GetBotFocusEffect(BotfocusImprovedDamage2, spell_id);
-	}
+	value_BaseEffect = value + (value*GetBotFocusEffect(BotfocusFcBaseEffects, spell_id)/100);
 
 	// Need to scale HT damage differently after level 40! It no longer scales by the constant value in the spell file. It scales differently, instead of 10 more damage per level, it does 30 more damage per level. So we multiply the level minus 40 times 20 if they are over level 40.
-	if ( spell_id == SPELL_HARM_TOUCH || spell_id == SPELL_HARM_TOUCH2 || spell_id == SPELL_IMP_HARM_TOUCH ) {
-		if (this->GetLevel() > 40)
-			value -= (this->GetLevel() - 40) * 20;
-	}
-
+	if ( (spell_id == SPELL_HARM_TOUCH || spell_id == SPELL_HARM_TOUCH2 || spell_id == SPELL_IMP_HARM_TOUCH ) && GetLevel() > 40)
+		value -= (GetLevel() - 40) * 20;
+       
 	//This adds the extra damage from the AA Unholy Touch, 450 per level to the AA Improved Harm TOuch.
-	if (spell_id == SPELL_IMP_HARM_TOUCH) { //Improved Harm Touch
-			value -= GetAA(aaUnholyTouch) * 450; //Unholy Touch
-	}
-
-	//these spell IDs could be wrong
-	if (spell_id == SPELL_LEECH_TOUCH) {	//leech touch
-		value -= GetAA(aaConsumptionoftheSoul) * 200; //Consumption of the Soul
-		value -= GetAA(aaImprovedConsumptionofSoul) * 200; //Improved Consumption of the Soul
-	}
-
-	//spell crits, dont make sense if cast on self.
-	if(tt != ST_Self) {
-		// item SpellDmg bonus
-		// Formula = SpellDmg * (casttime + recastime) / 7; Cant trigger off spell less than 5 levels below and cant cause more dmg than the spell itself.
-		if(this->itembonuses.SpellDmg && spells[spell_id].classes[(GetClass()%16) - 1] >= GetLevel() - 5) {
-			spell_dmg = this->itembonuses.SpellDmg * (spells[spell_id].cast_time + spells[spell_id].recast_time) / 7000;
-			if(spell_dmg > -value)
-				spell_dmg = -value;
-		}
-
-		// Spell-based SpellDmg adds directly but it restricted by focuses.
-		spell_dmg += Additional_SpellDmg(spell_id);
-
-		int chance = RuleI(Spells, BaseCritChance);
-		int32 ratio = RuleI(Spells, BaseCritRatio);
-
+	if (spell_id == SPELL_IMP_HARM_TOUCH) //Improved Harm Touch
+		value -= GetAA(aaUnholyTouch) * 450; //Unholy Touch
+        
+	int chance = RuleI(Spells, BaseCritChance);
 		chance += itembonuses.CriticalSpellChance + spellbonuses.CriticalSpellChance + aabonuses.CriticalSpellChance;
-		ratio += itembonuses.SpellCritDmgIncrease + spellbonuses.SpellCritDmgIncrease + aabonuses.SpellCritDmgIncrease;
-
-		if(GetClass() == WIZARD) {
-			if (GetLevel() >= RuleI(Spells, WizCritLevel)) {
-				chance += RuleI(Spells, WizCritChance);
-				ratio += RuleI(Spells, WizCritRatio);
-			}
-			if(aabonuses.SpellCritDmgIncrease > 0) // wizards get an additional bonus
-				ratio += aabonuses.SpellCritDmgIncrease * 1.5; //108%, 115%, 124%, close to Graffe's 207%, 215%, & 225%
-		}
+		
+	if (chance > 0){
+ 
+		 int32 ratio = RuleI(Spells, BaseCritRatio); //Critical modifier is applied from spell effects only. Keep at 100 for live like criticals.
 
 		//Improved Harm Touch is a guaranteed crit if you have at least one level of SCF.
-		if (spell_id == SPELL_IMP_HARM_TOUCH) {
-			if ( (GetAA(aaSpellCastingFury) > 0) && (GetAA(aaUnholyTouch) > 0) )
-				chance = 100;
+		 if (spell_id == SPELL_IMP_HARM_TOUCH && (GetAA(aaSpellCastingFury) > 0) && (GetAA(aaUnholyTouch) > 0))
+			 chance = 100;
+ 
+		 if (MakeRandomInt(1,100) <= chance){
+			Critical = true;
+			ratio += itembonuses.SpellCritDmgIncrease + spellbonuses.SpellCritDmgIncrease + aabonuses.SpellCritDmgIncrease;
+			ratio += itembonuses.SpellCritDmgIncNoStack + spellbonuses.SpellCritDmgIncNoStack + aabonuses.SpellCritDmgIncNoStack;
 		}
 
-		/*
-		//Handled in aa_effects will focus spells from 'spellgroup=99'. (SK life tap from buff procs)
-		//If you are using an older spell file table (Pre SOF)...
-		//Use SQL optional_EnableSoulAbrasionAA to update your spells table to properly use the effect.
-		//If you do not want to update your table then you may want to enable this.
-		if(tt == ST_Tap) {
-			if(spells[spell_id].classes[SHADOWKNIGHT-1] >= 254 && spell_id != SPELL_LEECH_TOUCH){
-				if(ratio < 100)	//chance increase and ratio are made up, not confirmed
-					ratio = 100;
+		else if (GetClass() == WIZARD && (GetLevel() >= RuleI(Spells, WizCritLevel)) && (MakeRandomInt(1,100) <= RuleI(Spells, WizCritChance))) {
+			ratio = MakeRandomInt(1,100); //Wizard innate critical chance is calculated seperately from spell effect and is not a set ratio.
+			Critical = true;
+		}
 
-				switch (GetAA(aaSoulAbrasion))
-				{
-				case 1:
-					modifier += 100;
-					break;
-				case 2:
-					modifier += 200;
-					break;
-				case 3:
-					modifier += 300;
-					break;
-				}
+		ratio += RuleI(Spells, WizCritRatio); //Default is zero
+			
+		if (Critical){
+
+			value = value_BaseEffect*ratio/100;  
+
+			value += value_BaseEffect*GetBotFocusEffect(BotfocusImprovedDamage, spell_id)/100; 
+
+			value += int(value_BaseEffect*GetBotFocusEffect(BotfocusFcDamagePctCrit, spell_id)/100)*ratio/100;
+
+			if (target) {
+				value += int(value_BaseEffect*target->GetVulnerability(this, spell_id, 0)/100)*ratio/100;  
+				value -= target->GetFcDamageAmtIncoming(this, spell_id); 
 			}
-		}
-		*/
 
-		if (chance > 0) {
-			mlog(SPELLS__CRITS, "Attempting spell crit. Spell: %s (%d), Value: %d, Modifier: %d, Chance: %d, Ratio: %d", spells[spell_id].name, spell_id, value, modifier, chance, ratio);
-			if(MakeRandomInt(0,100) <= chance) {
-				modifier += modifier*ratio/100;
-				spell_dmg *= 2;
-				mlog(SPELLS__CRITS, "Spell crit successful. Final damage modifier: %d, Final Damage: %d", modifier, (value * modifier / 100) - spell_dmg);
-				entity_list.MessageClose(this, false, 100, MT_SpellCrits, "%s delivers a critical blast! (%d)", GetName(), (-value * modifier / 100) + spell_dmg);
-			} else
-				mlog(SPELLS__CRITS, "Spell crit failed. Final Damage Modifier: %d, Final Damage: %d", modifier, (value * modifier / 100) - spell_dmg);
+			value -= GetBotFocusEffect(BotfocusFcDamageAmtCrit, spell_id)*ratio/100; 
+
+			value -= GetBotFocusEffect(BotfocusFcDamageAmt, spell_id); 
+
+			if(itembonuses.SpellDmg && spells[spell_id].classes[(GetClass()%16) - 1] >= GetLevel() - 5)
+				value += GetExtraSpellAmt(spell_id, itembonuses.SpellDmg, value)*ratio/100;
+
+			entity_list.MessageClose(this, false, 100, MT_SpellCrits, "%s delivers a critical blast! (%d)", GetName(), -value);
+
+			return value;
 		}
 	}
 
-	return ((value * modifier / 100) - spell_dmg);
-}
+	 value = value_BaseEffect;
+ 
+	 value += value_BaseEffect*GetBotFocusEffect(BotfocusImprovedDamage, spell_id)/100; 
+	 
+	 value += value_BaseEffect*GetBotFocusEffect(BotfocusFcDamagePctCrit, spell_id)/100;
 
-int32 Bot::Additional_Heal(uint16 spell_id)
-{
-	int32 heal_amt = 0;
+	 if (target) {
+		value += value_BaseEffect*target->GetVulnerability(this, spell_id, 0)/100;
+		value -= target->GetFcDamageAmtIncoming(this, spell_id); 
+	 }
 
-	heal_amt += GetBotFocusEffect(BotfocusAdditionalHeal, spell_id);
-	heal_amt += GetBotFocusEffect(BotfocusAdditionalHeal2, spell_id);
+	 value -= GetBotFocusEffect(BotfocusFcDamageAmtCrit, spell_id); 
 
-	if (heal_amt){
-		int duration = CalcBuffDuration(this, this, spell_id);
-		if (duration > 0)
-			return heal_amt /= duration;
-	}
+	 value -= GetBotFocusEffect(BotfocusFcDamageAmt, spell_id); 
+	 
+	if(itembonuses.SpellDmg && spells[spell_id].classes[(GetClass()%16) - 1] >= GetLevel() - 5)
+         value += GetExtraSpellAmt(spell_id, itembonuses.SpellDmg, value); 
 
-	return heal_amt;
-}
+	return value;
+ }
 
-int32 Bot::GetActSpellHealing(uint16 spell_id, int32 value) {
-	int32 modifier = 100;
-	int16 heal_amt = 0;
-	modifier += GetBotFocusEffect(BotfocusImprovedHeal, spell_id);
-	modifier += GetBotFocusEffect(BotfocusSpellEffectiveness, spell_id);
-	heal_amt += Additional_Heal(spell_id);
-	int chance = 0;
+int32 Bot::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
+	
+	if (target == nullptr)
+		target = this;
 
+	int32 value_BaseEffect = 0;
+	int16 chance = 0;
+	int8 modifier = 1;
+	bool Critical = false;
+		
+	value_BaseEffect = value + (value*GetBotFocusEffect(BotfocusFcBaseEffects, spell_id)/100); 
+		
+	value = value_BaseEffect;
+
+	value += int(value_BaseEffect*GetBotFocusEffect(BotfocusImprovedHeal, spell_id)/100); 
+ 
+	// Instant Heals
 	if(spells[spell_id].buffduration < 1) {
-		uint8 botlevel = GetLevel();
-		uint8 botclass = GetClass();
-		// Formula = HealAmt * (casttime + recastime) / 7; Cant trigger off spell less than 5 levels below and cant heal more than the spell itself.
-		if(this->itembonuses.HealAmt && spells[spell_id].classes[(botclass%16) - 1] >= botlevel - 5) {
-			heal_amt = this->itembonuses.HealAmt * (spells[spell_id].cast_time + spells[spell_id].recast_time) / 7000;
-			if(heal_amt > value)
-				heal_amt = value;
-		}
 
-		// Check for buffs that affect the healrate of the target and critical heal rate of target
-		if(GetTarget()) {
-			value += value * GetHealRate(spell_id) / 100;
-			chance += GetCriticalHealRate(spell_id);
-		}
+		chance += itembonuses.CriticalHealChance + spellbonuses.CriticalHealChance + aabonuses.CriticalHealChance; 
 
-		//Live AA - Healing Gift, Theft of Life
-		chance += itembonuses.CriticalHealChance + spellbonuses.CriticalHealChance + aabonuses.CriticalHealChance;
+		chance += target->GetFocusIncoming(focusFcHealPctCritIncoming, SE_FcHealPctCritIncoming, this, spell_id); 
+						
+		if (spellbonuses.CriticalHealDecay)
+			chance += GetDecayEffectValue(spell_id, SE_CriticalHealDecay); 
+	
+		if(chance && (MakeRandomInt(0,99) < chance)) {
+			Critical = true;
+			modifier = 2; //At present time no critical heal amount modifier SPA exists.
+		}
+		
+		value *= modifier;
+		value += GetBotFocusEffect(BotfocusFcHealAmtCrit, spell_id) * modifier; 
+		value += GetBotFocusEffect(BotfocusFcHealAmt, spell_id); 
+		value += target->GetFocusIncoming(focusFcHealAmtIncoming, SE_FcHealAmtIncoming, this, spell_id); 
 
-		if(MakeRandomInt(0,99) < chance) {
-			entity_list.MessageClose(this, false, 100, MT_SpellCrits, "%s performs an exceptional heal! (%d)", GetName(), ((value * modifier / 50) + heal_amt*2));
-			return ((value * modifier / 50) + heal_amt*2);
-		}
-		else{
-			return ((value * modifier / 100) + heal_amt);
-		}
+		if(itembonuses.HealAmt && spells[spell_id].classes[(GetClass()%16) - 1] >= GetLevel() - 5)
+			value += GetExtraSpellAmt(spell_id, itembonuses.HealAmt, value) * modifier;
+
+		value += value*target->GetHealRate(spell_id, this)/100; 
+
+		if (Critical)
+			entity_list.MessageClose(this, false, 100, MT_SpellCrits, "%s performs an exceptional heal! (%d)", GetName(), value);
+
+		return value;
 	}
-	// Hots
+
+	//Heal over time spells. [Heal Rate and Additional Healing effects do not increase this value]
 	else {
-		chance += itembonuses.CriticalHealChance + spellbonuses.CriticalHealChance + aabonuses.CriticalHealChance;
-		if(MakeRandomInt(0,99) < chance)
-			return ((value * modifier / 50) + heal_amt*2);
+		
+		chance = itembonuses.CriticalHealOverTime + spellbonuses.CriticalHealOverTime + aabonuses.CriticalHealOverTime; 
+
+		chance += target->GetFocusIncoming(focusFcHealPctCritIncoming, SE_FcHealPctCritIncoming, this, spell_id); 
+		
+		if (spellbonuses.CriticalRegenDecay)
+			chance += GetDecayEffectValue(spell_id, SE_CriticalRegenDecay);
+		
+		if(chance && (MakeRandomInt(0,99) < chance))
+			return (value * 2);
 	}
 
-	return ((value * modifier / 100) + heal_amt);
+	return value;
 }
 
 int32 Bot::GetActSpellCasttime(uint16 spell_id, int32 casttime) {
@@ -11376,7 +11300,7 @@ Bot* Bot::GetBotByBotClientOwnerAndBotName(Client* c, std::string botName) {
 		std::list<Bot*> BotList = entity_list.GetBotsByBotOwnerCharacterID(c->CharacterID());
 
 		if(!BotList.empty()) {
-			for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); botListItr++) {
+			for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); ++botListItr) {
 				if(std::string((*botListItr)->GetCleanName()) == botName) {
 					Result = (*botListItr);
 					break;
@@ -11435,7 +11359,7 @@ void Bot::ProcessClientZoneChange(Client* botOwner) {
 	if(botOwner) {
 		std::list<Bot*> BotList = entity_list.GetBotsByBotOwnerCharacterID(botOwner->CharacterID());
 
-		for(std::list<Bot*>::iterator itr = BotList.begin(); itr != BotList.end(); itr++) {
+		for(std::list<Bot*>::iterator itr = BotList.begin(); itr != BotList.end(); ++itr) {
 			Bot* tempBot = *itr;
 
 			if(tempBot) {
@@ -12140,7 +12064,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 		}
 
 		if(!AvailableBots.empty()) {
-			for(std::list<BotsAvailableList>::iterator TempAvailableBotsList = AvailableBots.begin(); TempAvailableBotsList != AvailableBots.end(); TempAvailableBotsList++) {
+			for(std::list<BotsAvailableList>::iterator TempAvailableBotsList = AvailableBots.begin(); TempAvailableBotsList != AvailableBots.end(); ++TempAvailableBotsList) {
 				if(!listAll && TempAvailableBotsList->BotClass != iClass)
 					continue;
 
@@ -12184,7 +12108,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 			std::list<Bot*> spawnedBots = entity_list.GetBotsByBotOwnerCharacterID(c->CharacterID());
 
 			if(!spawnedBots.empty()) {
-				for(std::list<Bot*>::iterator botsListItr = spawnedBots.begin(); botsListItr != spawnedBots.end(); botsListItr++) {
+				for(std::list<Bot*>::iterator botsListItr = spawnedBots.begin(); botsListItr != spawnedBots.end(); ++botsListItr) {
 					Bot* tempBot = *botsListItr;
 					if(tempBot) {
 						if(tempBot->GetClass() != WARRIOR && tempBot->GetClass() != MONK && tempBot->GetClass() != BARD && tempBot->GetClass() != BERSERKER && tempBot->GetClass() != ROGUE)
@@ -13223,7 +13147,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 						pacer->Say("Trying to pacify %s \n", target->GetCleanName());
 
 						if(pacer->Bot_Command_CalmTarget(target)) {
-							if(target->FindType(SE_Lull) || target->FindType(SE_Harmony) || target->FindType(SE_Calm))
+							if(target->FindType(SE_Lull) || target->FindType(SE_Harmony) || target->FindType(SE_InstantHate))
 							//if(pacer->IsPacified(target))
 								c->Message(0, "I have successfully pacified %s.", target->GetCleanName());
 								return;
@@ -13239,7 +13163,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 						pacer->Say("Trying to pacify %s \n", target->GetCleanName());
 
 						if(pacer->Bot_Command_CalmTarget(target)) {
-							if(target->FindType(SE_Lull) || target->FindType(SE_Harmony) || target->FindType(SE_Calm))
+							if(target->FindType(SE_Lull) || target->FindType(SE_Harmony) || target->FindType(SE_InstantHate))
 							//if(pacer->IsPacified(target))
 								c->Message(0, "I have successfully pacified %s.", target->GetCleanName());
 								return;
@@ -14899,7 +14823,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 		}
 
 		if(!botGroupList.empty()) {
-			for(std::list<BotGroupList>::iterator botGroupListItr = botGroupList.begin(); botGroupListItr != botGroupList.end(); botGroupListItr++) {
+			for(std::list<BotGroupList>::iterator botGroupListItr = botGroupList.begin(); botGroupListItr != botGroupList.end(); ++botGroupListItr) {
 				c->Message(0, "Bot Group Name: %s -- Bot Group Leader: %s", botGroupListItr->BotGroupName.c_str(), botGroupListItr->BotGroupLeaderName.c_str());
 			}
 		}
@@ -15039,7 +14963,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 		}
 
 		std::list<BotGroup>::iterator botGroupItr = botGroup.begin();
-		for(botGroupItr; botGroupItr != botGroup.end(); botGroupItr++) {
+		for(botGroupItr; botGroupItr != botGroup.end(); ++botGroupItr) {
 			// Don't try to re-spawn the botgroup's leader.
 			if(botGroupItr->BotID == botGroupLeader->GetBotID()) { continue; }
 
@@ -15375,7 +15299,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				std::list<Bot*> spawnedBots = entity_list.GetBotsByBotOwnerCharacterID(c->CharacterID());
 
 				if(!spawnedBots.empty()) {
-					for(std::list<Bot*>::iterator botsListItr = spawnedBots.begin(); botsListItr != spawnedBots.end(); botsListItr++) {
+					for(std::list<Bot*>::iterator botsListItr = spawnedBots.begin(); botsListItr != spawnedBots.end(); ++botsListItr) {
 						Bot* tempBot = *botsListItr;
 						if(tempBot) {
 							tempBot->SetGroupMessagesOn(groupMessages);
@@ -15725,7 +15649,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 						return;
 					}
 
-					Mob* target;
+					Mob* target = nullptr;
 					std::string targetName = std::string(sep->arg[4]);
 
 					if(!targetName.empty())
@@ -15815,7 +15739,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				if(!strcasecmp(sep->arg[3], "all")) {
 					std::list<Bot*> BotList = entity_list.GetBotsByBotOwnerCharacterID(c->CharacterID());
 
-					for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); botListItr++) {
+					for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); ++botListItr) {
 						Bot* leaderBot = *botListItr;
 						if(leaderBot->GetInHealRotation() && leaderBot->GetHealRotationLeader() == leaderBot) {
 							//start all heal rotations
@@ -15824,7 +15748,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 
 							rotationMemberList = GetBotsInHealRotation(leaderBot);
 
-							for(std::list<Bot*>::iterator rotationMemberItr = rotationMemberList.begin(); rotationMemberItr != rotationMemberList.end(); rotationMemberItr++) {
+							for(std::list<Bot*>::iterator rotationMemberItr = rotationMemberList.begin(); rotationMemberItr != rotationMemberList.end(); ++rotationMemberItr) {
 								Bot* tempBot = *rotationMemberItr;
 
 								if(tempBot) {
@@ -15861,7 +15785,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 
 						botList = GetBotsInHealRotation(leaderBot);
 
-						for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); botListItr++) {
+						for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); ++botListItr) {
 							Bot* tempBot = *botListItr;
 
 							if(tempBot) {
@@ -15892,7 +15816,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				if(!strcasecmp(sep->arg[3], "all")) {
 					std::list<Bot*> BotList = entity_list.GetBotsByBotOwnerCharacterID(c->CharacterID());
 
-					for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); botListItr++) {
+					for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); ++botListItr) {
 						Bot* leaderBot = *botListItr;
 						if(leaderBot->GetInHealRotation() && leaderBot->GetHealRotationLeader() == leaderBot) {
 							//start all heal rotations
@@ -15900,7 +15824,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 
 							rotationMemberList = GetBotsInHealRotation(leaderBot);
 
-							for(std::list<Bot*>::iterator rotationMemberItr = rotationMemberList.begin(); rotationMemberItr != rotationMemberList.end(); rotationMemberItr++) {
+							for(std::list<Bot*>::iterator rotationMemberItr = rotationMemberList.begin(); rotationMemberItr != rotationMemberList.end(); ++rotationMemberItr) {
 								Bot* tempBot = *rotationMemberItr;
 
 								if(tempBot) {
@@ -15933,7 +15857,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 
 						botList = GetBotsInHealRotation(leaderBot);
 
-						for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); botListItr++) {
+						for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); ++botListItr) {
 							Bot* tempBot = *botListItr;
 
 							if(tempBot && tempBot->GetBotOwnerCharacterID() == c->CharacterID()) {
@@ -15965,7 +15889,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				if(!strcasecmp(sep->arg[3], "all")) {
 					std::list<Bot*> BotList = entity_list.GetBotsByBotOwnerCharacterID(c->CharacterID());
 
-					for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); botListItr++) {
+					for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); ++botListItr) {
 						Bot* tempBot = *botListItr;
 						if(tempBot->GetInHealRotation() && tempBot->GetHealRotationLeader() == tempBot) {
 							//list leaders and number of bots per rotation
@@ -15996,7 +15920,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 						c->Message(0, "Bot Heal Rotation- Leader: %s", leaderBot->GetCleanName());
 						c->Message(0, "Bot Heal Rotation- Timer: %1.1f", ((float)leaderBot->GetHealRotationTimer()/1000.0f));
 
-						for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); botListItr++) {
+						for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); ++botListItr) {
 							Bot* tempBot = *botListItr;
 
 							if(tempBot && tempBot->GetBotOwnerCharacterID() == c->CharacterID()) {
@@ -16054,7 +15978,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 
 					botList = GetBotsInHealRotation(leaderBot);
 
-					for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); botListItr++) {
+					for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); ++botListItr) {
 						Bot* tempBot = *botListItr;
 
 						if(tempBot && tempBot->GetBotOwnerCharacterID() == c->CharacterID())
@@ -16102,7 +16026,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 
 					botList = GetBotsInHealRotation(leaderBot);
 
-					for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); botListItr++) {
+					for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); ++botListItr) {
 						Bot* tempBot = *botListItr;
 
 						if(tempBot && tempBot->GetBotOwnerCharacterID() == c->CharacterID())
@@ -16397,17 +16321,14 @@ Mob* EntityList::GetMobByBotID(uint32 botID) {
 	Mob* Result = 0;
 
 	if(botID > 0) {
-		LinkedListIterator<Mob*> iterator(mob_list);
+		auto it = mob_list.begin();
 
-		iterator.Reset();
-
-		while(iterator.MoreElements()) {
-			if(iterator.GetData()->IsBot() && iterator.GetData()->CastToBot()->GetBotID() == botID) {
-				Result = iterator.GetData();
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+		if(!it->second) continue;
+			if(it->second->IsBot() && it->second->CastToBot()->GetBotID() == botID) {
+				Result = it->second;
 				break;
 			}
-
-			iterator.Advance();
 		}
 	}
 
@@ -16418,7 +16339,7 @@ Bot* EntityList::GetBotByBotID(uint32 botID) {
 	Bot* Result = 0;
 
 	if(botID > 0) {
-		for(std::list<Bot*>::iterator botListItr = bot_list.begin(); botListItr != bot_list.end(); botListItr++) {
+		for(std::list<Bot*>::iterator botListItr = bot_list.begin(); botListItr != bot_list.end(); ++botListItr) {
 			Bot* tempBot = *botListItr;
 
 			if(tempBot && tempBot->GetBotID() == botID) {
@@ -16435,7 +16356,7 @@ Bot* EntityList::GetBotByBotName(std::string botName) {
 	Bot* Result = 0;
 
 	if(!botName.empty()) {
-		for(std::list<Bot*>::iterator botListItr = bot_list.begin(); botListItr != bot_list.end(); botListItr++) {
+		for(std::list<Bot*>::iterator botListItr = bot_list.begin(); botListItr != bot_list.end(); ++botListItr) {
 			Bot* tempBot = *botListItr;
 
 			if(tempBot && std::string(tempBot->GetName()) == botName) {
@@ -16475,7 +16396,7 @@ void EntityList::AddBot(Bot *newBot, bool SendSpawnPacket, bool dontqueue) {
 
 		bot_list.push_back(newBot);
 
-		mob_list.Insert(newBot);
+		mob_list.insert(std::pair<uint16, Mob*>(newBot->GetID(), newBot));
 	}
 }
 
@@ -16483,7 +16404,7 @@ std::list<Bot*> EntityList::GetBotsByBotOwnerCharacterID(uint32 botOwnerCharacte
 	std::list<Bot*> Result;
 
 	if(botOwnerCharacterID > 0) {
-		for(std::list<Bot*>::iterator botListItr = bot_list.begin(); botListItr != bot_list.end(); botListItr++) {
+		for(std::list<Bot*>::iterator botListItr = bot_list.begin(); botListItr != bot_list.end(); ++botListItr) {
 			Bot* tempBot = *botListItr;
 
 			if(tempBot && tempBot->GetBotOwnerCharacterID() == botOwnerCharacterID)
@@ -16496,10 +16417,9 @@ std::list<Bot*> EntityList::GetBotsByBotOwnerCharacterID(uint32 botOwnerCharacte
 
 void EntityList::BotPickLock(Bot* rogue)
 {
-	LinkedListIterator<Doors*> iterator(door_list);
-	iterator.Reset();
-	while(iterator.MoreElements()) {
-		Doors *cdoor = iterator.GetData();
+	auto it = door_list.begin();
+	for (auto it = door_list.begin(); it != door_list.end(); ++it) {
+		Doors *cdoor = it->second;
 		if(cdoor && !cdoor->IsDoorOpen()) {
 			float zdiff = rogue->GetZ() - cdoor->GetZ();
 			if(zdiff < 0)
@@ -16538,7 +16458,6 @@ void EntityList::BotPickLock(Bot* rogue)
 				}
 			}
 		}
-		iterator.Advance();
 	}
 }
 
@@ -16546,7 +16465,7 @@ bool EntityList::RemoveBot(uint16 entityID) {
 	bool Result = false;
 
 	if(entityID > 0) {
-		for(std::list<Bot*>::iterator botListItr = bot_list.begin(); botListItr != bot_list.end(); botListItr++)
+		for(std::list<Bot*>::iterator botListItr = bot_list.begin(); botListItr != bot_list.end(); ++botListItr)
 		{
 			Bot* tempBot = *botListItr;
 
@@ -16568,18 +16487,17 @@ void EntityList::ShowSpawnWindow(Client* client, int Distance, bool NamedOnly) {
 	std::string WindowText;
 	int LastCon = -1;
 	int CurrentCon = 0;
+	Mob* curMob = nullptr;
 
 	uint32 array_counter = 0;
 
-	LinkedListIterator<Mob*> iterator(mob_list);
-	iterator.Reset();
+	auto it = mob_list.begin();
 
-	while(iterator.MoreElements())
-	{
-		if (iterator.GetData() && (iterator.GetData()->DistNoZ(*client)<=Distance))
-		{
-			if(iterator.GetData()->IsTrackable()) {
-				Mob* cur_entity = iterator.GetData();
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+	curMob = it->second;
+		if (curMob && curMob->DistNoZ(*client)<=Distance) {
+			if(curMob->IsTrackable()) {
+				Mob* cur_entity = curMob;
 				int Extras = (cur_entity->IsBot() || cur_entity->IsPet() || cur_entity->IsFamiliar() || cur_entity->IsClient());
 				const char *const MyArray[] = {
 					"a_","an_","Innkeep_","Barkeep_",
@@ -16621,7 +16539,6 @@ void EntityList::ShowSpawnWindow(Client* client, int Distance, bool NamedOnly) {
 					const char *CurEntityName = cur_entity->GetName(); //Call function once
 					for (int Index = 0; Index < MyArraySize; Index++) {
 						if (!strncasecmp(CurEntityName, MyArray[Index], strlen(MyArray[Index])) || (Extras)) {
-							iterator.Advance();
 							ContinueFlag = true;
 							break; //From Index for
 						};
@@ -16678,8 +16595,6 @@ void EntityList::ShowSpawnWindow(Client* client, int Distance, bool NamedOnly) {
 				}
 			}
 		}
-
-		iterator.Advance();
 	}
 	WindowText += "</c>";
 
@@ -17100,7 +17015,7 @@ bool Bot::AddHealRotationMember( Bot* healer ) {
 
 				std::list<Bot*> botList = GetBotsInHealRotation(this);
 
-				for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); botListItr++) {
+				for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); ++botListItr) {
 					Bot* tempBot = *botListItr;
 
 					if(tempBot)
@@ -17148,7 +17063,7 @@ bool Bot::RemoveHealRotationMember( Bot* healer ) {
 		//update rotation data
 		std::list<Bot*> botList = GetBotsInHealRotation(leader);
 
-		for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); botListItr++) {
+		for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); ++botListItr) {
 			Bot* tempBot = *botListItr;
 
 			if(tempBot) {
@@ -17223,7 +17138,7 @@ bool Bot::AddHealRotationTarget( Mob* target ) {
 
 				_healRotationTargets[i] = target->GetID();
 
-				for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); botListItr++) {
+				for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); ++botListItr) {
 					Bot* tempBot = *botListItr;
 
 					if(tempBot && tempBot != this) {
@@ -17261,7 +17176,7 @@ bool Bot::RemoveHealRotationTarget( Mob* target ) {
 				index = i;
 				removed = true;
 
-				for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); botListItr++) {
+				for(std::list<Bot*>::iterator botListItr = botList.begin(); botListItr != botList.end(); ++botListItr) {
 					Bot* tempBot = *botListItr;
 
 					if(tempBot)
@@ -17400,7 +17315,7 @@ void Bot::BotHealRotationsClear(Client* c) {
 	if(c) {
 		std::list<Bot*> BotList = entity_list.GetBotsByBotOwnerCharacterID(c->CharacterID());
 
-		for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); botListItr++) {
+		for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); ++botListItr) {
 			Bot* tempBot = *botListItr;
 			if(tempBot->GetInHealRotation()) {
 				//clear all heal rotation data for bots in a heal rotation

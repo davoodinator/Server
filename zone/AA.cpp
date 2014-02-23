@@ -1103,7 +1103,7 @@ void Client::SendAATimers() {
 	PTimerList::iterator c,e;
 	c = p_timers.begin();
 	e = p_timers.end();
-	for(; c != e; c++) {
+	for(; c != e; ++c) {
 		PersistentTimer *cur = c->second;
 		if(cur->GetType() < pTimerAAStart || cur->GetType() > pTimerAAEnd)
 			continue;	//not an AA timer
@@ -1300,6 +1300,10 @@ void Client::SendAA(uint32 id, int seq) {
 		return;
 
 	int size=sizeof(SendAA_Struct)+sizeof(AA_Ability)*saa2->total_abilities;
+
+	if(size == 0)
+		return;
+
 	uchar* buffer = new uchar[size];
 	SendAA_Struct* saa=(SendAA_Struct*)buffer;
 	memcpy(saa,saa2,size);
@@ -1506,7 +1510,7 @@ void Client::ResetAA(){
 		aa[i]->value = 0;
 	}
 	std::map<uint32,uint8>::iterator itr;
-	for(itr=aa_points.begin();itr!=aa_points.end();itr++)
+	for(itr=aa_points.begin();itr!=aa_points.end();++itr)
 		aa_points[itr->first] = 0;
 
 		for(int i = 0; i < _maxLeaderAA; ++i)

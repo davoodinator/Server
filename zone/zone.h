@@ -144,11 +144,14 @@ public:
 
 	bool	Depop(bool StartSpawnTimer = false);
 	void	Repop(uint32 delay = 0);
+	void	ClearNPCTypeCache(int id);
 	void	SpawnStatus(Mob* client);
 	void	ShowEnabledSpawnStatus(Mob* client);
 	void	ShowDisabledSpawnStatus(Mob* client);
 	void	ShowSpawnStatusByID(Mob* client, uint32 spawnid);
 	void	StartShutdownTimer(uint32 set_time = (RuleI(Zone, AutoShutdownDelay)));
+	void    ChangeWeather();
+	bool	HasWeather();
 	void	AddAuth(ServerZoneIncommingClient_Struct* szic);
 	void	RemoveAuth(const char* iCharName);
 	void	ResetAuth();
@@ -212,7 +215,6 @@ public:
 	WaterMap* watermap;
 	PathManager *pathing;
 	NewZone_Struct	newzone_data;
-	uint8	zone_weather;
 
 	SpawnConditionManager spawn_conditions;
 
@@ -232,7 +234,8 @@ public:
 	inline	bool BuffTimersSuspended() const { return newzone_data.SuspendBuffs != 0; };
 
 	time_t	weather_timer;
-	uint8	weather_type;
+	uint8	weather_intensity;
+	uint8	zone_weather;
 
 	uint8 loglevelvar;
 	uint8 merchantvar;

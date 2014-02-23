@@ -109,8 +109,8 @@ public:
 	void CalcNPCDamage();
 
 
-	int32 GetActSpellDamage(uint16 spell_id, int32 value);
-	int32 GetActSpellHealing(uint16 spell_id, int32 value);
+	int32 GetActSpellDamage(uint16 spell_id, int32 value, Mob* target = nullptr);
+	int32 GetActSpellHealing(uint16 spell_id, int32 value, Mob* target = nullptr);
 	inline void SetSpellFocusDMG(int32 NewSpellFocusDMG) {SpellFocusDMG = NewSpellFocusDMG;}
 	inline void SetSpellFocusHeal(int32 NewSpellFocusHeal) {SpellFocusHeal = NewSpellFocusHeal;}
 	int32 SpellFocusDMG;
@@ -355,6 +355,7 @@ public:
 	int 	mod_npc_damage(int damage, SkillUseTypes skillinuse, int hand, const Item_Struct* weapon, Mob* other);
 	void	mod_npc_killed_merit(Mob* c);
 	void	mod_npc_killed(Mob* oos);
+	void AISpellsList(Client *c);
 
 protected:
 

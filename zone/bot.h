@@ -71,7 +71,7 @@ public:
 		BotfocusImprovedHeal,
 		BotfocusImprovedDamage,
 		BotfocusImprovedDOT,		//i dont know about this...
-		BotfocusImprovedDamage2,
+		BotfocusFcDamagePctCrit,
 		BotfocusImprovedUndeadDamage,
 		BotfocusPetPower,
 		BotfocusResistRate,
@@ -80,19 +80,20 @@ public:
 		BotfocusSpellVulnerability,
 		BotfocusTwincast,
 		BotfocusSympatheticProc,
-		BotfocusSpellDamage,
-		BotfocusFF_Damage_Amount,
+		BotfocusFcDamageAmt,
+		BotfocusFcDamageAmtCrit,
 		BotfocusSpellDurByTic,
 		BotfocusSwarmPetDuration,
 		BotfocusReduceRecastTime,
 		BotfocusBlockNextSpell,
-		BotfocusHealRate,
-		BotfocusAdditionalDamage,
-		BotfocusSpellEffectiveness,
+		BotfocusFcHealPctIncoming,
+		BotfocusFcDamageAmtIncoming,
+		BotfocusFcHealAmtIncoming,
+		BotfocusFcBaseEffects,
 		BotfocusIncreaseNumHits,
-		BotfocusCriticalHealRate,
-		BotfocusAdditionalHeal2,
-		BotfocusAdditionalHeal,
+		BotfocusFcHealPctCritIncoming,
+		BotfocusFcHealAmt,
+		BotfocusFcHealAmtCrit,
 	};
 
 	enum BotTradeType {	// types of trades a bot can do
@@ -301,10 +302,8 @@ public:
 
 	// Mob Spell Virtual Override Methods
 	virtual void SpellProcess();
-	int32 Additional_SpellDmg(uint16 spell_id, bool bufftick = false);
-	int32 Additional_Heal(uint16 spell_id);
-	virtual int32 GetActSpellDamage(uint16 spell_id, int32 value);
-	virtual int32 GetActSpellHealing(uint16 spell_id, int32 value);
+	virtual int32 GetActSpellDamage(uint16 spell_id, int32 value, Mob* target = nullptr);
+	virtual int32 GetActSpellHealing(uint16 spell_id, int32 value, Mob* target = nullptr);
 	virtual int32 GetActSpellCasttime(uint16 spell_id, int32 casttime);
 	virtual int32 GetActSpellCost(uint16 spell_id, int32 cost);
 	virtual float GetActSpellRange(uint16 spell_id, float range);

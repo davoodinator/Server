@@ -104,7 +104,9 @@ bool IsLifetapSpell(uint16 spell_id)
 {
 	// Ancient Lifebane: 2115
 	if (IsValidSpell(spell_id) &&
-			(spells[spell_id].targettype == ST_Tap || spell_id == 2115))
+			(spells[spell_id].targettype == ST_Tap ||
+			 spells[spell_id].targettype == ST_TargetAETap ||
+			 spell_id == 2115))
 		return true;
 
 	return false;
@@ -385,9 +387,11 @@ bool IsAERainNukeSpell(uint16 spell_id)
 
 bool IsPartialCapableSpell(uint16 spell_id)
 {
+	if (spells[spell_id].no_partial_resist)
+		return false;
+	
 	if (IsPureNukeSpell(spell_id) || IsFearSpell(spell_id) ||
-			IsEffectInSpell(spell_id, SE_Root) ||
-			IsEffectInSpell(spell_id, SE_Charm))
+			IsEffectInSpell(spell_id, SE_Root))
 		return true;
 
 	return false;
@@ -670,6 +674,20 @@ bool IsDiscipline(uint16 spell_id)
 	return false;
 }
 
+bool IsCombatSkill(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	//Check if Discipline OR melee proc (from non-castable spell)
+	if ((spells[spell_id].mana == 0 &&
+			(spells[spell_id].EndurCost || spells[spell_id].EndurUpkeep)) || 
+			((spells[spell_id].cast_time == 0) && (spells[spell_id].recast_time == 0) && (spells[spell_id].recovery_time == 0)))
+		return true;
+
+	return false;
+}
+
 bool IsResurrectionEffects(uint16 spell_id)
 {
 	// spell id 756 is Resurrection Effects spell
@@ -930,7 +948,7 @@ bool IsDebuffSpell(uint16 spell_id)
 	if (IsBeneficialSpell(spell_id) || IsEffectHitpointsSpell(spell_id) || IsStunSpell(spell_id) ||
 			IsMezSpell(spell_id) || IsCharmSpell(spell_id) || IsSlowSpell(spell_id) ||
 			IsEffectInSpell(spell_id, SE_Root) || IsEffectInSpell(spell_id, SE_CancelMagic) ||
-			IsEffectInSpell(spell_id, SE_MovementSpeed) || IsFearSpell(spell_id) || IsEffectInSpell(spell_id, SE_Calm))
+			IsEffectInSpell(spell_id, SE_MovementSpeed) || IsFearSpell(spell_id) || IsEffectInSpell(spell_id, SE_InstantHate))
 		return false;
 	else
 		return true;
@@ -961,6 +979,22 @@ bool IsSelfConversionSpell(uint16 spell_id)
 bool IsBuffSpell(uint16 spell_id)
 {
 	if (IsValidSpell(spell_id) && (spells[spell_id].buffduration || spells[spell_id].buffdurationformula))
+		return true;
+
+	return false;
+}
+
+bool IsPersistDeathSpell(uint16 spell_id)
+{
+	if (IsValidSpell(spell_id) && spells[spell_id].persistdeath)
+		return true;
+
+	return false;
+}
+
+bool IsSuspendableSpell(uint16 spell_id)
+{
+	if (IsValidSpell(spell_id) && spells[spell_id].suspendable)
 		return true;
 
 	return false;

@@ -71,6 +71,7 @@ struct PetInfo {
 	int16	petpower;
 	uint32	HP;
 	uint32	Mana;
+	float	size;
 	SpellBuff_Struct	Buffs[BUFF_COUNT];
 	uint32	Items[MAX_WORN_INVENTORY];
 	char	Name[64];
@@ -385,8 +386,8 @@ public:
 	uint32	GetZoneForage(uint32 ZoneID, uint8 skill); /* for foraging */
 	uint32	GetZoneFishing(uint32 ZoneID, uint8 skill, uint32 &npc_id, uint8 &npc_chance);
 	void	UpdateRecipeMadecount(uint32 recipe_id, uint32 char_id, uint32 madecount);
-	void    EnableRecipe(uint32 recipe_id);
-	void    DisableRecipe(uint32 recipe_id);
+	bool    EnableRecipe(uint32 recipe_id);
+	bool    DisableRecipe(uint32 recipe_id);
 
 	/*
 	* Tribute
@@ -427,11 +428,6 @@ public:
 	uint32	GetZoneTZ(uint32 zoneid, uint32 version);
 	bool	SetZoneTZ(uint32 zoneid, uint32 version, uint32 tz);
 
-	/*
-	* Weather
-	*/
-	uint8	GetZoneWeather(uint32 zoneid, uint32 version);
-	bool	SetZoneWeather(uint32 zoneid, uint32 version, uint8 w);
 	/*
 	* Group
 	*/

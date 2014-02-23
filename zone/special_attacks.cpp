@@ -140,7 +140,7 @@ void Mob::DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage,
 
 		if(max_damage > 0) {
 			ApplyMeleeDamageBonus(skill, max_damage);
-			max_damage += who->GetAdditionalDamage(this, 0, true, skill);
+			max_damage += who->GetFcDamageAmtIncoming(this, 0, true, skill);
 			max_damage += (itembonuses.HeroicSTR / 10) + (max_damage * who->GetSkillDmgTaken(skill) / 100) + GetSkillDmgAmt(skill);
 			TryCriticalHit(who, skill, max_damage);
 		}
@@ -154,6 +154,9 @@ void Mob::DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage,
 	//Make sure 'this' has not killed the target and 'this' is not dead (Damage shield ect).
 	if(!GetTarget())return;
 	if (HasDied())	return;
+
+	if (max_damage > 0)
+		CheckNumHitsRemaining(5);
 
 	//[AA Dragon Punch] value[0] = 100 for 25%, chance value[1] = skill
 	if(aabonuses.SpecialAttackKBProc[0] && aabonuses.SpecialAttackKBProc[1] == skill){
@@ -197,12 +200,16 @@ void Client::OPCombatAbility(const EQApplicationPacket *app) {
 		if (ca_atk->m_skill == SkillThrowing) {
 			SetAttackTimer();
 			ThrowingAttack(GetTarget());
+			if (CheckDoubleRangedAttack())
+				RangedAttack(GetTarget(), true);
 			return;
 		}
 		//ranged attack (archery)
 		if (ca_atk->m_skill == SkillArchery) {
 			SetAttackTimer();
 			RangedAttack(GetTarget());
+			if (CheckDoubleRangedAttack())
+				RangedAttack(GetTarget(), true);
 			return;
 		}
 		//could we return here? Im not sure is m_atk 11 is used for real specials
@@ -602,14 +609,16 @@ void Mob::RogueBackstab(Mob* other, bool min_damage, int ReuseTime)
 	if(IsClient()){
 		const ItemInst *wpn = nullptr;
 		wpn = CastToClient()->GetInv().GetItem(SLOT_PRIMARY);
-		primaryweapondamage = GetWeaponDamage(other, wpn);
-		backstab_dmg = wpn->GetItem()->BackstabDmg;
-		for(int i = 0; i < MAX_AUGMENT_SLOTS; ++i)
-		{
-			ItemInst *aug = wpn->GetAugment(i);
-			if(aug)
+		if(wpn) {
+			primaryweapondamage = GetWeaponDamage(other, wpn);
+			backstab_dmg = wpn->GetItem()->BackstabDmg;
+			for(int i = 0; i < MAX_AUGMENT_SLOTS; ++i)
 			{
-				backstab_dmg += aug->GetItem()->BackstabDmg;
+				ItemInst *aug = wpn->GetAugment(i);
+				if(aug)
+				{
+					backstab_dmg += aug->GetItem()->BackstabDmg;
+				}
 			}
 		}
 	}
@@ -682,12 +691,12 @@ void Mob::RogueAssassinate(Mob* other)
 	DoAnim(animPiercing);	//piercing animation
 }
 
-void Client::RangedAttack(Mob* other) {
+void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 	//conditions to use an attack checked before we are called
 
 	//make sure the attack and ranged timers are up
 	//if the ranged timer is disabled, then they have no ranged weapon and shouldent be attacking anyhow
-	if((attack_timer.Enabled() && !attack_timer.Check(false)) || (ranged_timer.Enabled() && !ranged_timer.Check())) {
+	if(!CanDoubleAttack && ((attack_timer.Enabled() && !attack_timer.Check(false)) || (ranged_timer.Enabled() && !ranged_timer.Check()))) {
 		mlog(COMBAT__RANGED, "Throwing attack canceled. Timer not up. Attack %d, ranged %d", attack_timer.GetRemainingTime(), ranged_timer.GetRemainingTime());
 		// The server and client timers are not exact matches currently, so this would spam too often if enabled
 		//Message(0, "Error: Timer not up. Attack %d, ranged %d", attack_timer.GetRemainingTime(), ranged_timer.GetRemainingTime());
@@ -937,13 +946,14 @@ void Mob::DoArcheryAttackDmg(Mob* other, const ItemInst* RangeWeapon, const Item
 				{
 					TotalDmg += TotalDmg*focus/100;
 					ApplyMeleeDamageBonus(SkillArchery, TotalDmg);
-					TotalDmg += other->GetAdditionalDamage(this, 0, true, SkillArchery);
+					TotalDmg += other->GetFcDamageAmtIncoming(this, 0, true, SkillArchery);
 					TotalDmg += (itembonuses.HeroicDEX / 10) + (TotalDmg * other->GetSkillDmgTaken(SkillArchery) / 100) + GetSkillDmgAmt(SkillArchery);
 
 					TotalDmg = mod_archery_damage(TotalDmg, dobonus, RangeWeapon);
 
 					TryCriticalHit(other, SkillArchery, TotalDmg);
 					other->AddToHateList(this, hate, 0, false);
+					CheckNumHitsRemaining(5);
 				}
 			}
 			else
@@ -1048,6 +1058,7 @@ void NPC::RangedAttack(Mob* other)
 			TryCriticalHit(GetTarget(), SkillArchery, TotalDmg);
 			GetTarget()->AddToHateList(this, hate, 0, false);
 			GetTarget()->Damage(this, TotalDmg, SPELL_UNKNOWN, SkillArchery);
+			CheckNumHitsRemaining(5);
 		}
 		else
 		{
@@ -1116,12 +1127,12 @@ uint16 Mob::GetThrownDamage(int16 wDmg, int32& TotalDmg, int& minDmg)
 	return MaxDmg;
 }
 
-void Client::ThrowingAttack(Mob* other) { //old was 51
+void Client::ThrowingAttack(Mob* other, bool CanDoubleAttack) { //old was 51
 	//conditions to use an attack checked before we are called
 
 	//make sure the attack and ranged timers are up
 	//if the ranged timer is disabled, then they have no ranged weapon and shouldent be attacking anyhow
-	if((attack_timer.Enabled() && !attack_timer.Check(false)) || (ranged_timer.Enabled() && !ranged_timer.Check())) {
+	if((!CanDoubleAttack && (attack_timer.Enabled() && !attack_timer.Check(false)) || (ranged_timer.Enabled() && !ranged_timer.Check()))) {
 		mlog(COMBAT__RANGED, "Throwing attack canceled. Timer not up. Attack %d, ranged %d", attack_timer.GetRemainingTime(), ranged_timer.GetRemainingTime());
 		// The server and client timers are not exact matches currently, so this would spam too often if enabled
 		//Message(0, "Error: Timer not up. Attack %d, ranged %d", attack_timer.GetRemainingTime(), ranged_timer.GetRemainingTime());
@@ -1261,11 +1272,12 @@ void Mob::DoThrowingAttackDmg(Mob* other, const ItemInst* RangeWeapon, const Ite
 			{
 				TotalDmg += TotalDmg*focus/100;
 				ApplyMeleeDamageBonus(SkillThrowing, TotalDmg);
-				TotalDmg += other->GetAdditionalDamage(this, 0, true, SkillThrowing);
+				TotalDmg += other->GetFcDamageAmtIncoming(this, 0, true, SkillThrowing);
 				TotalDmg += (itembonuses.HeroicDEX / 10) + (TotalDmg * other->GetSkillDmgTaken(SkillThrowing) / 100) + GetSkillDmgAmt(SkillThrowing);
 				TryCriticalHit(other, SkillThrowing, TotalDmg);
 				int32 hate = (2*WDmg);
 				other->AddToHateList(this, hate, 0, false);
+				CheckNumHitsRemaining(5);
 			}
 		}
 
@@ -2135,7 +2147,7 @@ void Mob::DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes 
 			if(damage > 0) {
 				damage += damage*focus/100;
 				ApplyMeleeDamageBonus(skillinuse, damage);
-				damage += other->GetAdditionalDamage(this, 0, true, skillinuse);
+				damage += other->GetFcDamageAmtIncoming(this, 0, true, skillinuse);
 				damage += (itembonuses.HeroicSTR / 10) + (damage * other->GetSkillDmgTaken(skillinuse) / 100) + GetSkillDmgAmt(skillinuse);
 				TryCriticalHit(other, skillinuse, damage);
 			}
@@ -2176,6 +2188,8 @@ void Mob::DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes 
 
 	if (HasDied())
 		return;
+
+	CheckNumHitsRemaining(5);
 
 	if(aabonuses.SpecialAttackKBProc[0] && aabonuses.SpecialAttackKBProc[1] == skillinuse){
 		int kb_chance = 25;

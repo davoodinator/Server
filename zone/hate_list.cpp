@@ -244,10 +244,32 @@ void HateList::DoFactionHits(int32 nfl_id) {
 	}
 }
 
+int HateList::SummonedPetCount(Mob *hater) {
+
+	//Function to get number of 'Summoned' pets on a targets hate list to allow calculations for certian spell effects.
+	//Unclear from description that pets are required to be 'summoned body type'. Will not require at this time.
+	int petcount = 0;
+	auto iterator = list.begin();
+	while(iterator != list.end()) {
+
+		if((*iterator)->ent != nullptr && (*iterator)->ent->IsNPC() && 	((*iterator)->ent->CastToNPC()->IsPet() || ((*iterator)->ent->CastToNPC()->GetSwarmOwner() > 0))) 
+		{
+			++petcount;
+		}
+		
+		++iterator;
+	}
+
+	return petcount;
+}
+
 Mob *HateList::GetTop(Mob *center)
 {
 	Mob* top = nullptr;
 	int32 hate = -1;
+
+	if(center == nullptr)
+		return nullptr;
 
 	if (RuleB(Aggro,SmartAggroList)){
 		Mob* topClientTypeInRange = nullptr;
@@ -361,15 +383,15 @@ Mob *HateList::GetTop(Mob *center)
 			}
 
 			if(!isTopClientType)
-				return topClientTypeInRange;
+				return topClientTypeInRange ? topClientTypeInRange : nullptr;
 
-			return top;
+			return top ? top : nullptr;
 		}
 		else {
 			if(top == nullptr && skipped_count > 0) {
-				return center->GetTarget();
+				return center->GetTarget() ? center->GetTarget() : nullptr;
 			}
-			return top;
+			return top ? top : nullptr;
 		}
 	}
 	else{
@@ -394,10 +416,11 @@ Mob *HateList::GetTop(Mob *center)
 			++iterator;
 		}
 		if(top == nullptr && skipped_count > 0) {
-			return center->GetTarget();
+			return center->GetTarget() ? center->GetTarget() : nullptr;
 		}
-		return top;
+		return top ? top : nullptr;
 	}
+	return nullptr;
 }
 
 Mob *HateList::GetMostHate(){
