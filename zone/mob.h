@@ -146,6 +146,7 @@ public:
 	virtual int32 GetMeleeMitDmg(Mob *attacker, int32 damage, int32 minhit, float mit_rating, float atk_rating);
 	bool CombatRange(Mob* other);
 	virtual inline bool IsBerserk() { return false; } // only clients
+	void RogueEvade(Mob *other);
 
 	//Appearance
 	void SendLevelAppearance();
@@ -190,7 +191,7 @@ public:
 	virtual int32 GetActSpellDuration(uint16 spell_id, int32 duration){ return duration;}
 	virtual int32 GetActSpellCasttime(uint16 spell_id, int32 casttime);
 	float ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use_resist_override = false,
-		int resist_override = 0, bool CharismaCheck = false);
+		int resist_override = 0, bool CharismaCheck = false, bool CharmTick = false);
 	uint16 GetSpecializeSkillValue(uint16 spell_id) const;
 	void SendSpellBarDisable();
 	void SendSpellBarEnable(uint16 spellid);
@@ -297,7 +298,7 @@ public:
 	bool ChangeHP(Mob* other, int32 amount, uint16 spell_id = 0, int8 buffslot = -1, bool iBuffTic = false);
 	inline void SetOOCRegen(int32 newoocregen) {oocregen = newoocregen;}
 	virtual void Heal();
-	virtual void HealDamage(uint32 ammount, Mob* caster = nullptr);
+	virtual void HealDamage(uint32 ammount, Mob* caster = nullptr, uint16 spell_id = SPELL_UNKNOWN);
 	virtual void SetMaxHP() { cur_hp = max_hp; }
 	virtual inline uint16 GetBaseRace() const { return base_race; }
 	virtual inline uint8 GetBaseGender() const { return base_gender; }
@@ -600,6 +601,7 @@ public:
 	void MeleeLifeTap(int32 damage);
 	bool PassCastRestriction(bool UseCastRestriction = true, int16 value = 0, bool IsDamage = true);
 	bool ImprovedTaunt();
+	bool TryRootFadeByDamage(int buffslot);
 
 	void ModSkillDmgTaken(SkillUseTypes skill_num, int value);
 	int16 GetModSkillDmgTaken(const SkillUseTypes skill_num);
@@ -1083,7 +1085,6 @@ protected:
 	bool inWater; // Set to true or false by Water Detection code if enabled by rules
 	bool has_virus; // whether this mob has a viral spell on them
 	uint16 viral_spells[MAX_SPELL_TRIGGER*2]; // Stores the spell ids of the viruses on target and caster ids
-	int16 rooted_mod; //Modifier to root break chance, defined when root is cast on a target.
 	bool offhand;
 	bool has_shieldequiped;
 	bool has_numhits;

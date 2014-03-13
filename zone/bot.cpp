@@ -15147,7 +15147,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				return;
 			}
 
-			Bot* targetedBot;
+			Bot *targetedBot = nullptr;
 
 			if(c->GetTarget() != nullptr) {
 				if (c->GetTarget()->IsBot() && (c->GetTarget()->CastToBot()->GetBotOwner() == c))
