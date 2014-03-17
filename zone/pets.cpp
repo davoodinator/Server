@@ -676,7 +676,6 @@ void NPC::SetPetState(SpellBuff_Struct *pet_buffs, uint32 *items) {
 			}
 		}
 	}
-	UpdateRuneFlags();
 
 	//restore their equipment...
 	for(i = 0; i < MAX_WORN_INVENTORY; i++) {
