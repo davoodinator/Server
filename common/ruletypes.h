@@ -138,6 +138,7 @@ RULE_BOOL( Pets, UnTargetableSwarmPet, false )
 RULE_CATEGORY_END()
 
 RULE_CATEGORY( GM )
+RULE_INT ( GM, MinStatusToSummonItem, 250)
 RULE_INT ( GM, MinStatusToZoneAnywhere, 250 )
 RULE_CATEGORY_END()
 
@@ -447,6 +448,7 @@ RULE_BOOL ( Bots, BotSpellQuest, false ) // Anita Thrall's (Anita_Thrall.pl) Bot
 RULE_INT ( Bots, BotAAExpansion, 8 ) // Bots get AAs through this expansion
 RULE_BOOL ( Bots, BotGroupXP, false ) // Determines whether client gets xp for bots outside their group.
 RULE_BOOL ( Bots, BotBardUseOutOfCombatSongs, true) // Determines whether bard bots use additional out of combat songs.
+RULE_BOOL ( Bots, BotLevelsWithOwner, false) // Auto-updates spawned bots as owner levels/de-levels (false is original behavior)
 RULE_CATEGORY_END()
 #endif
 
