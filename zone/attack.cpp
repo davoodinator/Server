@@ -318,7 +318,7 @@ bool Mob::CheckHitChance(Mob* other, SkillUseTypes skillinuse, int Hand, int16 c
 	chancetohit = mod_hit_chance(chancetohit, skillinuse, attacker);
 
 	// Chance to hit;   Max 95%, Min 30%
-	if(chancetohit > 1000) {
+	if(chancetohit > 1000 || chancetohit < -1000) {
 		//if chance to hit is crazy high, that means a discipline is in use, and let it stay there
 	}
 	else if(chancetohit > 95) {
@@ -2120,7 +2120,8 @@ bool NPC::Death(Mob* killerMob, int32 damage, uint16 spell, SkillUseTypes attack
 
 	if(p_depop == true)
 		return false;
-
+	
+	HasAISpellEffects = false;
 	BuffFadeAll();
 	uint8 killed_level = GetLevel();
 
@@ -3616,6 +3617,8 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 		//fade mez if we are mezzed
 		if (IsMezzed()) {
 			mlog(COMBAT__HITS, "Breaking mez due to attack.");
+			entity_list.MessageClose_StringID(this, true, 100, MT_WornOff,
+					HAS_BEEN_AWAKENED, GetCleanName(), attacker->GetCleanName());
 			BuffFadeByEffect(SE_Mez);
 		}
 
@@ -4085,6 +4088,10 @@ void Mob::TryWeaponProc(const ItemInst *inst, const Item_Struct *weapon, Mob *on
 			}
 		}
 	}
+	//If OneProcPerWeapon is not enabled, we reset the try for that weapon regardless of if we procced or not.
+	//This is for some servers that may want to have as many procs triggering from weapons as possible in a single round.
+	if(!RuleB(Combat, OneProcPerWeapon))
+		proced = false;
 
 	if (!proced && inst) {
 		for (int r = 0; r < MAX_AUGMENT_SLOTS; r++) {
@@ -4109,7 +4116,8 @@ void Mob::TryWeaponProc(const ItemInst *inst, const Item_Struct *weapon, Mob *on
 						}
 					} else {
 						ExecWeaponProc(aug_i, aug->Proc.Effect, on);
-						break;
+						if (RuleB(Combat, OneProcPerWeapon))
+							break;
 					}
 				}
 			}
@@ -4218,10 +4226,12 @@ void Mob::TryPetCriticalHit(Mob *defender, uint16 skill, int32 &damage)
 	if (damage < 1) //We can't critical hit if we don't hit.
 		return;
 
-	if (!IsPet())
+	if (IsPet())
+		owner = GetOwner();
+	else if ((IsNPC() && CastToNPC()->GetSwarmOwner()))
+		owner = entity_list.GetMobID(CastToNPC()->GetSwarmOwner());
+	else
 		return;
-
-	owner = GetOwner();
 
 	if (!owner)
 		return;
@@ -4259,7 +4269,7 @@ void Mob::TryCriticalHit(Mob *defender, uint16 skill, int32 &damage, ExtraAttack
 
 	// decided to branch this into it's own function since it's going to be duplicating a lot of the
 	// code in here, but could lead to some confusion otherwise
-	if (IsPet() && GetOwner()->IsClient()) {
+	if (IsPet() && GetOwner()->IsClient() || (IsNPC() && CastToNPC()->GetSwarmOwner())) {
 		TryPetCriticalHit(defender,skill,damage);
 		return;
 	}
@@ -4448,6 +4458,7 @@ void Mob::DoRiposte(Mob* defender) {
 
 	//Double Riposte effect, allows for a chance to do RIPOSTE with a skill specfic special attack (ie Return Kick).
 	//Coded narrowly: Limit to one per client. Limit AA only. [1 = Skill Attack Chance, 2 = Skill]
+
 	DoubleRipChance = defender->aabonuses.GiveDoubleRiposte[1];
 
 	if(DoubleRipChance && (DoubleRipChance >= MakeRandomInt(0, 100))) {
