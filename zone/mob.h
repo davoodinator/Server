@@ -131,17 +131,18 @@ public:
 	virtual void ThrowingAttack(Mob* other) { }
 	uint16 GetThrownDamage(int16 wDmg, int32& TotalDmg, int& minDmg);
 	// 13 = Primary (default), 14 = secondary
-	virtual bool Attack(Mob* other, int Hand = 13, bool FromRiposte = false, bool IsStrikethrough = false,
+	virtual bool Attack(Mob* other, int Hand = MainPrimary, bool FromRiposte = false, bool IsStrikethrough = false,
 		bool IsFromSpell = false, ExtraAttackOptions *opts = nullptr) = 0;
 	int MonkSpecialAttack(Mob* other, uint8 skill_used);
 	virtual void TryBackstab(Mob *other,int ReuseTime = 10);
-	void TriggerDefensiveProcs(const ItemInst* weapon, Mob *on, uint16 hand = 13, int damage = 0);
+	void TriggerDefensiveProcs(const ItemInst* weapon, Mob *on, uint16 hand = MainPrimary, int damage = 0);
 	virtual bool AvoidDamage(Mob* attacker, int32 &damage, bool CanRiposte = true);
 	virtual bool CheckHitChance(Mob* attacker, SkillUseTypes skillinuse, int Hand, int16 chance_mod = 0);
 	virtual void TryCriticalHit(Mob *defender, uint16 skill, int32 &damage, ExtraAttackOptions *opts = nullptr);
 	void TryPetCriticalHit(Mob *defender, uint16 skill, int32 &damage);
 	virtual bool TryFinishingBlow(Mob *defender, SkillUseTypes skillinuse);
-	virtual bool TryHeadShot(Mob* defender, SkillUseTypes skillInUse);
+	uint32 TryHeadShot(Mob* defender, SkillUseTypes skillInUse);
+	uint32 TryAssassinate(Mob* defender, SkillUseTypes skillInUse, uint16 ReuseTime);
 	virtual void DoRiposte(Mob* defender);
 	void ApplyMeleeDamageBonus(uint16 skill, int32 &damage);
 	virtual void MeleeMitigation(Mob *attacker, int32 &damage, int32 minhit, ExtraAttackOptions *opts = nullptr);
@@ -149,6 +150,9 @@ public:
 	bool CombatRange(Mob* other);
 	virtual inline bool IsBerserk() { return false; } // only clients
 	void RogueEvade(Mob *other);
+	void CommonOutgoingHitSuccess(Mob* defender, int32 &damage, SkillUseTypes skillInUse);
+	void CommonBreakInvisible();
+	bool HasDied();
 
 	//Appearance
 	void SendLevelAppearance();
@@ -163,7 +167,7 @@ public:
 	virtual void WearChange(uint8 material_slot, uint16 texture, uint32 color);
 	void DoAnim(const int animnum, int type=0, bool ackreq = true, eqFilterType filter = FilterNone);
 	void ProjectileAnimation(Mob* to, int item_id, bool IsArrow = false, float speed = 0,
-		float angle = 0, float tilt = 0, float arc = 0, const char *IDFile = nullptr);
+		float angle = 0, float tilt = 0, float arc = 0, const char *IDFile = nullptr, SkillUseTypes skillInUse = SkillArchery);
 	void ChangeSize(float in_size, bool bNoRestriction = false);
 	inline uint8 SeeInvisible() const { return see_invis; }
 	inline bool SeeInvisibleUndead() const { return see_invis_undead; }
@@ -228,6 +232,10 @@ public:
 	bool TryDispel(uint8 caster_level, uint8 buff_level, int level_modifier);
 	void SpellProjectileEffect();
 	bool TrySpellProjectile(Mob* spell_target,  uint16 spell_id);
+	void ResourceTap(int32 damage, uint16 spell_id);
+	void TryTriggerThreshHold(int32 damage, int effect_id, Mob* attacker);
+	bool CheckSpellCategory(uint16 spell_id, int category_id, int effect_id);
+	
 
 	//Buff
 	void BuffProcess();
@@ -268,6 +276,10 @@ public:
 	void CheckNumHitsRemaining(uint8 type, uint32 buff_slot=0, uint16 spell_id=SPELL_UNKNOWN);
 	bool HasNumhits() const { return has_numhits; }
 	inline void Numhits(bool val) { has_numhits = val; }
+	bool HasMGB() const { return has_MGB; }
+	inline void SetMGB(bool val) { has_MGB = val; }
+	bool HasProjectIllusion() const { return has_ProjectIllusion ; }
+	inline void SetProjectIllusion(bool val) { has_ProjectIllusion  = val; }
 	void SpreadVirus(uint16 spell_id, uint16 casterID);
 	bool IsNimbusEffectActive(uint32 nimbus_effect);
 	void SetNimbusEffect(uint32 nimbus_effect);
@@ -471,6 +483,7 @@ public:
 	static uint32 RandomTimer(int min, int max);
 	static uint8 GetDefaultGender(uint16 in_race, uint8 in_gender = 0xFF);
 	uint16 GetSkillByItemType(int ItemType);
+	uint8 GetItemTypeBySkill(SkillUseTypes skill);
 	virtual void MakePet(uint16 spell_id, const char* pettype, const char *petname = nullptr);
 	virtual void MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower, const char *petname = nullptr, float in_size = 0.0f);
 	bool IsWarriorClass() const;
@@ -497,9 +510,8 @@ public:
 	bool AddDefensiveProc(uint16 spell_id, uint16 iChance = 3, uint16 base_spell_id = SPELL_UNKNOWN);
 	bool RemoveDefensiveProc(uint16 spell_id, bool bAll = false);
 	bool HasDefensiveProcs() const;
-	bool AddSkillProc(uint16 spell_id, uint16 iChance = 3, uint16 base_spell_id = SPELL_UNKNOWN);
-	bool RemoveSkillProc(uint16 spell_id, bool bAll = false);
 	bool HasSkillProcs() const;
+	bool HasSkillProcSuccess() const;
 	bool AddProcToWeapon(uint16 spell_id, bool bPerma = false, uint16 iChance = 3, uint16 base_spell_id = SPELL_UNKNOWN);
 	bool RemoveProcFromWeapon(uint16 spell_id, bool bAll = false);
 	bool HasProcs() const;
@@ -690,10 +702,10 @@ public:
 	int32 AffectMagicalDamage(int32 damage, uint16 spell_id, const bool iBuffTic, Mob* attacker);
 	int32 ReduceAllDamage(int32 damage);
 
-	virtual void DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage, int32 min_damage = 1, int32 hate_override = -1, int ReuseTime = 10, bool HitChance=false);
-	virtual void DoThrowingAttackDmg(Mob* other, const ItemInst* RangeWeapon=nullptr, const Item_Struct* item=nullptr, uint16 weapon_damage=0, int16 chance_mod=0,int16 focus=0);
-	virtual void DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes skillinuse, int16 chance_mod=0, int16 focus=0, bool CanRiposte=false);
-	virtual void DoArcheryAttackDmg(Mob* other, const ItemInst* RangeWeapon=nullptr, const ItemInst* Ammo=nullptr, uint16 weapon_damage=0, int16 chance_mod=0, int16 focus=0);
+	virtual void DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage, int32 min_damage = 1, int32 hate_override = -1, int ReuseTime = 10, bool HitChance=false, bool CanAvoid=true);
+	virtual void DoThrowingAttackDmg(Mob* other, const ItemInst* RangeWeapon=nullptr, const Item_Struct* item=nullptr, uint16 weapon_damage=0, int16 chance_mod=0,int16 focus=0, int ReuseTime=0);
+	virtual void DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes skillinuse, int16 chance_mod=0, int16 focus=0, bool CanRiposte=false, int ReuseTime=0);
+	virtual void DoArcheryAttackDmg(Mob* other, const ItemInst* RangeWeapon=nullptr, const ItemInst* Ammo=nullptr, uint16 weapon_damage=0, int16 chance_mod=0, int16 focus=0, int ReuseTime=0);
 	bool CanDoSpecialAttack(Mob *other);
 	bool Flurry(ExtraAttackOptions *opts);
 	bool Rampage(ExtraAttackOptions *opts);
@@ -800,7 +812,7 @@ public:
 	uint16 GetInstrumentMod(uint16 spell_id) const;
 	int CalcSpellEffectValue(uint16 spell_id, int effect_id, int caster_level = 1, Mob *caster = nullptr, int ticsremaining = 0);
 	int CalcSpellEffectValue_formula(int formula, int base, int max, int caster_level, uint16 spell_id, int ticsremaining = 0);
-	virtual int CheckStackConflict(uint16 spellid1, int caster_level1, uint16 spellid2, int caster_level2, Mob* caster1 = nullptr, Mob* caster2 = nullptr);
+	virtual int CheckStackConflict(uint16 spellid1, int caster_level1, uint16 spellid2, int caster_level2, Mob* caster1 = nullptr, Mob* caster2 = nullptr, int buffslot = -1);
 	uint32 GetCastedSpellInvSlot() const { return casting_spell_inventory_slot; }
 
 	// HP Event
@@ -810,7 +822,8 @@ public:
 	inline int& GetNextIncHPEvent() { return nextinchpevent; }
 	void SetNextIncHPEvent( int inchpevent );
 
-	bool DivineAura() const;
+	inline bool DivineAura() const { return spellbonuses.DivineAura; }
+ 	inline bool Sanctuary() const { return spellbonuses.Sanctuary; }
 
 	bool HasNPCSpecialAtk(const char* parse);
 	int GetSpecialAbility(int ability);
@@ -977,35 +990,37 @@ protected:
 	bool focused;
 	void CalcSpellBonuses(StatBonuses* newbon);
 	virtual void CalcBonuses();
-	void TrySkillProc(Mob *on, uint16 skill, float chance);
+	void TrySkillProc(Mob *on, uint16 skill, uint16 ReuseTime, bool Success = false, uint16 hand = 0, bool IsDefensive = false); // hand = MainCharm?
 	bool PassLimitToSkill(uint16 spell_id, uint16 skill);
 	bool PassLimitClass(uint32 Classes_, uint16 Class_);
-	void TryDefensiveProc(const ItemInst* weapon, Mob *on, uint16 hand = 13, int damage=0);
-	void TryWeaponProc(const ItemInst* inst, const Item_Struct* weapon, Mob *on, uint16 hand = 13);
-	void TrySpellProc(const ItemInst* inst, const Item_Struct* weapon, Mob *on, uint16 hand = 13);
-	void TryWeaponProc(const ItemInst* weapon, Mob *on, uint16 hand = 13);
+	void TryDefensiveProc(const ItemInst* weapon, Mob *on, uint16 hand = MainPrimary);
+	void TryWeaponProc(const ItemInst* inst, const Item_Struct* weapon, Mob *on, uint16 hand = MainPrimary);
+	void TrySpellProc(const ItemInst* inst, const Item_Struct* weapon, Mob *on, uint16 hand = MainPrimary);
+	void TryWeaponProc(const ItemInst* weapon, Mob *on, uint16 hand = MainPrimary);
 	void ExecWeaponProc(const ItemInst* weapon, uint16 spell_id, Mob *on);
-	virtual float GetProcChances(float ProcBonus, uint16 weapon_speed = 30, uint16 hand = 13);
-	virtual float GetDefensiveProcChances(float &ProcBonus, float &ProcChance, uint16 weapon_speed = 30, uint16 hand = 13);
+	virtual float GetProcChances(float ProcBonus, uint16 hand = MainPrimary);
+	virtual float GetDefensiveProcChances(float &ProcBonus, float &ProcChance, uint16 hand = MainPrimary, Mob *on = nullptr);
+	virtual float GetSpecialProcChances(uint16 hand);
+	virtual float GetAssassinateProcChances(uint16 ReuseTime);
+	virtual float GetSkillProcChances(uint16 ReuseTime, uint16 hand = 0); // hand = MainCharm?
+	uint16 GetWeaponSpeedbyHand(uint16 hand);
 	int GetWeaponDamage(Mob *against, const Item_Struct *weapon_item);
 	int GetWeaponDamage(Mob *against, const ItemInst *weapon_item, uint32 *hate = nullptr);
 	int GetKickDamage();
 	int GetBashDamage();
 	virtual void ApplySpecialAttackMod(SkillUseTypes skill, int32 &dmg, int32 &mindmg);
-	bool HasDied();
 	void CalculateNewFearpoint();
 	float FindGroundZ(float new_x, float new_y, float z_offset=0.0);
 	Map::Vertex UpdatePath(float ToX, float ToY, float ToZ, float Speed, bool &WaypointChange, bool &NodeReached);
 	void PrintRoute();
 
-	virtual float GetSympatheticProcChances(float &ProcBonus, float &ProcChance, int32 cast_time, int16 ProcRateMod);
+	virtual float GetSympatheticProcChances(uint16 spell_id, int16 ProcRateMod, int32 ItemProcRate = 0);
 
 	enum {MAX_PROCS = 4};
 	tProc PermaProcs[MAX_PROCS];
 	tProc SpellProcs[MAX_PROCS];
 	tProc DefensiveProcs[MAX_PROCS];
 	tProc RangedProcs[MAX_PROCS];
-	tProc SkillProcs[MAX_PROCS];
 
 	char name[64];
 	char orig_name[64];
@@ -1097,6 +1112,8 @@ protected:
 	bool offhand;
 	bool has_shieldequiped;
 	bool has_numhits;
+	bool has_MGB;
+	bool has_ProjectIllusion;
 
 	// Bind wound
 	Timer bindwound_timer;

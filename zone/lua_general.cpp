@@ -27,7 +27,7 @@ struct Appearances { };
 
 struct lua_registered_event {
 	std::string encounter_name;
-	luabind::object lua_reference;
+	luabind::adl::object lua_reference;
 	QuestEventID event_id;
 };
 
@@ -43,7 +43,7 @@ void unload_encounter(std::string name) {
 	parse->EventEncounter(EVENT_ENCOUNTER_UNLOAD, name, 0);
 }
 
-void register_event(std::string package_name, std::string name, int evt, luabind::object func) {
+void register_event(std::string package_name, std::string name, int evt, luabind::adl::object func) {
 	lua_registered_event e;
 	e.encounter_name = name;
 	e.lua_reference = func;
@@ -84,7 +84,7 @@ void unregister_event(std::string package_name, std::string name, int evt) {
 	}
 }
 
-void register_npc_event(std::string name, int evt, int npc_id, luabind::object func) {
+void register_npc_event(std::string name, int evt, int npc_id, luabind::adl::object func) {
 	if(luabind::type(func) == LUA_TFUNCTION) {
 		std::stringstream package_name;
 		package_name << "npc_" << npc_id;
@@ -100,7 +100,7 @@ void unregister_npc_event(std::string name, int evt, int npc_id) {
 	unregister_event(package_name.str(), name, evt);
 }
 
-void register_player_event(std::string name, int evt, luabind::object func) {
+void register_player_event(std::string name, int evt, luabind::adl::object func) {
 	if(luabind::type(func) == LUA_TFUNCTION) {
 		register_event("player", name, evt, func);
 	}
@@ -110,7 +110,7 @@ void unregister_player_event(std::string name, int evt) {
 	unregister_event("player", name, evt);
 }
 
-void register_item_event(std::string name, int evt, int item_id, luabind::object func) {
+void register_item_event(std::string name, int evt, int item_id, luabind::adl::object func) {
 	std::string package_name = "item_";
 	package_name += std::to_string(static_cast<long long>(item_id));
 	
@@ -126,7 +126,7 @@ void unregister_item_event(std::string name, int evt, int item_id) {
 	unregister_event(package_name, name, evt);
 }
 
-void register_spell_event(std::string name, int evt, int spell_id, luabind::object func) {
+void register_spell_event(std::string name, int evt, int spell_id, luabind::adl::object func) {
 	if(luabind::type(func) == LUA_TFUNCTION) {
 		std::stringstream package_name;
 		package_name << "spell_" << spell_id;
@@ -392,7 +392,7 @@ bool lua_bury_player_corpse(uint32 char_id) {
 	return quest_manager.buryplayercorpse(char_id);
 }
 
-void lua_task_selector(luabind::object table) {
+void lua_task_selector(luabind::adl::object table) {
 	if(luabind::type(table) != LUA_TTABLE) {
 		return;
 	}
@@ -422,7 +422,7 @@ void lua_task_set_selector(int task_set) {
 	quest_manager.tasksetselector(task_set);
 }
 
-void lua_enable_task(luabind::object table) {
+void lua_enable_task(luabind::adl::object table) {
 	if(luabind::type(table) != LUA_TTABLE) {
 		return;
 	}
@@ -449,7 +449,7 @@ void lua_enable_task(luabind::object table) {
 	quest_manager.enabletask(count, tasks);
 }
 
-void lua_disable_task(luabind::object table) {
+void lua_disable_task(luabind::adl::object table) {
 	if(luabind::type(table) != LUA_TTABLE) {
 		return;
 	}
@@ -743,8 +743,8 @@ void lua_cross_zone_message_player_by_name(uint32 type, const char *player, cons
 	quest_manager.CrossZoneMessagePlayerByName(type, player, message);
 }
 
-luabind::object lua_get_qglobals(lua_State *L, Lua_NPC npc, Lua_Client client) {
-	luabind::object ret = luabind::newtable(L);
+luabind::adl::object lua_get_qglobals(lua_State *L, Lua_NPC npc, Lua_Client client) {
+	luabind::adl::object ret = luabind::newtable(L);
 
 	NPC *n = npc;
 	Client *c = client;
@@ -759,8 +759,8 @@ luabind::object lua_get_qglobals(lua_State *L, Lua_NPC npc, Lua_Client client) {
 	return ret;
 }
 
-luabind::object lua_get_qglobals(lua_State *L, Lua_Client client) {
-	luabind::object ret = luabind::newtable(L);
+luabind::adl::object lua_get_qglobals(lua_State *L, Lua_Client client) {
+	luabind::adl::object ret = luabind::newtable(L);
 
 	NPC *n = nullptr;
 	Client *c = client;
@@ -775,8 +775,8 @@ luabind::object lua_get_qglobals(lua_State *L, Lua_Client client) {
 	return ret;
 }
 
-luabind::object lua_get_qglobals(lua_State *L, Lua_NPC npc) {
-	luabind::object ret = luabind::newtable(L);
+luabind::adl::object lua_get_qglobals(lua_State *L, Lua_NPC npc) {
+	luabind::adl::object ret = luabind::newtable(L);
 
 	NPC *n = npc;
 	Client *c = nullptr;
@@ -791,8 +791,8 @@ luabind::object lua_get_qglobals(lua_State *L, Lua_NPC npc) {
 	return ret;
 }
 
-luabind::object lua_get_qglobals(lua_State *L) {
-	luabind::object ret = luabind::newtable(L);
+luabind::adl::object lua_get_qglobals(lua_State *L) {
+	luabind::adl::object ret = luabind::newtable(L);
 
 	NPC *n = nullptr;
 	Client *c = nullptr;
@@ -846,8 +846,8 @@ int lua_get_zone_instance_version() {
 	return zone->GetInstanceVersion();
 }
 
-luabind::object lua_get_characters_in_instance(lua_State *L, uint16 instance_id) {
-	luabind::object ret = luabind::newtable(L);
+luabind::adl::object lua_get_characters_in_instance(lua_State *L, uint16 instance_id) {
+	luabind::adl::object ret = luabind::newtable(L);
 
 	std::list<uint32> charid_list;
 	uint16 i = 1;
@@ -868,11 +868,11 @@ int lua_get_zone_weather() {
 	return zone->zone_weather;
 }
 
-luabind::object lua_get_zone_time(lua_State *L) {
+luabind::adl::object lua_get_zone_time(lua_State *L) {
 	TimeOfDay_Struct eqTime;
 	zone->zone_time.getEQTimeOfDay(time(0), &eqTime);
 
-	luabind::object ret = luabind::newtable(L);
+	luabind::adl::object ret = luabind::newtable(L);
 	ret["zone_hour"] = eqTime.hour - 1;
 	ret["zone_minute"] = eqTime.minute;
 	ret["zone_time"] = (eqTime.hour - 1) * 100 + eqTime.minute;
@@ -909,7 +909,7 @@ void lua_remove_spawn_point(uint32 spawn2_id) {
 	}
 }
 
-void lua_add_spawn_point(luabind::object table) {
+void lua_add_spawn_point(luabind::adl::object table) {
 	if(!zone)
 		return;
 
@@ -1280,10 +1280,10 @@ luabind::scope lua_register_general() {
 		luabind::def("cross_zone_signal_client_by_char_id", &lua_cross_zone_signal_client_by_char_id),
 		luabind::def("cross_zone_signal_client_by_name", &lua_cross_zone_signal_client_by_name),
 		luabind::def("cross_zone_message_player_by_name", &lua_cross_zone_message_player_by_name),
-		luabind::def("get_qglobals", (luabind::object(*)(lua_State*,Lua_NPC,Lua_Client))&lua_get_qglobals),
-		luabind::def("get_qglobals", (luabind::object(*)(lua_State*,Lua_Client))&lua_get_qglobals),
-		luabind::def("get_qglobals", (luabind::object(*)(lua_State*,Lua_NPC))&lua_get_qglobals),
-		luabind::def("get_qglobals", (luabind::object(*)(lua_State*))&lua_get_qglobals),
+		luabind::def("get_qglobals", (luabind::adl::object(*)(lua_State*,Lua_NPC,Lua_Client))&lua_get_qglobals),
+		luabind::def("get_qglobals", (luabind::adl::object(*)(lua_State*,Lua_Client))&lua_get_qglobals),
+		luabind::def("get_qglobals", (luabind::adl::object(*)(lua_State*,Lua_NPC))&lua_get_qglobals),
+		luabind::def("get_qglobals", (luabind::adl::object(*)(lua_State*))&lua_get_qglobals),
 		luabind::def("get_entity_list", &lua_get_entity_list),
 		luabind::def("get_zone_id", &lua_get_zone_id),
 		luabind::def("get_zone_long_name", &lua_get_zone_long_name),
@@ -1415,36 +1415,55 @@ luabind::scope lua_register_slot() {
 	return luabind::class_<Slots>("Slot")
 		.enum_("constants")
 		[
-			luabind::value("Charm", static_cast<int>(SLOT_CHARM)),
-			luabind::value("Ear1", static_cast<int>(SLOT_EAR01)),
-			luabind::value("Head", static_cast<int>(SLOT_HEAD)),
-			luabind::value("Face", static_cast<int>(SLOT_FACE)),
-			luabind::value("Ear2", static_cast<int>(SLOT_EAR02)),
-			luabind::value("Neck", static_cast<int>(SLOT_NECK)),
-			luabind::value("Shoulder", static_cast<int>(SLOT_SHOULDER)),
-			luabind::value("Arms", static_cast<int>(SLOT_ARMS)),
-			luabind::value("Back", static_cast<int>(SLOT_BACK)),
-			luabind::value("Bracer1", static_cast<int>(SLOT_BRACER01)),
-			luabind::value("Bracer2", static_cast<int>(SLOT_BRACER02)),
-			luabind::value("Range", static_cast<int>(SLOT_RANGE)),
-			luabind::value("Hands", static_cast<int>(SLOT_HANDS)),
-			luabind::value("Primary", static_cast<int>(SLOT_PRIMARY)),
-			luabind::value("Secondary", static_cast<int>(SLOT_SECONDARY)),
-			luabind::value("Ring1", static_cast<int>(SLOT_RING01)),
-			luabind::value("Ring2", static_cast<int>(SLOT_RING02)),
-			luabind::value("Chest", static_cast<int>(SLOT_CHEST)),
-			luabind::value("Legs", static_cast<int>(SLOT_LEGS)),
-			luabind::value("Feet", static_cast<int>(SLOT_FEET)),
-			luabind::value("Waist", static_cast<int>(SLOT_WAIST)),
-			luabind::value("Ammo", static_cast<int>(SLOT_AMMO)),
-			luabind::value("PersonalBegin", static_cast<int>(SLOT_PERSONAL_BEGIN)),
-			luabind::value("PersonalEnd", static_cast<int>(SLOT_PERSONAL_END)),
-			luabind::value("Cursor", static_cast<int>(SLOT_CURSOR)),
-			luabind::value("CursorEnd", 0xFFFE),
-			luabind::value("Tradeskill", static_cast<int>(SLOT_TRADESKILL)),
-			luabind::value("Augment", static_cast<int>(SLOT_AUGMENT)),
-			luabind::value("PowerSource", static_cast<int>(SLOT_POWER_SOURCE)),
-			luabind::value("Invalid", 0xFFFF)
+			luabind::value("Charm", static_cast<int>(MainCharm)),
+			luabind::value("Ear1", static_cast<int>(MainEar1)),
+			luabind::value("Head", static_cast<int>(MainHead)),
+			luabind::value("Face", static_cast<int>(MainFace)),
+			luabind::value("Ear2", static_cast<int>(MainEar2)),
+			luabind::value("Neck", static_cast<int>(MainNeck)),
+			luabind::value("Shoulder", static_cast<int>(MainShoulders)), // deprecated
+			luabind::value("Shoulders", static_cast<int>(MainShoulders)),
+			luabind::value("Arms", static_cast<int>(MainArms)),
+			luabind::value("Back", static_cast<int>(MainBack)),
+			luabind::value("Bracer1", static_cast<int>(MainWrist1)), // deprecated
+			luabind::value("Wrist1", static_cast<int>(MainWrist1)),
+			luabind::value("Bracer2", static_cast<int>(MainWrist2)), // deprecated
+			luabind::value("Wrist2", static_cast<int>(MainWrist2)),
+			luabind::value("Range", static_cast<int>(MainRange)),
+			luabind::value("Hands", static_cast<int>(MainHands)),
+			luabind::value("Primary", static_cast<int>(MainPrimary)),
+			luabind::value("Secondary", static_cast<int>(MainSecondary)),
+			luabind::value("Ring1", static_cast<int>(MainFinger1)), // deprecated
+			luabind::value("Finger1", static_cast<int>(MainFinger1)),
+			luabind::value("Ring2", static_cast<int>(MainFinger2)), // deprecated
+			luabind::value("Finger2", static_cast<int>(MainFinger2)),
+			luabind::value("Chest", static_cast<int>(MainChest)),
+			luabind::value("Legs", static_cast<int>(MainLegs)),
+			luabind::value("Feet", static_cast<int>(MainFeet)),
+			luabind::value("Waist", static_cast<int>(MainWaist)),
+			luabind::value("PowerSource", static_cast<int>(MainPowerSource)),
+			luabind::value("Ammo", static_cast<int>(MainAmmo)),
+			luabind::value("General1", static_cast<int>(MainGeneral1)),
+			luabind::value("General2", static_cast<int>(MainGeneral2)),
+			luabind::value("General3", static_cast<int>(MainGeneral3)),
+			luabind::value("General4", static_cast<int>(MainGeneral4)),
+			luabind::value("General5", static_cast<int>(MainGeneral5)),
+			luabind::value("General6", static_cast<int>(MainGeneral6)),
+			luabind::value("General7", static_cast<int>(MainGeneral7)),
+			luabind::value("General8", static_cast<int>(MainGeneral8)),
+			//luabind::value("General9", static_cast<int>(MainGeneral9)),
+			//luabind::value("General10", static_cast<int>(MainGeneral10)),
+			luabind::value("Cursor", static_cast<int>(MainCursor)),
+			//luabind::value("EquipmentBegin", static_cast<int>(EmuConstants::EQUIPMENT_BEGIN)),
+			//luabind::value("EquipmentEnd", static_cast<int>(EmuConstants::EQUIPMENT_END)),
+			luabind::value("PersonalBegin", static_cast<int>(EmuConstants::GENERAL_BEGIN)), // deprecated
+			luabind::value("GeneralBegin", static_cast<int>(EmuConstants::GENERAL_BEGIN)),
+			luabind::value("PersonalEnd", static_cast<int>(EmuConstants::GENERAL_END)), // deprecated
+			luabind::value("GeneralEnd", static_cast<int>(EmuConstants::GENERAL_END)),
+			luabind::value("CursorEnd", 0xFFFE), // deprecated
+			luabind::value("Tradeskill", static_cast<int>(SLOT_TRADESKILL)), // deprecated
+			luabind::value("Augment", static_cast<int>(SLOT_AUGMENT)), // deprecated
+			luabind::value("Invalid", INVALID_INDEX)
 		];
 }
 
@@ -1464,6 +1483,7 @@ luabind::scope lua_register_material() {
 			luabind::value("Secondary", static_cast<int>(MaterialSecondary)),
 			luabind::value("Max", static_cast<int>(_MaterialCount)), // deprecated
 			luabind::value("Count", static_cast<int>(_MaterialCount)),
+			//luabind::value("TintCount", static_cast<int>(_MaterialCount - 2)),
 			luabind::value("Invalid", static_cast<int>(_MaterialInvalid))
 		];
 }
@@ -1478,7 +1498,8 @@ luabind::scope lua_register_client_version() {
 			luabind::value("SoF", static_cast<int>(EQClientSoF)),
 			luabind::value("SoD", static_cast<int>(EQClientSoD)),
 			luabind::value("Underfoot", static_cast<int>(EQClientUnderfoot)),
-			luabind::value("RoF", static_cast<int>(EQClientRoF))
+			luabind::value("RoF", static_cast<int>(EQClientRoF))//,
+			//luabind::value("RoF2", static_cast<int>(EQClientRoF2))
 		];
 }
 

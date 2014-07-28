@@ -194,6 +194,7 @@ NPC::NPC(const NPCType* d, Spawn2* in_respawn, float x, float y, float z, float 
 	}
 
 	accuracy_rating = d->accuracy_rating;
+	avoidance_rating = d->avoidance_rating;
 	ATK = d->ATK;
 
 	CalcMaxMana();
@@ -259,9 +260,11 @@ NPC::NPC(const NPCType* d, Spawn2* in_respawn, float x, float y, float z, float 
 
 	d_meele_texture1 = d->d_meele_texture1;
 	d_meele_texture2 = d->d_meele_texture2;
+	ammo_idfile = d->ammo_idfile;
 	memset(equipment, 0, sizeof(equipment));
 	prim_melee_type = d->prim_melee_type;
 	sec_melee_type = d->sec_melee_type;
+	ranged_type = d->ranged_type;
 
 	// If Melee Textures are not set, set attack type to Hand to Hand as default
 	if(!d_meele_texture1)
@@ -599,19 +602,19 @@ bool NPC::Process()
 		//Lieka Edit:Fixing NPC regen.NPCs should regen to full during a set duration, not based on their HPs.Increase NPC's HPs by % of total HPs / tick.
 		if((GetHP() < GetMaxHP()) && !IsPet()) {
 			if(!IsEngaged()) {//NPC out of combat
-				if(hp_regen > OOCRegen)
-					SetHP(GetHP() + hp_regen);
+				if(GetNPCHPRegen() > OOCRegen)
+					SetHP(GetHP() + GetNPCHPRegen());
 				else
 					SetHP(GetHP() + OOCRegen);
 			} else
-				SetHP(GetHP()+hp_regen);
+				SetHP(GetHP()+GetNPCHPRegen());
 		} else if(GetHP() < GetMaxHP() && GetOwnerID() !=0) {
 			if(!IsEngaged()) //pet
-				SetHP(GetHP()+hp_regen+bonus+(GetLevel()/5));
+				SetHP(GetHP()+GetNPCHPRegen()+bonus+(GetLevel()/5));
 			else
-				SetHP(GetHP()+hp_regen+bonus);
+				SetHP(GetHP()+GetNPCHPRegen()+bonus);
 		} else
-			SetHP(GetHP()+hp_regen);
+			SetHP(GetHP()+GetNPCHPRegen());
 
 		if(GetMana() < GetMaxMana()) {
 			SetMana(GetMana()+mana_regen+bonus);
@@ -1296,7 +1299,7 @@ void NPC::PickPocket(Client* thief) {
 				bool is_arrow = (item->ItemType == ItemTypeArrow) ? true : false;
 				int slot_id = thief->GetInv().FindFreeSlot(false, true, inst->GetItem()->Size, is_arrow);
 				if (/*!Equipped(item->ID) &&*/
-					!item->Magic && item->NoDrop != 0 && !inst->IsType(ItemClassContainer) && slot_id != SLOT_INVALID
+					!item->Magic && item->NoDrop != 0 && !inst->IsType(ItemClassContainer) && slot_id != INVALID_INDEX
 					/*&& steal_skill > item->StealSkill*/ )
 				{
 					slot[x] = slot_id;
@@ -1922,6 +1925,12 @@ void NPC::ModifyNPCStat(const char *identifier, const char *newValue)
 	if(id == "accuracy")
 	{
 		accuracy_rating = atoi(val.c_str());
+		return;
+	}
+
+	if(id == "avoidance")
+	{
+		avoidance_rating = atoi(val.c_str());
 		return;
 	}
 

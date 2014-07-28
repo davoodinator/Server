@@ -308,6 +308,16 @@ Mob *HateList::GetTop(Mob *center)
 				}
 			}
 
+			if (cur->ent->Sanctuary()) {
+				if(hate == -1)
+				{
+					top = cur->ent;
+					hate = 1;
+				}
+				++iterator;
+				continue;
+			}
+
 			if(cur->ent->DivineAura() || cur->ent->IsMezzed() || cur->ent->IsFeared()){
 				if(hate == -1)
 				{
@@ -535,7 +545,7 @@ int HateList::AreaRampage(Mob *caster, Mob *target, int count, ExtraAttackOption
 		if(cur)
 		{
 			for(int i = 0; i < count; ++i) {
-				caster->Attack(cur, 13, false, false, false, opts);
+				caster->Attack(cur, MainPrimary, false, false, false, opts);
 			}
 		}
 		iter++;

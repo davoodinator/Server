@@ -250,18 +250,20 @@ bool Console::Process() {
 			_log(WORLD__CONSOLE,"New launcher from %s:%d", inet_ntoa(in), GetPort());
 			launcher_list.Add(tcpc);
 			tcpc = 0;
-		} else if(tcpc->GetPacketMode() == EmuTCPConnection::packetModeUCS)
+		} 
+		else if(tcpc->GetPacketMode() == EmuTCPConnection::packetModeUCS)
 		{
 			_log(WORLD__CONSOLE,"New UCS Connection from %s:%d", inet_ntoa(in), GetPort());
 			UCSLink.SetConnection(tcpc);
 			tcpc = 0;
 		}
-			else if(tcpc->GetPacketMode() == EmuTCPConnection::packetModeQueryServ)
+		else if(tcpc->GetPacketMode() == EmuTCPConnection::packetModeQueryServ)
 		{
 			_log(WORLD__CONSOLE,"New QS Connection from %s:%d", inet_ntoa(in), GetPort());
 			QSLink.SetConnection(tcpc);
 			tcpc = 0;
-		} else {
+		}  
+		else {
 			_log(WORLD__CONSOLE,"Unsupported packet mode from %s:%d", inet_ntoa(in), GetPort());
 		}
 		return false;

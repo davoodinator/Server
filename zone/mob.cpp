@@ -180,6 +180,8 @@ Mob::Mob(const char* in_name,
 	trackable	= true;
 	has_shieldequiped = false;
 	has_numhits = false;
+	has_MGB = false;
+	has_ProjectIllusion = false;
 
 	if(in_aa_title>0)
 		aa_title	= in_aa_title;
@@ -236,9 +238,6 @@ Mob::Mob(const char* in_name,
 		RangedProcs[j].spellID = SPELL_UNKNOWN;
 		RangedProcs[j].chance = 0;
 		RangedProcs[j].base_spellID = SPELL_UNKNOWN;
-		SkillProcs[j].spellID = SPELL_UNKNOWN;
-		SkillProcs[j].chance = 0;
-		SkillProcs[j].base_spellID = SPELL_UNKNOWN;
 	}
 
 	for (i = 0; i < _MaterialCount; i++)
@@ -1953,14 +1952,14 @@ void Mob::SetAttackTimer() {
 	Timer* TimerToUse = nullptr;
 	const Item_Struct* PrimaryWeapon = nullptr;
 
-	for (int i=SLOT_RANGE; i<=SLOT_SECONDARY; i++) {
+	for (int i=MainRange; i<=MainSecondary; i++) {
 
 		//pick a timer
-		if (i == SLOT_PRIMARY)
+		if (i == MainPrimary)
 			TimerToUse = &attack_timer;
-		else if (i == SLOT_RANGE)
+		else if (i == MainRange)
 			TimerToUse = &ranged_timer;
-		else if(i == SLOT_SECONDARY)
+		else if(i == MainSecondary)
 			TimerToUse = &attack_dw_timer;
 		else	//invalid slot (hands will always hit this)
 			continue;
@@ -1981,7 +1980,7 @@ void Mob::SetAttackTimer() {
 		}
 
 		//special offhand stuff
-		if(i == SLOT_SECONDARY) {
+		if(i == MainSecondary) {
 			//if we have a 2H weapon in our main hand, no dual
 			if(PrimaryWeapon != nullptr) {
 				if(	PrimaryWeapon->ItemClass == ItemClassCommon
@@ -2060,7 +2059,7 @@ void Mob::SetAttackTimer() {
 				if(IsClient())
 				{
 					float max_quiver = 0;
-					for(int r = SLOT_PERSONAL_BEGIN; r <= SLOT_PERSONAL_END; r++)
+					for(int r = EmuConstants::GENERAL_BEGIN; r <= EmuConstants::GENERAL_END; r++)
 					{
 						const ItemInst *pi = CastToClient()->GetInv().GetItem(r);
 						if(!pi)
@@ -2084,7 +2083,7 @@ void Mob::SetAttackTimer() {
 			TimerToUse->SetAtTrigger(speed, true);
 		}
 
-		if(i == SLOT_PRIMARY)
+		if(i == MainPrimary)
 			PrimaryWeapon = ItemToUse;
 	}
 
@@ -2095,8 +2094,8 @@ bool Mob::CanThisClassDualWield(void) const {
 		return(GetSkill(SkillDualWield) > 0);
 	}
 	else if(CastToClient()->HasSkill(SkillDualWield)) {
-		const ItemInst* pinst = CastToClient()->GetInv().GetItem(SLOT_PRIMARY);
-		const ItemInst* sinst = CastToClient()->GetInv().GetItem(SLOT_SECONDARY);
+		const ItemInst* pinst = CastToClient()->GetInv().GetItem(MainPrimary);
+		const ItemInst* sinst = CastToClient()->GetInv().GetItem(MainSecondary);
 
 		// 2HS, 2HB, or 2HP
 		if(pinst && pinst->IsWeapon()) {
@@ -2751,14 +2750,6 @@ void Mob::Warp( float x, float y, float z )
 	SendPosition();
 }
 
-bool Mob::DivineAura() const
-{
-	if (spellbonuses.DivineAura)
-		return true;
-
-	return false;
-}
-
 int16 Mob::GetResist(uint8 type) const
 {
 	if (IsNPC())
@@ -3039,7 +3030,35 @@ void Mob::TriggerDefensiveProcs(const ItemInst* weapon, Mob *on, uint16 hand, in
 	if (!on)
 		return;
 
-	on->TryDefensiveProc(weapon, this, hand, damage);
+	on->TryDefensiveProc(weapon, this, hand);
+
+	//Defensive Skill Procs
+	if (damage < 0 && damage >= -4) {
+		uint16 skillinuse = 0;
+		switch (damage) {
+			case (-1):
+				skillinuse = SkillBlock;
+			break;
+		
+			case (-2):
+				skillinuse = SkillParry;
+			break;
+
+			case (-3):
+				skillinuse = SkillRiposte;
+			break;
+
+			case (-4):
+				skillinuse = SkillDodge;
+			break;
+		}
+
+		if (on->HasSkillProcs())
+			on->TrySkillProc(this, skillinuse, 0, false, hand, true);
+
+		if (on->HasSkillProcSuccess())
+			on->TrySkillProc(this, skillinuse, 0, true, hand, true);
+	}
 }
 
 void Mob::SetDeltas(float dx, float dy, float dz, float dh) {
@@ -3155,7 +3174,7 @@ void Mob::TriggerOnCast(uint32 focus_spell, uint32 spell_id, bool aa_trigger)
 
 		if(IsValidSpell(trigger_spell_id) && GetTarget()){
 			SpellFinished(trigger_spell_id, GetTarget(),10, 0, -1, spells[trigger_spell_id].ResistDiff);
-			CheckNumHitsRemaining(7,0, focus_spell);
+			CheckNumHitsRemaining(NUMHIT_MatchingSpells,0, focus_spell);
 		}
 	}
 }
@@ -3408,7 +3427,7 @@ int32 Mob::GetVulnerability(Mob* caster, uint32 spell_id, uint32 ticsremaining)
 		value += tmp_focus;
 
 		if (tmp_buffslot >= 0)
-			CheckNumHitsRemaining(7, tmp_buffslot);
+			CheckNumHitsRemaining(NUMHIT_MatchingSpells, tmp_buffslot);
 	}
 	return value;
 }
@@ -3417,6 +3436,8 @@ int16 Mob::GetSkillDmgTaken(const SkillUseTypes skill_used)
 {
 	int skilldmg_mod = 0;
 
+	int16 MeleeVuln = spellbonuses.MeleeVulnerability + itembonuses.MeleeVulnerability + aabonuses.MeleeVulnerability;
+
 	// All skill dmg mod + Skill specific
 	skilldmg_mod += itembonuses.SkillDmgTaken[HIGHEST_SKILL+1] + spellbonuses.SkillDmgTaken[HIGHEST_SKILL+1] +
 					itembonuses.SkillDmgTaken[skill_used] + spellbonuses.SkillDmgTaken[skill_used];
@@ -3424,6 +3445,8 @@ int16 Mob::GetSkillDmgTaken(const SkillUseTypes skill_used)
 	//Innate SetSkillDamgeTaken(skill,value)
 	if ((SkillDmgTaken_Mod[skill_used]) || (SkillDmgTaken_Mod[HIGHEST_SKILL+1]))
 		skilldmg_mod += SkillDmgTaken_Mod[skill_used] + SkillDmgTaken_Mod[HIGHEST_SKILL+1];
+
+	skilldmg_mod += MeleeVuln;
 
 	if(skilldmg_mod < -100)
 		skilldmg_mod = -100;
@@ -3450,8 +3473,8 @@ bool Mob::TryFadeEffect(int slot)
 	{
 		for(int i = 0; i < EFFECT_COUNT; i++)
 		{
-			if (spells[buffs[slot].spellid].effectid[i] == SE_CastOnWearoff || spells[buffs[slot].spellid].effectid[i] == SE_EffectOnFade
-				|| spells[buffs[slot].spellid].effectid[i] == SE_TriggerMeleeThreshold || spells[buffs[slot].spellid].effectid[i] == SE_TriggerSpellThreshold)
+			if (spells[buffs[slot].spellid].effectid[i] == SE_CastOnFadeEffectAlways || 
+				spells[buffs[slot].spellid].effectid[i] == SE_CastOnRuneFadeEffect)
 			{
 				uint16 spell_id = spells[buffs[slot].spellid].base[i];
 				BuffFadeBySlot(slot);
@@ -3509,7 +3532,7 @@ void Mob::TrySympatheticProc(Mob *target, uint32 spell_id)
 					SpellFinished(focus_trigger, target, 10, 0, -1, spells[focus_trigger].ResistDiff);
 			}
 			
-			CheckNumHitsRemaining(7, 0, focus_spell);
+			CheckNumHitsRemaining(NUMHIT_MatchingSpells, 0, focus_spell);
 		}
 }
 
@@ -4137,9 +4160,9 @@ void Mob::TrySpellOnKill(uint8 level, uint16 spell_id)
 {
 	if (spell_id != SPELL_UNKNOWN)
 	{
-		if(IsEffectInSpell(spell_id, SE_SpellOnKill2)) {
+		if(IsEffectInSpell(spell_id, SE_ProcOnSpellKillShot)) {
 			for (int i = 0; i < EFFECT_COUNT; i++) {
-				if (spells[spell_id].effectid[i] == SE_SpellOnKill2)
+				if (spells[spell_id].effectid[i] == SE_ProcOnSpellKillShot)
 				{
 					if (IsValidSpell(spells[spell_id].base2[i]) && spells[spell_id].max[i] <= level)
 					{
@@ -4277,6 +4300,9 @@ int16 Mob::GetMeleeDamageMod_SE(uint16 skill)
 	dmg_mod += itembonuses.DamageModifier[HIGHEST_SKILL+1] + spellbonuses.DamageModifier[HIGHEST_SKILL+1] + aabonuses.DamageModifier[HIGHEST_SKILL+1] +
 				itembonuses.DamageModifier[skill] + spellbonuses.DamageModifier[skill] + aabonuses.DamageModifier[skill];
 
+	dmg_mod += itembonuses.DamageModifier2[HIGHEST_SKILL+1] + spellbonuses.DamageModifier2[HIGHEST_SKILL+1] + aabonuses.DamageModifier2[HIGHEST_SKILL+1] +
+				itembonuses.DamageModifier2[skill] + spellbonuses.DamageModifier2[skill] + aabonuses.DamageModifier2[skill];
+
 	if (HasShieldEquiped() && !IsOffHandAtk())
 		dmg_mod += itembonuses.ShieldEquipDmgMod[0] + spellbonuses.ShieldEquipDmgMod[0] + aabonuses.ShieldEquipDmgMod[0];
 
@@ -4334,22 +4360,19 @@ int16 Mob::GetSkillDmgAmt(uint16 skill)
 
 void Mob::MeleeLifeTap(int32 damage) {
 	
-	if(damage > 0 && (spellbonuses.MeleeLifetap || itembonuses.MeleeLifetap || aabonuses.MeleeLifetap ))
-	{
-		int lifetap_amt = spellbonuses.MeleeLifetap + itembonuses.MeleeLifetap + aabonuses.MeleeLifetap;
-		
-		if(lifetap_amt > 100)
-			lifetap_amt = 100;
+	int16 lifetap_amt = 0;
+	lifetap_amt = spellbonuses.MeleeLifetap + itembonuses.MeleeLifetap + aabonuses.MeleeLifetap
+				+ spellbonuses.Vampirism + itembonuses.Vampirism + aabonuses.Vampirism;
 
-		else if (lifetap_amt < -99)
-			lifetap_amt = -99;
-
+	if(lifetap_amt && damage > 0){
 
 		lifetap_amt = damage * lifetap_amt / 100;
-
 		mlog(COMBAT__DAMAGE, "Melee lifetap healing for %d damage.", damage);
-		//heal self for damage done..
-		HealDamage(lifetap_amt);
+		
+		if (lifetap_amt > 0)
+			HealDamage(lifetap_amt); //Heal self for modified damage amount.
+		else
+			Damage(this, -lifetap_amt,0, SkillEvocation,false); //Dmg self for modified damage amount.
 	}
 }
 
@@ -4676,12 +4699,43 @@ uint16 Mob::GetSkillByItemType(int ItemType)
 			return Skill2HBlunt;
 		case ItemType2HPiercing:
 			return Skill1HPiercing; // change to 2HPiercing once activated
+		case ItemTypeBow:
+			return SkillArchery;
+		case ItemTypeLargeThrowing:
+		case ItemTypeSmallThrowing:
+			return SkillThrowing;
 		case ItemTypeMartial:
 			return SkillHandtoHand;
 		default:
 			return SkillHandtoHand;
 	}
 	return SkillHandtoHand;
+ }
+
+uint8 Mob::GetItemTypeBySkill(SkillUseTypes skill)
+{
+	switch (skill)
+	{
+		case SkillThrowing:
+			return ItemTypeSmallThrowing;
+		case SkillArchery:
+			return ItemTypeArrow;
+		case Skill1HSlashing:
+			return ItemType1HSlash;
+		case Skill2HSlashing:
+			return ItemType2HSlash;
+		case Skill1HPiercing:
+			return ItemType1HPiercing;
+		case Skill1HBlunt:
+			return ItemType1HBlunt;
+		case Skill2HBlunt:
+			return ItemType2HBlunt;
+		case SkillHandtoHand:
+			return ItemTypeMartial;
+		default:
+			return ItemTypeMartial;
+	}
+	return ItemTypeMartial;
  }
 
 
@@ -4698,6 +4752,28 @@ bool Mob::PassLimitToSkill(uint16 spell_id, uint16 skill) {
 		}
 	}
 	return false;
+}
+
+uint16 Mob::GetWeaponSpeedbyHand(uint16 hand) {
+	
+	uint16 weapon_speed = 0;
+	switch (hand) {
+		
+		case 13:
+			weapon_speed = attack_timer.GetDuration();
+			break;
+		case 14:
+			weapon_speed = attack_dw_timer.GetDuration();
+			break;
+		case 11:
+			weapon_speed = ranged_timer.GetDuration();
+			break;
+	}
+
+	if (weapon_speed < RuleI(Combat, MinHastedDelay))
+		weapon_speed = RuleI(Combat, MinHastedDelay);
+
+	return weapon_speed;
 }
 
 int8 Mob::GetDecayEffectValue(uint16 spell_id, uint16 spelleffect) {

@@ -366,7 +366,6 @@ bool EmuTCPConnection::LineOutQueuePush(char* line) {
 			safe_delete_array(line);
 			return(true);
 		}
-
 	}
 
 	return(TCPConnection::LineOutQueuePush(line));
@@ -419,7 +418,8 @@ bool EmuTCPConnection::ConnectIP(uint32 irIP, uint16 irPort, char* errbuf) {
 				sendbuf_used = sendbuf_size;
 				sendbuf = new uchar[sendbuf_size];
 				memcpy(sendbuf, "\0**PACKETMODEQS**\r", sendbuf_size);
-			} else {
+			} 
+			else {
 				//default: packetModeZone
 				safe_delete_array(sendbuf);
 				sendbuf_size = 20;
