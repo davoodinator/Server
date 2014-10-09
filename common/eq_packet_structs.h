@@ -534,7 +534,7 @@ struct SpellBuffFade_Struct {
 /*007*/	uint8 unknown7;
 /*008*/	uint32 spellid;
 /*012*/	uint32 duration;
-/*016*/	uint32 unknown016;
+/*016*/	uint32 num_hits;
 /*020*/	uint32 unknown020;	//prolly global player ID
 /*024*/	uint32 slotid;
 /*028*/	uint32 bufffade;
@@ -689,7 +689,7 @@ struct CharCreate_Struct
 /*0076*/	uint32	drakkin_heritage;	// added for SoF
 /*0080*/	uint32	drakkin_tattoo;		// added for SoF
 /*0084*/	uint32	drakkin_details;	// added for SoF
-/*0088*/
+/*0088*/	uint32	tutorial;
 };
 
 /*
@@ -800,9 +800,12 @@ struct SuspendedMinion_Struct
 ** Length: 4308 bytes
 ** OpCode: 0x006a
  */
-static const uint32 MAX_PP_LANGUAGE		= 28;
-static const uint32 MAX_PP_SPELLBOOK	= 480;	// Increased to 480 to support SoF
-static const uint32 MAX_PP_MEMSPELL		= 9;
+static const uint32 MAX_PP_LANGUAGE = 28;
+static const uint32 MAX_PP_SPELLBOOK = 480;	// Set for all functions
+static const uint32 MAX_PP_MEMSPELL = 9; // Set to latest client so functions can work right
+static const uint32 MAX_PP_REF_SPELLBOOK = 480;	// Set for Player Profile size retain
+static const uint32 MAX_PP_REF_MEMSPELL = 9; // Set for Player Profile size retain
+
 static const uint32 MAX_PP_SKILL		= _SkillPacketArraySize;	// 100 - actual skills buffer size
 static const uint32 MAX_PP_AA_ARRAY		= 240;
 static const uint32 MAX_GROUP_MEMBERS	= 6;
@@ -880,7 +883,7 @@ struct PlayerProfile_Struct
 /*0245*/	uint8				guildbanker;
 /*0246*/	uint8				unknown0246[6];		//
 /*0252*/	uint32				intoxication;
-/*0256*/	uint32				spellSlotRefresh[MAX_PP_MEMSPELL];	//in ms
+/*0256*/	uint32				spellSlotRefresh[MAX_PP_REF_MEMSPELL];	//in ms
 /*0292*/	uint32				abilitySlotRefresh;
 /*0296*/	uint8				haircolor;			// Player hair color
 /*0297*/	uint8				beardcolor;			// Player beard color
@@ -919,9 +922,9 @@ struct PlayerProfile_Struct
 /*2505*/	uint8				unknown2541[47];	// ?
 /*2552*/	uint8				languages[MAX_PP_LANGUAGE];
 /*2580*/	uint8				unknown2616[4];
-/*2584*/	uint32				spell_book[MAX_PP_SPELLBOOK];
+/*2584*/	uint32				spell_book[MAX_PP_REF_SPELLBOOK];
 /*4504*/	uint8				unknown4540[128];	// Was [428] all 0xff
-/*4632*/	uint32				mem_spells[MAX_PP_MEMSPELL];
+/*4632*/	uint32				mem_spells[MAX_PP_REF_MEMSPELL];
 /*4668*/	uint8				unknown4704[32];	//
 /*4700*/	float				y;					// Player y position
 /*4704*/	float				x;					// Player x position
@@ -1446,17 +1449,18 @@ struct BulkItemPacket_Struct
 
 struct Consume_Struct
 {
-/*0000*/ uint32 slot;
-/*0004*/ uint32 auto_consumed; // 0xffffffff when auto eating e7030000 when right click
-/*0008*/ uint8 c_unknown1[4];
-/*0012*/ uint8 type; // 0x01=Food 0x02=Water
-/*0013*/ uint8 unknown13[3];
+/*0000*/ uint32	slot;
+/*0004*/ uint32	auto_consumed; // 0xffffffff when auto eating e7030000 when right click
+/*0008*/ uint8	c_unknown1[4];
+/*0012*/ uint8	type; // 0x01=Food 0x02=Water
+/*0013*/ uint8	unknown13[3];
 };
 
 struct DeleteItem_Struct {
-/*0000*/ uint32 from_slot;
-/*0004*/ uint32 to_slot;
-/*0008*/ uint32 number_in_stack;
+/*0000*/ uint32	from_slot;
+/*0004*/ uint32	to_slot;
+/*0008*/ uint32	number_in_stack;
+/*0012*/
 };
 
 struct MoveItem_Struct
@@ -1464,16 +1468,18 @@ struct MoveItem_Struct
 /*0000*/ uint32 from_slot;
 /*0004*/ uint32 to_slot;
 /*0008*/ uint32 number_in_stack;
+/*0012*/
 };
 
 // both MoveItem_Struct/DeleteItem_Struct server structures will be changing to a structure-based slot format..this will
 // be used for handling SoF/SoD/etc... time stamps sent using the MoveItem_Struct format. (nothing will be done with this
-// info at the moment..but, it forwards it on to the server for handling/future use)
+// info at the moment..but, it is forwarded on to the server for handling/future use)
 struct ClientTimeStamp_Struct
 {
-/*0000*/ uint32 from_slot;
-/*0004*/ uint32 to_slot;
-/*0008*/ uint32 number_in_stack;
+/*0000*/ uint32	from_slot;
+/*0004*/ uint32	to_slot;
+/*0008*/ uint32	number_in_stack;
+/*0012*/
 };
 
 //
@@ -2287,10 +2293,13 @@ struct Stun_Struct { // 4 bytes total
 };
 
 struct AugmentItem_Struct {
-/*00*/	int16	container_slot;
-/*02*/	char	unknown02[2];
-/*04*/	int32	augment_slot;
-/*08*/
+/*00*/	uint32	container_index;
+/*04*/	int32	container_slot;
+/*08*/	uint32  augment_index;
+/*12*/	int32	augment_slot;
+/*16*/	uint32	dest_inst_id;			// The unique serial number for the item instance that is being augmented
+/*20*/	int32	augment_action;			// Guessed - 0 = augment, 1 = remove with distiller, 3 = delete aug
+/*24*/
 };
 
 // OP_Emote
@@ -3394,7 +3403,7 @@ struct Split_Struct
 */
 struct NewCombine_Struct {
 /*00*/	int16	container_slot;
-/*02*/	char	unknown02[2];
+/*02*/	int16	guildtribute_slot;
 /*04*/
 };
 
@@ -3468,6 +3477,7 @@ struct MerchantList {
 	int8	level_required;
 	uint16	alt_currency_cost;
 	uint32	classes_required;
+	uint8	probability;
 };
 
 struct TempMerchantList {
@@ -4060,7 +4070,7 @@ struct GroupInvite_Struct {
 //	uint8	unknown128[65];
 };
 
-struct BuffFadeMsg_Struct {
+struct ColoredText_Struct {
 	uint32 color;
 	char msg[1];
 };
@@ -4257,6 +4267,13 @@ struct ItemVerifyReply_Struct {
 /*012*/
 };
 
+struct ItemRecastDelay_Struct {
+/*000*/	uint32	recast_delay;	// in seconds
+/*004*/	uint32	recast_type;
+/*008*/	uint32	unknown008;
+/*012*/
+};
+
 /**
  * Shroud yourself. For yourself shrouding, this has your spawnId, spawnStruct,
  * bits of your charProfileStruct (no checksum, then charProfile up till
@@ -4295,9 +4312,9 @@ struct ControlBoat_Struct {
 
 struct AugmentInfo_Struct
 {
-/*000*/ uint32	itemid;		// id of the solvent needed
-/*004*/ uint8	window;		// window to display the information in
-/*005*/	uint8	unknown005[67];	// total packet length 72, all the rest were always 00
+/*000*/ uint32	itemid;			// id of the solvent needed
+/*004*/ uint8	window;			// window to display the information in
+/*005*/ uint8	unknown005[67];	// total packet length 72, all the rest were always 00
 /*072*/
 };
 
@@ -4460,6 +4477,14 @@ struct GuildBankPromote_Struct
 /*12*/	uint32	Slot2;	// Always appears to be the same as Slot for Action code 3
 };
 
+struct GuildPromoteStruct {
+/*000*/	char	target[64];
+/*064*/	char	name[64];
+/*128*/	uint32	rank;
+/*132*/	uint32	myrank;
+/*136*/
+};
+
 struct GuildBankPermissions_Struct
 {
 /*00*/	uint32	Action;	// 6
@@ -4577,11 +4602,13 @@ struct BuffIconEntry_Struct
 	uint32 buff_slot;
 	uint32 spell_id;
 	uint32 tics_remaining;
+	uint32 num_hits;
 };
 
 struct BuffIcon_Struct
 {
 	uint32 entity_id;
+	uint8  all_buffs;
 	uint16 count;
 	BuffIconEntry_Struct entries[0];
 };

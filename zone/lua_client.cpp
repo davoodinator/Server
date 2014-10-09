@@ -1134,7 +1134,7 @@ void Lua_Client::Signal(uint32 id) {
 
 void Lua_Client::AddAlternateCurrencyValue(uint32 currency, int amount) {
 	Lua_Safe_Call_Void();
-	self->AddAlternateCurrencyValue(currency, amount);
+	self->AddAlternateCurrencyValue(currency, amount, 1);
 }
 
 void Lua_Client::SendWebLink(const char *site) {
@@ -1237,6 +1237,11 @@ void Lua_Client::SetConsumption(int in_hunger, int in_thirst) {
 void Lua_Client::SendMarqueeMessage(uint32 type, uint32 priority, uint32 fade_in, uint32 fade_out, uint32 duration, std::string msg) {
 	Lua_Safe_Call_Void();
 	self->SendMarqueeMessage(type, priority, fade_in, fade_out, duration, msg);
+}
+
+void Lua_Client::SendColoredText(uint32 type, std::string msg) {
+	Lua_Safe_Call_Void();
+	self->SendColoredText(type, msg);
 }
 
 void Lua_Client::PlayMP3(std::string file)
@@ -1492,6 +1497,7 @@ luabind::scope lua_register_client() {
 		.def("SetThirst", (void(Lua_Client::*)(int))&Lua_Client::SetThirst)
 		.def("SetConsumption", (void(Lua_Client::*)(int, int))&Lua_Client::SetConsumption)
 		.def("SendMarqueeMessage", (void(Lua_Client::*)(uint32, uint32, uint32, uint32, uint32, std::string))&Lua_Client::SendMarqueeMessage)
+		.def("SendColoredText", (void(Lua_Client::*)(uint32, std::string))&Lua_Client::SendColoredText)
 		.def("PlayMP3", (void(Lua_Client::*)(std::string))&Lua_Client::PlayMP3);
 }
 

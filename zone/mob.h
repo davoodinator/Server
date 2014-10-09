@@ -205,7 +205,7 @@ public:
 	void SendSpellBarEnable(uint16 spellid);
 	void ZeroCastingVars();
 	virtual void SpellProcess();
-	virtual bool CastSpell(uint16 spell_id, uint16 target_id, uint16 slot = 10, int32 casttime = -1,
+	virtual bool CastSpell(uint16 spell_id, uint16 target_id, uint16 slot = USE_ITEM_SPELL_SLOT, int32 casttime = -1,
 		int32 mana_cost = -1, uint32* oSpellWillFinish = 0, uint32 item_slot = 0xFFFFFFFF,
 		uint32 timer = 0xFFFFFFFF, uint32 timer_duration = 0, uint32 type = 0, int16 *resist_adjust = nullptr);
 	virtual bool DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot = 10, int32 casttime = -1,
@@ -464,6 +464,8 @@ public:
 	bool CheckLosFN(float posX, float posY, float posZ, float mobSize);
 	inline void SetChanged() { pLastChange = Timer::GetCurrentTime(); }
 	inline const uint32 LastChange() const { return pLastChange; }
+	inline void SetLastLosState(bool value) { last_los_check = value; }
+	inline bool CheckLastLosState() const { return last_los_check; }
 
 	//Quest
 	void QuestReward(Client *c = nullptr, uint32 silver = 0, uint32 gold = 0, uint32 platinum = 0);
@@ -524,6 +526,7 @@ public:
 
 
 	//More stuff to sort:
+	virtual bool IsRaidTarget() const { return false; };
 	virtual bool IsAttackAllowed(Mob *target, bool isSpellAttack = false);
 	bool IsTargeted() const { return (targeted > 0); }
 	inline void IsTargeted(int in_tar) { targeted += in_tar; if(targeted < 0) targeted = 0;}
@@ -552,7 +555,7 @@ public:
 	void Shout(const char *format, ...);
 	void Emote(const char *format, ...);
 	void QuestJournalledSay(Client *QuestInitiator, const char *str);
-	uint32 GetItemStat(uint32 itemid, const char *identifier);
+	int32 GetItemStat(uint32 itemid, const char *identifier);
 
 	int16 CalcFocusEffect(focusType type, uint16 focus_id, uint16 spell_id, bool best_focus=false);
 	uint8 IsFocusEffect(uint16 spellid, int effect_index, bool AA=false,uint32 aa_effect=0);
@@ -560,7 +563,7 @@ public:
 		uint8 in_haircolor = 0xFF, uint8 in_beardcolor = 0xFF, uint8 in_eyecolor1 = 0xFF, uint8 in_eyecolor2 = 0xFF, 
 		uint8 in_hairstyle = 0xFF, uint8 in_luclinface = 0xFF, uint8 in_beard = 0xFF, uint8 in_aa_title = 0xFF, 
 		uint32 in_drakkin_heritage = 0xFFFFFFFF, uint32 in_drakkin_tattoo = 0xFFFFFFFF, 
-		uint32 in_drakkin_details = 0xFFFFFFFF, float in_size = 0xFFFFFFFF);
+		uint32 in_drakkin_details = 0xFFFFFFFF, float in_size = -1.0f);
 	virtual void Stun(int duration);
 	virtual void UnStun();
 	inline void Silence(bool newval) { silenced = newval; }
@@ -576,8 +579,7 @@ public:
 	void DoBuffWearOffEffect(uint32 index);
 	void TryTriggerOnCast(uint32 spell_id, bool aa_trigger);
 	void TriggerOnCast(uint32 focus_spell, uint32 spell_id, bool aa_trigger);
-	void TrySpellTrigger(Mob *target, uint32 spell_id);
-	void TryApplyEffect(Mob *target, uint32 spell_id);
+	bool TrySpellTrigger(Mob *target, uint32 spell_id, int effect);
 	void TryTriggerOnValueAmount(bool IsHP = false, bool IsMana = false, bool IsEndur = false, bool IsPet = false);
 	void TryTwincast(Mob *caster, Mob *target, uint32 spell_id);
 	void TrySympatheticProc(Mob *target, uint32 spell_id);
@@ -615,6 +617,10 @@ public:
 	bool ImprovedTaunt();
 	bool TryRootFadeByDamage(int buffslot, Mob* attacker);
 	int16 GetSlowMitigation() const {return slow_mitigation;}
+	void CalcSpellPowerDistanceMod(uint16 spell_id, float range, Mob* caster = nullptr);
+	inline int16 GetSpellPowerDistanceMod() const { return SpellPowerDistanceMod; };
+	inline void SetSpellPowerDistanceMod(int16 value) { SpellPowerDistanceMod = value; };
+	int32 GetSpellStat(uint32 spell_id, const char *identifier, uint8 slot = 0);
 
 	void ModSkillDmgTaken(SkillUseTypes skill_num, int value);
 	int16 GetModSkillDmgTaken(const SkillUseTypes skill_num);
@@ -721,6 +727,7 @@ public:
 	virtual void AI_Init();
 	virtual void AI_Start(uint32 iMoveDelay = 0);
 	virtual void AI_Stop();
+	virtual void AI_ShutDown();
 	virtual void AI_Process();
 
 	const char* GetEntityVariable(const char *id);
@@ -748,7 +755,8 @@ public:
 	inline const bool IsRooted() const { return rooted || permarooted; }
 	inline const bool HasVirus() const { return has_virus; }
 	int GetSnaredAmount();
-
+	inline const bool IsPseudoRooted() const { return pseudo_rooted; }
+	inline void SetPseudoRoot(bool prState) { pseudo_rooted = prState; }
 
 	int GetCurWp() { return cur_wp; }
 
@@ -760,6 +768,7 @@ public:
 	inline void StartFleeing() { flee_mode = true; CalculateNewFearpoint(); }
 	void ProcessFlee();
 	void CheckFlee();
+	inline bool IsBlind() { return spellbonuses.IsBlind; }
 
 	inline bool			CheckAggro(Mob* other) {return hate_list.IsOnHateList(other);}
 	float				CalculateHeadingToTarget(float in_x, float in_y);
@@ -834,7 +843,7 @@ public:
 	void StopSpecialAbilityTimer(int ability);
 	Timer *GetSpecialAbilityTimer(int ability);
 	void ClearSpecialAbilities();
-	void ProcessSpecialAbilities(const std::string str);
+	void ProcessSpecialAbilities(const std::string &str);
 
 	Shielders_Struct shielder[MAX_SHIELDERS];
 	Trade* trade;
@@ -1044,6 +1053,7 @@ protected:
 	Timer attack_dw_timer;
 	Timer ranged_timer;
 	float attack_speed; //% increase/decrease in attack speed (not haste)
+	int8 attack_delay; //delay between attacks in 10ths of seconds
 	float slow_mitigation; // Allows for a slow mitigation (100 = 100%, 50% = 50%)
 	Timer tic_timer;
 	Timer mana_timer;
@@ -1114,6 +1124,9 @@ protected:
 	bool has_numhits;
 	bool has_MGB;
 	bool has_ProjectIllusion;
+	int16 SpellPowerDistanceMod;
+	bool last_los_check;
+	bool pseudo_rooted;
 
 	// Bind wound
 	Timer bindwound_timer;

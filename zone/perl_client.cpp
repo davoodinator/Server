@@ -1259,7 +1259,24 @@ XS(XS_Client_MovePC)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		THIS->MovePC(zoneID, x, y, z, heading);
+		if (THIS->IsClient()) {
+			THIS->MovePC(zoneID, x, y, z, heading);
+		}
+		else {
+			if (THIS->IsMerc())
+				_log(CLIENT__ERROR, "Perl(XS_Client_MovePC) attempted to process a type Merc reference");
+			else if (THIS->IsNPC())
+				_log(CLIENT__ERROR, "Perl(XS_Client_MovePC) attempted to process a type NPC reference");
+		#ifdef BOTS
+			else if (THIS->IsBot())
+				_log(CLIENT__ERROR, "Perl(XS_Client_MovePC) attempted to process a type Bot reference");
+		#endif	 
+			else
+				_log(CLIENT__ERROR, "Perl(XS_Client_MovePC) attempted to process an Unknown type reference");
+
+			Perl_croak(aTHX_ "THIS is not of type Client");
+		}
+
 	}
 	XSRETURN_EMPTY;
 }
@@ -1288,7 +1305,25 @@ XS(XS_Client_MovePCInstance)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		THIS->MovePC(zoneID, instanceID, x, y, z, heading);
+		if (THIS->IsClient()) {
+			THIS->MovePC(zoneID, instanceID, x, y, z, heading);
+		}
+		else {
+			if (THIS->IsMerc())
+				_log(CLIENT__ERROR, "Perl(XS_Client_MovePCInstance) attempted to process a type Merc reference");
+			else if (THIS->IsNPC())
+				_log(CLIENT__ERROR, "Perl(XS_Client_MovePCInstance) attempted to process a type NPC reference");
+		#ifdef BOTS
+			else if (THIS->IsBot())
+				_log(CLIENT__ERROR, "Perl(XS_Client_MovePCInstance) attempted to process a type Bot reference");
+		#endif
+			else
+				_log(CLIENT__ERROR, "Perl(XS_Client_MovePCInstance) attempted to process an Unknown type reference");
+
+			Perl_croak(aTHX_ "THIS is not of type Client"); 
+
+			Perl_croak(aTHX_ "THIS is not of type Client");
+		}
 	}
 	XSRETURN_EMPTY;
 }
@@ -2955,7 +2990,7 @@ XS(XS_Client_GetItemIDAt)
 		Perl_croak(aTHX_ "Usage: Client::GetItemIDAt(THIS, slot_id)");
 	{
 		Client *		THIS;
-		uint32		RETVAL;
+		int32		RETVAL;
 		dXSTARG;
 		int16		slot_id = (int16)SvIV(ST(1));
 
@@ -2969,7 +3004,7 @@ XS(XS_Client_GetItemIDAt)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 		RETVAL = THIS->GetItemIDAt(slot_id);
-		XSprePUSH; PUSHu((UV)RETVAL);
+		XSprePUSH; PUSHi((IV)RETVAL);
 	}
 	XSRETURN(1);
 }
@@ -2982,7 +3017,7 @@ XS(XS_Client_GetAugmentIDAt)
 		Perl_croak(aTHX_ "Usage: Client::GetAugmentIDAt(THIS, slot_id, augslot)");
 	{
 		Client *		THIS;
-		uint32		RETVAL;
+		int32		RETVAL;
 		dXSTARG;
 		int16		slot_id = (int16)SvIV(ST(1));
 		int16		augslot = (uint8)SvIV(ST(2));
@@ -2997,7 +3032,7 @@ XS(XS_Client_GetAugmentIDAt)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 		RETVAL = THIS->GetAugmentIDAt(slot_id, augslot);
-		XSprePUSH; PUSHu((UV)RETVAL);
+		XSprePUSH; PUSHi((IV)RETVAL);
 	}
 	XSRETURN(1);
 }
@@ -5037,6 +5072,35 @@ XS(XS_Client_UpdateTaskActivity)
 	XSRETURN_EMPTY;
 }
 
+XS(XS_Client_GetTaskActivityDoneCount); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Client_GetTaskActivityDoneCount)
+{
+	dXSARGS;
+	if (items != 3)
+		Perl_croak(aTHX_ "Usage: Client::GetTaskActivityDoneCount(THIS, TaskID, ActivityID)");
+	{
+		Client *	THIS;
+		int		RETVAL; 
+		int		TaskID = (int)SvIV(ST(1));
+		int		ActivityID = (int)SvIV(ST(2));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "Client")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Client *, tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Client");
+		if (THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		
+		RETVAL = THIS->GetTaskActivityDoneCountFromTaskID(TaskID, ActivityID);
+		XSprePUSH; PUSHi((IV)RETVAL);
+	}
+	XSRETURN(1);
+}
+
 XS(XS_Client_AssignTask); /* prototype to pass -Wmissing-prototypes */
 XS(XS_Client_AssignTask)
 {
@@ -5956,6 +6020,58 @@ XS(XS_Client_SendMarqueeMessage)
 	XSRETURN_EMPTY;
 }
 
+XS(XS_Client_SendColoredText); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Client_SendColoredText)
+{
+	dXSARGS;
+	if (items != 3)
+		Perl_croak(aTHX_ "Usage: Client::SendColoredText(color, message)");
+	{
+		Client *		THIS;
+		uint32 color =	(uint32)SvUV(ST(1));
+		std::string msg = (std::string)SvPV_nolen(ST(2));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "Client")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Client *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Client");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->SendColoredText(color, msg);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_Client_SendSpellAnim); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Client_SendSpellAnim)
+{
+	dXSARGS;
+	if (items != 3)
+		Perl_croak(aTHX_ "Usage: SendSpellAnim(uint16 spell_id, uint32 seq)");
+	{
+		Client *		THIS;
+		uint16 targetid =	(uint16)SvUV(ST(1));
+		uint16 spell_id =	(uint16)SvUV(ST(2));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "Client")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Client *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Client");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->SendSpellAnim(targetid,spell_id);
+	}
+	XSRETURN_EMPTY;
+}
+
 #ifdef __cplusplus
 extern "C"
 #endif
@@ -6164,6 +6280,7 @@ XS(boot_Client)
 		newXSproto(strcpy(buf, "IsTaskCompleted"), XS_Client_IsTaskCompleted, file, "$$");
 		newXSproto(strcpy(buf, "IsTaskActive"), XS_Client_IsTaskActive, file, "$$");
 		newXSproto(strcpy(buf, "IsTaskActivityActive"), XS_Client_IsTaskActivityActive, file, "$$$");
+		newXSproto(strcpy(buf, "GetTaskActivityDoneCount"), XS_Client_GetTaskActivityDoneCount, file, "$$$");
 		newXSproto(strcpy(buf, "GetCorpseCount"), XS_Client_GetCorpseCount, file, "$");
 		newXSproto(strcpy(buf, "GetCorpseID"), XS_Client_GetCorpseID, file, "$$");
 		newXSproto(strcpy(buf, "GetCorpseItemAt"), XS_Client_GetCorpseItemAt, file, "$$$");
@@ -6194,6 +6311,9 @@ XS(boot_Client)
 		newXSproto(strcpy(buf, "SendTargetCommand"), XS_Client_SendTargetCommand, file, "$$");
 		newXSproto(strcpy(buf, "ExpeditionMessage"), XS_Client_ExpeditionMessage, file, "$$$");
 		newXSproto(strcpy(buf, "SendMarqueeMessage"), XS_Client_SendMarqueeMessage, file, "$$$$$$$");
+		newXSproto(strcpy(buf, "SendColoredText"), XS_Client_SendColoredText, file, "$$$");
+		newXSproto(strcpy(buf, "SendSpellAnim"), XS_Client_SendSpellAnim, file, "$$$");
+		
 		XSRETURN_YES;
 }
 

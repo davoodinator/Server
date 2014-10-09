@@ -20,13 +20,13 @@
 #include "masterentity.h"
 #include "../common/packet_dump.h"
 #include "../common/moremath.h"
-#include "../common/Item.h"
+#include "../common/item.h"
 #include "worldserver.h"
 #include "../common/skills.h"
 #include "../common/bodytypes.h"
 #include "../common/classes.h"
 #include "../common/rulesys.h"
-#include "QuestParserCollection.h"
+#include "quest_parser_collection.h"
 #include <math.h>
 #include <assert.h>
 #include <iostream>
@@ -35,7 +35,7 @@
 #include "../common/unix.h"
 #endif
 
-#include "StringIDs.h"
+#include "string_ids.h"
 
 void Mob::CalcBonuses()
 {
@@ -103,6 +103,8 @@ void Client::CalcBonuses()
 	CalcMaxHP();
 	CalcMaxMana();
 	CalcMaxEndurance();
+
+	SetAttackTimer();
 
 	rooted = FindType(SE_Root);
 
@@ -174,8 +176,6 @@ void Client::CalcItemBonuses(StatBonuses* newbon) {
 
 	if(newbon->EnduranceRegen > CalcEnduranceRegenCap())
 		newbon->EnduranceRegen = CalcEnduranceRegenCap();
-
-	SetAttackTimer();
 }
 
 void Client::AddItemBonuses(const ItemInst *inst, StatBonuses* newbon, bool isAug, bool isTribute) {
@@ -1546,6 +1546,11 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 
 			case SE_AttackSpeed4:
 			{
+				// These don't generate the IMMUNE_ATKSPEED message and the icon shows up
+				// but have no effect on the mobs attack speed
+				if (GetSpecialAbility(UNSLOWABLE))
+					break;
+
 				if (effect_value < 0) //A few spells use negative values(Descriptions all indicate it should be a slow)
 					effect_value = effect_value * -1;
 
@@ -2467,7 +2472,7 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				}
 				break;
 			}
-			
+
 			case SE_ManaAbsorbPercentDamage:
 			{
 				if (newbon->ManaAbsorbPercentDamage[0] < effect_value){
@@ -2488,7 +2493,7 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 			case SE_ShieldBlock:
 				newbon->ShieldBlock += effect_value;
 				break;
-			
+
 			case SE_ShieldEquipHateMod:
 				newbon->ShieldEquipHateMod += effect_value;
 				break;
@@ -2500,6 +2505,10 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 
 			case SE_BlockBehind:
 				newbon->BlockBehind += effect_value;
+				break;
+
+			case SE_Blind:
+				newbon->IsBlind = true;
 				break;
 
 			case SE_Fear:
@@ -3049,26 +3058,28 @@ void NPC::CalcItemBonuses(StatBonuses *newbon)
 	}
 }
 
-void Client::CalcItemScale()
-{
+void Client::CalcItemScale() {
 	bool changed = false;
 
-	if(CalcItemScale(0, 21))
+	// MainAmmo excluded in helper function below
+	if(CalcItemScale(EmuConstants::EQUIPMENT_BEGIN, EmuConstants::EQUIPMENT_END)) // original coding excluded MainAmmo (< 21)
 		changed = true;
 
-	if(CalcItemScale(22, 30))
+	if(CalcItemScale(EmuConstants::GENERAL_BEGIN, EmuConstants::GENERAL_END)) // original coding excluded MainCursor (< 30)
 		changed = true;
 
-	if(CalcItemScale(251, 341))
+	// I excluded cursor bag slots here because cursor was excluded above..if this is incorrect, change 'slot_y' here to CURSOR_BAG_END
+	// and 'slot_y' above to CURSOR from GENERAL_END above - or however it is supposed to be...
+	if(CalcItemScale(EmuConstants::GENERAL_BAGS_BEGIN, EmuConstants::GENERAL_BAGS_END)) // (< 341)
 		changed = true;
 
-	if(CalcItemScale(400, 405))
+	if(CalcItemScale(EmuConstants::TRIBUTE_BEGIN, EmuConstants::TRIBUTE_END)) // (< 405)
 		changed = true;
 
 	//Power Source Slot
 	if (GetClientVersion() >= EQClientSoF)
 	{
-		if(CalcItemScale(9999, 10000))
+		if(CalcItemScale(MainPowerSource, MainPowerSource))
 			changed = true;
 	}
 
@@ -3078,14 +3089,26 @@ void Client::CalcItemScale()
 	}
 }
 
-bool Client::CalcItemScale(uint32 slot_x, uint32 slot_y)
-{
+bool Client::CalcItemScale(uint32 slot_x, uint32 slot_y) {
+	// behavior change: 'slot_y' is now [RANGE]_END and not [RANGE]_END + 1
 	bool changed = false;
 	int i;
-	for (i = slot_x; i < slot_y; i++) {
-		ItemInst* inst = m_inv.GetItem(i);
-		if(inst == 0)
+	for (i = slot_x; i <= slot_y; i++) {
+		if (i == MainAmmo) // moved here from calling procedure to facilitate future range changes where MainAmmo may not be the last slot
 			continue;
+
+		ItemInst* inst = m_inv.GetItem(i);
+
+		if(inst == nullptr)
+			continue;
+
+		// TEST CODE: test for bazaar trader crashing with charm items
+		if (Trader)
+			if (i >= EmuConstants::GENERAL_BAGS_BEGIN && i <= EmuConstants::GENERAL_BAGS_END) {
+				ItemInst* parent_item = m_inv.GetItem(Inventory::CalcSlotId(i));
+				if (parent_item && parent_item->GetItem()->ID == 17899) // trader satchel
+					continue;
+			}
 
 		bool update_slot = false;
 		if(inst->IsScaling())
@@ -3101,7 +3124,7 @@ bool Client::CalcItemScale(uint32 slot_x, uint32 slot_y)
 		}
 
 		//iterate all augments
-		for (int x = 0; x < EmuConstants::ITEM_COMMON_SIZE; ++x)
+		for (int x = AUG_BEGIN; x < EmuConstants::ITEM_COMMON_SIZE; ++x)
 		{
 			ItemInst * a_inst = inst->GetAugment(x);
 			if(!a_inst)
@@ -3132,22 +3155,25 @@ bool Client::CalcItemScale(uint32 slot_x, uint32 slot_y)
 void Client::DoItemEnterZone() {
 	bool changed = false;
 
-	if(DoItemEnterZone(0, 21))
+	// MainAmmo excluded in helper function below
+	if(DoItemEnterZone(EmuConstants::EQUIPMENT_BEGIN, EmuConstants::EQUIPMENT_END)) // original coding excluded MainAmmo (< 21)
 		changed = true;
 
-	if(DoItemEnterZone(22, 30))
+	if(DoItemEnterZone(EmuConstants::GENERAL_BEGIN, EmuConstants::GENERAL_END)) // original coding excluded MainCursor (< 30)
 		changed = true;
 
-	if(DoItemEnterZone(251, 341))
+	// I excluded cursor bag slots here because cursor was excluded above..if this is incorrect, change 'slot_y' here to CURSOR_BAG_END
+	// and 'slot_y' above to CURSOR from GENERAL_END above - or however it is supposed to be...
+	if(DoItemEnterZone(EmuConstants::GENERAL_BAGS_BEGIN, EmuConstants::GENERAL_BAGS_END)) // (< 341)
 		changed = true;
 
-	if(DoItemEnterZone(400, 405))
+	if(DoItemEnterZone(EmuConstants::TRIBUTE_BEGIN, EmuConstants::TRIBUTE_END)) // (< 405)
 		changed = true;
 
 	//Power Source Slot
 	if (GetClientVersion() >= EQClientSoF)
 	{
-		if(DoItemEnterZone(9999, 10000))
+		if(DoItemEnterZone(MainPowerSource, MainPowerSource))
 			changed = true;
 	}
 
@@ -3158,11 +3184,24 @@ void Client::DoItemEnterZone() {
 }
 
 bool Client::DoItemEnterZone(uint32 slot_x, uint32 slot_y) {
+	// behavior change: 'slot_y' is now [RANGE]_END and not [RANGE]_END + 1
 	bool changed = false;
-	for(int i = slot_x; i < slot_y; i++) {
+	for(int i = slot_x; i <= slot_y; i++) {
+		if (i == MainAmmo) // moved here from calling procedure to facilitate future range changes where MainAmmo may not be the last slot
+			continue;
+
 		ItemInst* inst = m_inv.GetItem(i);
+
 		if(!inst)
 			continue;
+
+		// TEST CODE: test for bazaar trader crashing with charm items
+		if (Trader)
+			if (i >= EmuConstants::GENERAL_BAGS_BEGIN && i <= EmuConstants::GENERAL_BAGS_END) {
+				ItemInst* parent_item = m_inv.GetItem(Inventory::CalcSlotId(i));
+				if (parent_item && parent_item->GetItem()->ID == 17899) // trader satchel
+					continue;
+			}
 
 		bool update_slot = false;
 		if(inst->IsScaling())
@@ -3188,7 +3227,7 @@ bool Client::DoItemEnterZone(uint32 slot_x, uint32 slot_y) {
 		}
 
 		//iterate all augments
-		for (int x = 0; x < EmuConstants::ITEM_COMMON_SIZE; ++x)
+		for (int x = AUG_BEGIN; x < EmuConstants::ITEM_COMMON_SIZE; ++x)
 		{
 			ItemInst *a_inst = inst->GetAugment(x);
 			if(!a_inst)
@@ -4049,6 +4088,10 @@ void Mob::NegateSpellsBonuses(uint16 spell_id)
 					spellbonuses.BlockBehind = effect_value;
 					aabonuses.BlockBehind = effect_value;
 					itembonuses.BlockBehind = effect_value;
+					break;
+
+				case SE_Blind:
+					spellbonuses.IsBlind = false;
 					break;
 
 				case SE_Fear:

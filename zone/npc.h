@@ -29,7 +29,7 @@ class NPC;
 #include "spawn2.h"
 #include "../common/loottable.h"
 #include "zonedump.h"
-#include "QGlobals.h"
+#include "qglobals.h"
 #include "../common/rulesys.h"
 
 #ifdef _WINDOWS
@@ -134,13 +134,8 @@ public:
 	void CalcNPCRegen();
 	void CalcNPCDamage();
 
-
 	int32 GetActSpellDamage(uint16 spell_id, int32 value, Mob* target = nullptr);
 	int32 GetActSpellHealing(uint16 spell_id, int32 value, Mob* target = nullptr);
-	inline void SetSpellFocusDMG(int32 NewSpellFocusDMG) {SpellFocusDMG = NewSpellFocusDMG;}
-	inline void SetSpellFocusHeal(int32 NewSpellFocusHeal) {SpellFocusHeal = NewSpellFocusHeal;}
-	int32 SpellFocusDMG;
-	int32 SpellFocusHeal;
 
 	virtual void SetTarget(Mob* mob);
 	virtual uint16 GetSkill(SkillUseTypes skill_num) const { if (skill_num <= HIGHEST_SKILL) { return skills[skill_num]; } return 0; }
@@ -158,6 +153,7 @@ public:
 	virtual void InitializeBuffSlots();
 	virtual void UninitializeBuffSlots();
 
+	virtual void	SetAttackTimer();
 	virtual void	RangedAttack(Mob* other);
 	virtual void	ThrowingAttack(Mob* other) { }
 	int32 GetNumberOfAttacks() const { return attack_count; }
@@ -387,14 +383,24 @@ public:
 
 	inline void SetHealScale(float amt)		{ healscale = amt; }
 	inline float GetHealScale()					{ return healscale; }
+	
+	inline void SetSpellFocusDMG(int32 NewSpellFocusDMG) {SpellFocusDMG = NewSpellFocusDMG;}
+	inline int32 GetSpellFocusDMG() const { return SpellFocusDMG;}
 
-    uint32 	GetSpawnKillCount();
-    int 	GetScore();
-    void 	mod_prespawn(Spawn2 *sp);
-	int 	mod_npc_damage(int damage, SkillUseTypes skillinuse, int hand, const Item_Struct* weapon, Mob* other);
+	inline void SetSpellFocusHeal(int32 NewSpellFocusHeal) {SpellFocusHeal = NewSpellFocusHeal;}
+	inline int32 GetSpellFocusHeal() const {return SpellFocusHeal;}
+
+	uint32	GetSpawnKillCount();
+	int	GetScore();
+	void	SetMerchantProbability(uint8 amt) { probability = amt; }
+	uint8	GetMerchantProbability() { return probability; }
+	void	mod_prespawn(Spawn2 *sp);
+	int	mod_npc_damage(int damage, SkillUseTypes skillinuse, int hand, const Item_Struct* weapon, Mob* other);
 	void	mod_npc_killed_merit(Mob* c);
 	void	mod_npc_killed(Mob* oos);
-	void AISpellsList(Client *c);
+	void	AISpellsList(Client *c);
+
+	bool IsRaidTarget() const { return raid_target; };
 
 protected:
 
@@ -448,6 +454,8 @@ protected:
 	uint32	npc_mana;
 	float	spellscale;
 	float	healscale;
+	int32 SpellFocusDMG;
+	int32 SpellFocusHeal;
 
 	//pet crap:
 	uint16	pet_spell_id;
@@ -500,6 +508,9 @@ protected:
 	//mercenary stuff
 	std::list<MercType> mercTypeList;
 	std::list<MercData> mercDataList;
+	
+	bool raid_target;
+	uint8	probability;
 
 private:
 	uint32	loottable_id;

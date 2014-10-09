@@ -22,7 +22,7 @@
 #include "../common/packet_dump.h"
 #include "../common/packet_functions.h"
 #include "../common/serverinfo.h"
-#include "../common/ZoneNumbers.h"
+#include "../common/zone_numbers.h"
 #include "../common/moremath.h"
 #include "../common/guilds.h"
 #include "../common/logsys.h"
@@ -30,8 +30,8 @@
 #include "worldserver.h"
 #include "zonedb.h"
 #include "petitions.h"
-#include "StringIDs.h"
-#include "NpcAI.h"
+#include "string_ids.h"
+#include "npc_ai.h"
 
 
 // Return max stat value for level
@@ -449,7 +449,8 @@ uint32 Client::GetClassHPFactor() {
 int16 Client::GetRawItemAC() {
 	int16 Total = 0;
 
-	for (int16 slot_id=0; slot_id<21; slot_id++) {
+	// this skips MainAmmo..add an '=' conditional if that slot is required (original behavior)
+	for (int16 slot_id = EmuConstants::EQUIPMENT_BEGIN; slot_id < EmuConstants::EQUIPMENT_END; slot_id++) {
 		const ItemInst* inst = m_inv[slot_id];
 		if (inst && inst->IsType(ItemClassCommon)) {
 			Total += inst->GetItem()->AC;
@@ -1127,7 +1128,7 @@ uint32 Client::CalcCurrentWeight() {
 	ItemInst* ins;
 	uint32 Total = 0;
 	int x;
-	for(x = EmuConstants::EQUIPMENT_BEGIN; x <= EmuConstants::CURSOR; x++) // include cursor or not?
+	for(x = EmuConstants::EQUIPMENT_BEGIN; x <= MainCursor; x++) // include cursor or not?
 	{
 		TempItem = 0;
 		ins = GetInv().GetItem(x);
@@ -1147,11 +1148,11 @@ uint32 Client::CalcCurrentWeight() {
 			TmpWeight = TempItem->Weight;
 		if (TmpWeight > 0)
 		{
-			// this code indicates that weight redux bags canonly be in the first general inventory slot to be effective...
+			// this code indicates that weight redux bags can only be in the first general inventory slot to be effective...
 			// is this correct? or can we scan for the highest weight redux and use that? (need client verifications)
 			int bagslot = MainGeneral1;
 			int reduction = 0;
-			for (int m = MainGeneral2; m <= EmuConstants::GENERAL_BAGS_END; m += 10) // include cursor bags or not?
+			for (int m = EmuConstants::GENERAL_BAGS_BEGIN + 10; m <= EmuConstants::GENERAL_BAGS_END; m += 10) // include cursor bags or not?
 			{
 				if (x >= m)
 					bagslot += 1;
@@ -1340,11 +1341,44 @@ int16 Client::CalcCHA() {
 	return(CHA);
 }
 
-int Client::CalcHaste() {
-	int h = spellbonuses.haste + spellbonuses.hastetype2;
+int Client::CalcHaste()
+{
+	/* Tests: (based on results in newer char window)
+	* 68 v1 + 46 item + 25 over + 35 inhib = 204%
+	* 46 item + 5 v2 + 25 over + 35 inhib = 65%
+	* 68 v1 + 46 item + 5 v2 + 25 over + 35 inhib = 209%
+	* 75% slow + 35 inhib = 25%
+	* 35 inhib = 65%
+	* 75% slow = 25%
+	* Conclusions:
+	* the bigger effect in slow v. inhib wins
+	* slow negates all other hastes
+	* inhib will only negate all other hastes if you don't have v1 (ex. VQ)
+	*/
+	// slow beats all! Besides a better inhibit
+	if (spellbonuses.haste < 0) {
+		if (-spellbonuses.haste <= spellbonuses.inhibitmelee)
+			Haste = 100 - spellbonuses.inhibitmelee;
+		else
+			Haste = 100 + spellbonuses.haste;
+		return Haste;
+	}
+
+	// No haste and inhibit, kills all other hastes
+	if (spellbonuses.haste == 0 && spellbonuses.inhibitmelee) {
+		Haste = 100 - spellbonuses.inhibitmelee;
+		return Haste;
+	}
+
+	int h = 0;
 	int cap = 0;
-	int overhaste = 0;
 	int level = GetLevel();
+
+	// we know we have a haste spell and not slowed, no extra inhibit melee checks needed
+	if (spellbonuses.haste)
+		h += spellbonuses.haste - spellbonuses.inhibitmelee;
+	if (spellbonuses.hastetype2 && level > 49) // type 2 is capped at 10% and only available to 50+
+		h += spellbonuses.hastetype2 > 10 ? 10 : spellbonuses.hastetype2;
 
 	// 26+ no cap, 1-25 10
 	if (level > 25) // 26+
@@ -1367,24 +1401,16 @@ int Client::CalcHaste() {
 
 	// 51+ 25 (despite there being higher spells...), 1-50 10
 	if (level > 50) // 51+
-		overhaste = spellbonuses.hastetype3 > 25 ? 25 : spellbonuses.hastetype3;
+		h += spellbonuses.hastetype3 > 25 ? 25 : spellbonuses.hastetype3;
 	else // 1-50
-		overhaste = spellbonuses.hastetype3 > 10 ? 10 : spellbonuses.hastetype3;
+		h += spellbonuses.hastetype3 > 10 ? 10 : spellbonuses.hastetype3;
 
-	h += overhaste;
 	h += ExtraHaste;	//GM granted haste.
 
 	h = mod_client_haste(h);
 
-	if (spellbonuses.inhibitmelee) {
-		if (h >= 0)
-			h -= spellbonuses.inhibitmelee;
-		else
-			h -= ((100 + h) * spellbonuses.inhibitmelee / 100);
-	}
-
-	Haste = h;
-	return(Haste);
+	Haste = 100 + h;
+	return Haste;
 }
 
 //The AA multipliers are set to be 5, but were 2 on WR
@@ -1977,7 +2003,7 @@ int Client::GetRawACNoShield(int &shield_ac) const
 		{
 			ac -= inst->GetItem()->AC;
 			shield_ac = inst->GetItem()->AC;
-			for (uint8 i = 0; i < EmuConstants::ITEM_COMMON_SIZE; i++)
+			for (uint8 i = AUG_BEGIN; i < EmuConstants::ITEM_COMMON_SIZE; i++)
 			{
 				if(inst->GetAugment(i))
 				{

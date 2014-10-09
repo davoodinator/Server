@@ -23,9 +23,9 @@
 #include <list>
 #include "masterentity.h"
 #include "../common/rulesys.h"
-#include "../common/MiscFunctions.h"
+#include "../common/misc_functions.h"
 #include "hate_list.h"
-#include "QuestParserCollection.h"
+#include "quest_parser_collection.h"
 #include "zone.h"
 #include "water_map.h"
 
@@ -163,7 +163,7 @@ Mob* HateList::GetClosest(Mob *hater) {
 		++iterator;
 	}
 
-	if (close == 0 && hater->IsNPC() || close->DivineAura())
+	if ((!close && hater->IsNPC()) || (close && close->DivineAura()))
 		close = hater->CastToNPC()->GetHateTop();
 
 	return close;
@@ -198,8 +198,11 @@ void HateList::Add(Mob *ent, int32 in_hate, int32 in_dam, bool bFrenzy, bool iAd
 		list.push_back(p);
 		parse->EventNPC(EVENT_HATE_LIST, owner->CastToNPC(), ent, "1", 0);
 
-		if(ent->IsClient())
+		if (ent->IsClient()) {
+			if (owner->CastToNPC()->IsRaidTarget()) 
+				ent->CastToClient()->SetEngagedRaidTarget(true);
 			ent->CastToClient()->IncrementAggroCount();
+		}
 	}
 }
 
@@ -308,7 +311,7 @@ Mob *HateList::GetTop(Mob *center)
 				}
 			}
 
-			if (cur->ent->Sanctuary()) {
+			if (cur->ent->Sanctuary()) { 
 				if(hate == -1)
 				{
 					top = cur->ent;
@@ -567,20 +570,25 @@ void HateList::SpellCast(Mob *caster, uint32 spell_id, float range)
 	//So keep a list of entity ids and look up after
 	std::list<uint32> id_list;
 	range = range * range;
+	float min_range2 = spells[spell_id].min_range * spells[spell_id].min_range;
+	float dist_targ = 0;
 	auto iterator = list.begin();
 	while (iterator != list.end())
 	{
 		tHateEntry *h = (*iterator);
 		if(range > 0)
 		{
-			if(caster->DistNoRoot(*h->ent) <= range)
+			dist_targ = caster->DistNoRoot(*h->ent);
+			if(dist_targ <= range && dist_targ >= min_range2)
 			{
 				id_list.push_back(h->ent->GetID());
+				h->ent->CalcSpellPowerDistanceMod(spell_id, dist_targ);
 			}
 		}
 		else
 		{
 			id_list.push_back(h->ent->GetID());
+			h->ent->CalcSpellPowerDistanceMod(spell_id, 0, caster);
 		}
 		++iterator;
 	}

@@ -1,7 +1,7 @@
 #ifndef RoF_H_
 #define RoF_H_
 
-#include "../StructStrategy.h"
+#include "../struct_strategy.h"
 
 class EQStreamIdentifier;
 
@@ -26,8 +26,8 @@ namespace RoF {
 		virtual const EQClientVersion ClientVersion() const;
 
 		//magic macro to declare our opcode processors
-		#include "SSDeclare.h"
-		#include "RoF_ops.h"
+		#include "ss_declare.h"
+		#include "rof_ops.h"
 	};
 
 };

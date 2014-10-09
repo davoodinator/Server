@@ -28,8 +28,7 @@
 
 #include "zonedb.h"
 #include "zonedump.h"
-#include "zonedbasync.h"
-#include "QGlobals.h"
+#include "qglobals.h"
 
 class EQApplicationPacket;
 
@@ -53,7 +52,7 @@ class Bot;
 class BotRaids;
 #endif
 
-extern EntityList entity_list;
+extern EntityList entity_list; 
 
 class Entity
 {
@@ -100,7 +99,6 @@ public:
 	inline const uint16& GetID() const { return id; }
 
 	virtual const char* GetName() { return ""; }
-	virtual void DBAWComplete(uint8 workpt_b1, DBAsyncWork* dbaw) { pDBAsyncWorkID = 0; }
 	bool CheckCoordLosNoZLeaps(float cur_x, float cur_y, float cur_z, float trg_x, float trg_y, float trg_z, float perwalk=1);
 
 #ifdef BOTS
@@ -398,6 +396,7 @@ public:
 	void	UpdateFindableNPCState(NPC *n, bool Remove);
 	void	HideCorpses(Client *c, uint8 CurrentMode, uint8 NewMode);
 
+	uint16 GetClientCount();
 	void GetMobList(std::list<Mob*> &m_list);
 	void GetNPCList(std::list<NPC*> &n_list);
 	void GetMercList(std::list<Merc*> &n_list);
@@ -406,7 +405,7 @@ public:
 	void GetObjectList(std::list<Object*> &o_list);
 	void GetDoorsList(std::list<Doors*> &d_list);
 	void GetSpawnList(std::list<Spawn2*> &d_list);
-	void GetTargetsForConeArea(Mob *start, uint32 radius, uint32 height, std::list<Mob*> &m_list);
+	void GetTargetsForConeArea(Mob *start, float min_radius, float radius, float height, std::list<Mob*> &m_list);
 
 	void	DepopAll(int NPCTypeID, bool StartSpawnTimer = true);
 

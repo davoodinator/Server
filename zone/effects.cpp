@@ -24,11 +24,11 @@
 #include "../common/packet_functions.h"
 #include "petitions.h"
 #include "../common/serverinfo.h"
-#include "../common/ZoneNumbers.h"
+#include "../common/zone_numbers.h"
 #include "../common/moremath.h"
 #include "../common/guilds.h"
-#include "StringIDs.h"
-#include "NpcAI.h"
+#include "string_ids.h"
+#include "npc_ai.h"
 
 float Client::GetActSpellRange(uint16 spell_id, float range, bool IsBard)
 {
@@ -56,7 +56,7 @@ int32 NPC::GetActSpellDamage(uint16 spell_id, int32 value,  Mob* target) {
 			value -= target->GetFcDamageAmtIncoming(this, spell_id)/spells[spell_id].buffduration;
 	 }
 	  	 
-	 value += dmg*SpellFocusDMG/100; 
+	 value += dmg*GetSpellFocusDMG()/100; 
 
 	if (AI_HasSpellsEffects()){
 		int16 chance = 0;
@@ -275,7 +275,7 @@ int32 NPC::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 
 	//Scale all NPC spell healing via SetSpellFocusHeal(value)
 
-	value += value*SpellFocusHeal/100; 
+	value += value*GetSpellFocusHeal()/100; 
 
 	 if (target) {
 		value += target->GetFocusIncoming(focusFcHealAmtIncoming, SE_FcHealAmtIncoming, this, spell_id); 
@@ -606,6 +606,7 @@ bool Client::TrainDiscipline(uint32 itemid) {
 			return(false);
 		} else if(m_pp.disciplines.values[r] == 0) {
 			m_pp.disciplines.values[r] = spell_id;
+			database.SaveCharacterDisc(this->CharacterID(), r, spell_id);
 			SendDisciplineUpdate();
 			Message(0, "You have learned a new discipline!");
 			return(true);
@@ -616,13 +617,9 @@ bool Client::TrainDiscipline(uint32 itemid) {
 }
 
 void Client::SendDisciplineUpdate() {
-	//this dosent seem to work right now
-
 	EQApplicationPacket app(OP_DisciplineUpdate, sizeof(Disciplines_Struct));
 	Disciplines_Struct *d = (Disciplines_Struct*)app.pBuffer;
-	//dunno why I dont just send the one from m_pp
 	memcpy(d, &m_pp.disciplines, sizeof(m_pp.disciplines));
-
 	QueuePacket(&app);
 }
 
@@ -740,6 +737,8 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 
 	float dist = caster->GetAOERange(spell_id);
 	float dist2 = dist * dist;
+	float min_range2 = spells[spell_id].min_range * spells[spell_id].min_range;
+	float dist_targ = 0;
 
 	bool bad = IsDetrimentalSpell(spell_id);
 	bool isnpc = caster->IsNPC();
@@ -755,7 +754,11 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			continue;
 		if (curmob == caster && !affect_caster)	//watch for caster too
 			continue;
-		if (center->DistNoRoot(*curmob) > dist2)	//make sure they are in range
+		
+		dist_targ = center->DistNoRoot(*curmob);
+		if (dist_targ > dist2)	//make sure they are in range
+			continue;
+		if (dist_targ < min_range2)	//make sure they are in range
 			continue;
 		if (isnpc && curmob->IsNPC()) {	//check npc->npc casting
 			FACTION_VALUE f = curmob->GetReverseFactionCon(caster);
@@ -785,6 +788,8 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			if (caster->CheckAggro(curmob))
 				continue;
 		}
+
+		curmob->CalcSpellPowerDistanceMod(spell_id, dist_targ);
 
 		//if we get here... cast the spell.
 		if (IsTargetableAESpell(spell_id) && bad) {

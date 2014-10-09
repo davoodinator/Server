@@ -26,12 +26,6 @@
 #include "dbcore.h"
 #include "linked_list.h"
 #include "eq_packet_structs.h"
-/*#include "EQStream.h"
-#include "guilds.h"
-#include "MiscFunctions.h"
-#include "Mutex.h"
-#include "Item.h"
-#include "extprofile.h"*/
 #include <string>
 #include <vector>
 #include <map>
@@ -105,10 +99,16 @@ public:
 	Database(const char* host, const char* user, const char* passwd, const char* database,uint32 port);
 	bool Connect(const char* host, const char* user, const char* passwd, const char* database,uint32 port);
 	~Database();
+	bool	ThrowDBError(std::string ErrorMessage, std::string query_title, std::string query);
+
 
 	/*
 	* General Character Related Stuff
 	*/
+
+	/* Character Creation */
+	bool	SaveCharacterCreate(uint32 character_id, uint32 account_id, PlayerProfile_Struct* pp);
+
 	bool	MoveCharacterToZone(const char* charname, const char* zonename);
 	bool	MoveCharacterToZone(const char* charname, const char* zonename,uint32 zoneid);
 	bool	MoveCharacterToZone(uint32 iCharID, const char* iZonename);
@@ -118,9 +118,8 @@ public:
 	bool	AddToNameFilter(const char* name);
 	bool	ReserveName(uint32 account_id, char* name);
 	bool	CreateCharacter(uint32 account_id, char* name, uint16 gender, uint16 race, uint16 class_, uint8 str, uint8 sta, uint8 cha, uint8 dex, uint8 int_, uint8 agi, uint8 wis, uint8 face);
-	bool	StoreCharacter(uint32 account_id, PlayerProfile_Struct* pp, Inventory* inv, ExtendedProfile_Struct *ext);
+	bool	StoreCharacter(uint32 account_id, PlayerProfile_Struct* pp, Inventory* inv);
 	bool	DeleteCharacter(char* name);
-	uint8	CopyCharacter(const char* oldname, const char* newname, uint32 acctid);
 
 	/*
 	* General Information Getting Queries
@@ -130,7 +129,7 @@ public:
 	uint32	GetAccountIDByChar(const char* charname, uint32* oCharID = 0);
 	uint32	GetAccountIDByChar(uint32 char_id);
 	uint32	GetAccountIDByName(const char* accname, int16* status = 0, uint32* lsid = 0);
-	uint32	GetGuildDBIDByCharID(uint32 char_id);
+	uint32	GetGuildIDByCharID(uint32 char_id);
 	void	GetAccountName(uint32 accountid, char* name, uint32* oLSAccountID = 0);
 	void	GetCharName(uint32 char_id, char* name);
 	uint32	GetCharacterInfo(const char* iName, uint32* oAccID = 0, uint32* oZoneID = 0, uint32* oInstanceID = 0,float* oX = 0, float* oY = 0, float* oZ = 0);
@@ -207,6 +206,7 @@ public:
 	char*	GetGroupLeadershipInfo(uint32 gid, char* leaderbuf, char* maintank = nullptr, char* assist = nullptr, char* puller = nullptr, char *marknpc = nullptr,
 						GroupLeadershipAA_Struct* GLAA = nullptr);
 	void	ClearGroupLeader(uint32 gid = 0);
+	
 
 	/*
 	* Raids
@@ -216,6 +216,8 @@ public:
 	uint32	GetRaidID(const char* name);
 	const char *GetRaidLeaderName(uint32 rid);
 
+	bool CheckDatabaseConversions();
+
 	/*
 	* Database Variables
 	*/
@@ -223,7 +225,7 @@ public:
 	bool	SetVariable(const char* varname, const char* varvalue);
 	bool	LoadVariables();
 	uint32	LoadVariables_MQ(char** query);
-	bool	LoadVariables_result(MYSQL_RES* result);
+	bool	LoadVariables_result(MySQLRequestResult results);
 
 	/*
 	* General Queries
@@ -249,10 +251,6 @@ public:
 	void	SetLoginFlags(uint32 CharID, bool LFP, bool LFG, uint8 firstlogon);
 	void	AddReport(std::string who, std::string against, std::string lines);
 
-
-protected:
-	void	HandleMysqlError(uint32 errnum);
-
 private:
 	void DBInitVars();
 
@@ -262,7 +260,20 @@ private:
 	uint32				varcache_max;
 	VarCache_Struct**	varcache_array;
 	uint32				varcache_lastupdate;
+
+
+	/*
+	* Groups, utility methods.
+	*/
+	void    ClearAllGroupLeaders();
+	void    ClearAllGroups();
+
+
+	/*
+	* Raid, utility methods.
+	*/
+	void ClearAllRaids();
+	void ClearAllRaidDetails();
 };
 
-bool	FetchRowMap(MYSQL_RES *result, std::map<std::string,std::string> &rowmap);
 #endif

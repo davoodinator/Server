@@ -1,7 +1,7 @@
 #ifndef SoF_H_
 #define SoF_H_
 
-#include "../StructStrategy.h"
+#include "../struct_strategy.h"
 
 class EQStreamIdentifier;
 
@@ -26,8 +26,8 @@ namespace SoF {
 		virtual const EQClientVersion ClientVersion() const;
 
 		//magic macro to declare our opcode processors
-		#include "SSDeclare.h"
-		#include "SoF_ops.h"
+		#include "ss_declare.h"
+		#include "sof_ops.h"
 	};
 
 };

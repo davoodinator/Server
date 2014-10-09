@@ -872,7 +872,7 @@ XS(XS_Mob_Attack)
 			Perl_croak(aTHX_ "other is nullptr, avoiding crash.");
 
 		if (items < 3)
-			Hand = MainPrimary;
+			Hand = 13;
 		else {
 			Hand = (int)SvIV(ST(2));
 		}
@@ -7140,7 +7140,7 @@ XS(XS_Mob_SendIllusion)
 		uint32		drakkin_heritage = 0xFFFFFFFF;
 		uint32		drakkin_tattoo = 0xFFFFFFFF;
 		uint32		drakkin_details = 0xFFFFFFFF;
-		float		size = 0xFFFFFFFF;
+		float		size = -1.0f;
 
 		if (sv_derived_from(ST(0), "Mob")) {
 			IV tmp = SvIV((SV*)SvRV(ST(0)));
@@ -7298,7 +7298,7 @@ XS(XS_Mob_GetItemStat)
 		Perl_croak(aTHX_ "Usage: Mob::GetItemStat(THIS, itemid, stat)");
 	{
 		Mob *		THIS;
-		uint32		RETVAL;
+		int32		RETVAL;
 		uint32		itemid = (uint32)SvUV(ST(1));
 		Const_char *	stat = (Const_char *)SvPV_nolen(ST(2));
 		dXSTARG;
@@ -7313,7 +7313,7 @@ XS(XS_Mob_GetItemStat)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 		RETVAL = THIS->GetItemStat(itemid, stat);
-		XSprePUSH; PUSHu((UV)RETVAL);
+		XSprePUSH; PUSHi((IV)RETVAL);
 	}
 	XSRETURN(1);
 }
@@ -8137,6 +8137,39 @@ XS(XS_Mob_GetFlurryChance)
 	XSRETURN(1);
 }
 
+XS(XS_Mob_GetSpellStat); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_GetSpellStat)
+{
+	dXSARGS;
+	if (items < 3 || items > 4)
+		Perl_croak(aTHX_ "Usage: Mob::GetSpellStat(THIS, itemid, stat, slot)");
+	{
+		Mob *		THIS;
+		int32		RETVAL;
+		uint32		spellid = (uint32)SvUV(ST(1));
+		Const_char *	stat = (Const_char *)SvPV_nolen(ST(2));
+		uint8		slot = (uint8)SvUV(ST(3));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		if (items > 4)	{	slot = 0;	}
+
+
+		RETVAL = THIS->GetSpellStat(spellid, stat, slot);
+		XSprePUSH; PUSHi((IV)RETVAL);
+	}
+	XSRETURN(1);
+}
+
+
 #ifdef __cplusplus
 extern "C"
 #endif
@@ -8436,6 +8469,7 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "IsMeleeDisabled"), XS_Mob_IsMeleeDisabled, file, "$$");
 		newXSproto(strcpy(buf, "SetFlurryChance"), XS_Mob_SetFlurryChance, file, "$$");
 		newXSproto(strcpy(buf, "GetFlurryChance"), XS_Mob_GetFlurryChance, file, "$");
+		newXSproto(strcpy(buf, "GetSpellStat"), XS_Mob_GetSpellStat, file, "$$$$");
 
 	XSRETURN_YES;
 }

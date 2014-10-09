@@ -39,11 +39,10 @@
 #include "petitions.h"
 #include "../common/spdat.h"
 #include "../common/features.h"
-#include "StringIDs.h"
-#include "../common/dbasync.h"
+#include "string_ids.h"
 #include "guild_mgr.h"
 #include "raids.h"
-#include "QuestParserCollection.h"
+#include "quest_parser_collection.h"
 
 #ifdef _WINDOWS
 	#define snprintf	_snprintf
@@ -57,7 +56,6 @@ extern WorldServer worldserver;
 extern NetConnection net;
 extern uint32 numclients;
 extern PetitionList petition_list;
-extern DBAsync *dbasync;
 
 extern char errorname[32];
 extern uint16 adverrornum;
@@ -65,12 +63,11 @@ extern uint16 adverrornum;
 Entity::Entity()
 {
 	id = 0;
-	pDBAsyncWorkID = 0;
 }
 
 Entity::~Entity()
 {
-	dbasync->CancelWork(pDBAsyncWorkID);
+	
 }
 
 Client *Entity::CastToClient()
@@ -493,23 +490,36 @@ void EntityList::MobProcess()
 #endif
 	auto it = mob_list.begin();
 	while (it != mob_list.end()) {
-		if (!it->second) {
+		uint16 id = it->first;
+		Mob *mob = it->second;
+		
+		size_t sz = mob_list.size();
+		bool p_val = mob->Process();
+		size_t a_sz = mob_list.size();
+		
+		if(a_sz > sz) {
+			//increased size can potentially screw with iterators so reset it to current value
+			//if buckets are re-orderered we may skip a process here and there but since 
+			//process happens so often it shouldn't matter much
+			it = mob_list.find(id);
 			++it;
-			continue;
+		} else {
+			++it;
 		}
-		if (!it->second->Process()) {
-			Mob *mob = it->second;
-			uint16 tempid = it->first;
-			++it; // we don't erase here because the destructor will
-			if (mob->IsNPC()) {
-				entity_list.RemoveNPC(mob->CastToNPC()->GetID());
-			} else if (mob->IsMerc()) {
-				entity_list.RemoveMerc(mob->CastToMerc()->GetID());
+
+		if(!p_val) {
+			if(mob->IsNPC()) {
+				entity_list.RemoveNPC(id);
+			}
+			else if(mob->IsMerc()) {
+				entity_list.RemoveMerc(id);
 #ifdef BOTS
-			} else if (mob->IsBot()) {
-				entity_list.RemoveBot(mob->CastToBot()->GetID());
+			}
+			else if(mob->IsBot()) {
+				entity_list.RemoveBot(id);
 #endif
-			} else {
+			}
+			else {
 #ifdef _WINDOWS
 				struct in_addr in;
 				in.s_addr = mob->CastToClient()->GetIP();
@@ -517,20 +527,19 @@ void EntityList::MobProcess()
 #endif
 				zone->StartShutdownTimer();
 				Group *g = GetGroupByMob(mob);
-				if (g) {
+				if(g) {
 					LogFile->write(EQEMuLog::Error, "About to delete a client still in a group.");
 					g->DelMember(mob);
 				}
 				Raid *r = entity_list.GetRaidByClient(mob->CastToClient());
-				if (r) {
+				if(r) {
 					LogFile->write(EQEMuLog::Error, "About to delete a client still in a raid.");
 					r->MemberZoned(mob->CastToClient());
 				}
-				entity_list.RemoveClient(mob->GetID());
+				entity_list.RemoveClient(id);
 			}
-			entity_list.RemoveMob(tempid);
-		} else {
-			++it;
+
+			entity_list.RemoveMob(id);
 		}
 	}
 }
@@ -622,6 +631,7 @@ void EntityList::AddCorpse(Corpse *corpse, uint32 in_id)
 void EntityList::AddNPC(NPC *npc, bool SendSpawnPacket, bool dontqueue)
 {
 	npc->SetID(GetFreeID());
+	npc->SetMerchantProbability((uint8) MakeRandomInt(0, 99));
 	parse->EventNPC(EVENT_SPAWN, npc, nullptr, "", 0);
 
 	uint16 emoteid = npc->GetEmoteID();
@@ -1475,7 +1485,7 @@ void EntityList::QueueClientsStatus(Mob *sender, const EQApplicationPacket *app,
 void EntityList::DuelMessage(Mob *winner, Mob *loser, bool flee)
 {
 	if (winner->GetLevelCon(winner->GetLevel(), loser->GetLevel()) > 2) {
-		std::vector<void*> args;
+		std::vector<EQEmu::Any> args;
 		args.push_back(winner);
 		args.push_back(loser);
 
@@ -1597,7 +1607,7 @@ Corpse *EntityList::GetCorpseByName(const char *name)
 
 Spawn2 *EntityList::GetSpawnByID(uint32 id)
 {
-	if (!zone)
+	if (!zone || !zone->IsLoaded())
 		return nullptr;
 
 	LinkedListIterator<Spawn2 *> iterator(zone->spawn2_list);
@@ -2846,7 +2856,7 @@ void EntityList::ClearFeignAggro(Mob *targ)
 			}
 
 			if (targ->IsClient()) {
-				std::vector<void*> args;
+				std::vector<EQEmu::Any> args;
 				args.push_back(it->second);
 				int i = parse->EventPlayer(EVENT_FEIGN_DEATH, targ->CastToClient(), "", 0, &args);
 				if (i != 0) {
@@ -3241,9 +3251,10 @@ void EntityList::ProcessMove(Client *c, float x, float y, float z)
 	for (auto iter = events.begin(); iter != events.end(); ++iter) {
 		quest_proximity_event& evt = (*iter);
 		if (evt.npc) {
-			parse->EventNPC(evt.event_id, evt.npc, evt.client, "", 0);
+			std::vector<EQEmu::Any> args;
+			parse->EventNPC(evt.event_id, evt.npc, evt.client, "", 0, &args);
 		} else {
-			std::vector<void*> args;
+			std::vector<EQEmu::Any> args;
 			args.push_back(&evt.area_id);
 			args.push_back(&evt.area_type);
 			parse->EventPlayer(evt.event_id, evt.client, "", 0, &args);
@@ -3297,7 +3308,7 @@ void EntityList::ProcessMove(NPC *n, float x, float y, float z)
 
 	for (auto iter = events.begin(); iter != events.end(); ++iter) {
 		quest_proximity_event& evt = (*iter);
-		std::vector<void*> args;
+		std::vector<EQEmu::Any> args;
 		args.push_back(&evt.area_id);
 		args.push_back(&evt.area_type);
 		parse->EventNPC(evt.event_id, evt.npc, evt.client, "", 0, &args);
@@ -4169,6 +4180,20 @@ void EntityList::SignalAllClients(uint32 data)
 	}
 }
 
+uint16 EntityList::GetClientCount(){
+	uint16 ClientCount = 0;
+	std::list<Client*> client_list;
+	entity_list.GetClientList(client_list);
+	std::list<Client*>::iterator iter = client_list.begin();
+	while (iter != client_list.end()) {
+		Client *entry = (*iter);
+		entry->GetCleanName();
+		ClientCount++;
+		iter++;
+	}
+	return ClientCount;
+}
+
 void EntityList::GetMobList(std::list<Mob *> &m_list)
 {
 	m_list.clear();
@@ -4538,7 +4563,7 @@ Mob *EntityList::GetClosestMobByBodyType(Mob *sender, bodyType BodyType)
 	return ClosestMob;
 }
 
-void EntityList::GetTargetsForConeArea(Mob *start, uint32 radius, uint32 height, std::list<Mob*> &m_list)
+void EntityList::GetTargetsForConeArea(Mob *start, float min_radius, float radius, float height, std::list<Mob*> &m_list)
 {
 	auto it = mob_list.begin();
 	while (it !=  mob_list.end()) {
@@ -4547,15 +4572,15 @@ void EntityList::GetTargetsForConeArea(Mob *start, uint32 radius, uint32 height,
 			++it;
 			continue;
 		}
-		int32 x_diff = ptr->GetX() - start->GetX();
-		int32 y_diff = ptr->GetY() - start->GetY();
-		int32 z_diff = ptr->GetZ() - start->GetZ();
+		float x_diff = ptr->GetX() - start->GetX();
+		float y_diff = ptr->GetY() - start->GetY();
+		float z_diff = ptr->GetZ() - start->GetZ();
 
 		x_diff *= x_diff;
 		y_diff *= y_diff;
 		z_diff *= z_diff;
 
-		if ((x_diff + y_diff) <= (radius * radius))
+		if ((x_diff + y_diff) <= (radius * radius) && (x_diff + y_diff) >= (min_radius * min_radius))
 			if(z_diff <= (height * height))
 				m_list.push_back(ptr);
 

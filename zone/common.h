@@ -17,6 +17,10 @@
 #define _NPCPET(x) (x && x->IsNPC() && x->CastToMob()->GetOwner() && x->CastToMob()->GetOwner()->IsNPC())
 #define _BECOMENPCPET(x) (x && x->CastToMob()->GetOwner() && x->CastToMob()->GetOwner()->IsClient() && x->CastToMob()->GetOwner()->CastToClient()->IsBecomeNPC())
 
+#define USE_ITEM_SPELL_SLOT 10
+#define POTION_BELT_SPELL_SLOT 11
+#define DISCIPLINE_SPELL_SLOT 10
+#define ABILITY_SPELL_SLOT 9
 
 //LOS Parameters:
 #define HEAD_POSITION 0.9f	//ratio of GetSize() where NPCs see from
@@ -127,7 +131,8 @@ enum {
 	FLEE_PERCENT = 37,
 	ALLOW_BENEFICIAL = 38,
 	DISABLE_MELEE = 39,
-	MAX_SPECIAL_ATTACK = 40
+	NPC_CHASE_DISTANCE = 40,
+	MAX_SPECIAL_ATTACK = 41
 	
 };
 
@@ -289,6 +294,7 @@ struct StatBonuses {
 	int16	ResistFearChance;					//i
 	bool	Fearless;							//i
 	bool	IsFeared;							//i
+	bool	IsBlind;							//i
 	int16	StunResist;							//i
 	int16	MeleeSkillCheck;					//i
 	uint8	MeleeSkillCheckSkill;
@@ -368,10 +374,10 @@ struct StatBonuses {
 	bool	NegateIfCombat;						// Bool Drop buff if cast or melee
 	int8	Screech;							// -1 = Will be blocked if another Screech is +(1)
 	int16	AlterNPCLevel;						// amount of lvls +/-
-	int16	AStacker[1];						// For buff stack blocking 0=Exists 1=Effect_value 
-	int16	BStacker[1];						// For buff stack blocking 0=Exists 1=Effect_value
-	int16	CStacker[1];						// For buff stack blocking 0=Exists 1=Effect_value
-	int16	DStacker[1];						// For buff stack blocking 0=Exists 1=Effect_value
+	int16	AStacker[2];						// For buff stack blocking 0=Exists 1=Effect_value
+	int16	BStacker[2];						// For buff stack blocking 0=Exists 1=Effect_value
+	int16	CStacker[2];						// For buff stack blocking 0=Exists 1=Effect_value
+	int16	DStacker[2];						// For buff stack blocking 0=Exists 1=Effect_value
 	bool	BerserkSPA;							// berserk effect
 	int16	Metabolism;							// Food/drink consumption rates.
 	bool	Sanctuary;							// Sanctuary effect, lowers place on hate list until cast on others.
@@ -526,7 +532,7 @@ public:
 	Mob* With();
 
 	// Add item from cursor slot to trade bucket (automatically does bag data too)
-	void AddEntity(uint16 from_slot_id, uint16 trade_slot_id);
+	void AddEntity(uint16 trade_slot_id, uint32 stack_size);
 
 	// Audit trade
 	void LogTrade();

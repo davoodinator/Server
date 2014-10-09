@@ -83,6 +83,7 @@
 #define ServerOP_QGlobalUpdate		0x0063
 #define ServerOP_QGlobalDelete		0x0064
 #define ServerOP_DepopPlayerCorpse	0x0065
+#define ServerOP_RequestTellQueue	0x0066 // client asks for it's tell queues
 
 #define ServerOP_RaidAdd			0x0100 //in use
 #define ServerOP_RaidRemove			0x0101 //in use
@@ -179,14 +180,18 @@
 #define ServerOP_CZMessagePlayer 0x4008
 #define ServerOP_ReloadWorld 0x4009
 
-#define ServerOP_QSPlayerLogTrades			0x4010
-#define ServerOP_QSPlayerLogHandins			0x4011
-#define ServerOP_QSPlayerLogNPCKills		0x4012
-#define ServerOP_QSPlayerLogDeletes			0x4013
-#define ServerOP_QSPlayerLogMoves			0x4014
-#define ServerOP_QSMerchantLogTransactions	0x4015
+#define ServerOP_QSPlayerLogTrades					0x4010
+#define ServerOP_QSPlayerLogHandins					0x4011
+#define ServerOP_QSPlayerLogNPCKills				0x4012
+#define ServerOP_QSPlayerLogDeletes					0x4013
+#define ServerOP_QSPlayerLogMoves					0x4014
+#define ServerOP_QSPlayerLogMerchantTransactions	0x4015
+#define ServerOP_QSSendQuery						0x4016
+#define ServerOP_CZSignalNPC						0x4017
+#define ServerOP_CZSetEntityVariableByNPCTypeID		0x4018
 
-enum { QSG_LFGuild = 0 };
+/* Query Serv Generic Packet Flag/Type Enumeration */
+enum { QSG_LFGuild = 0 }; 
 enum {	QSG_LFGuild_PlayerMatches = 0, QSG_LFGuild_UpdatePlayerInfo, QSG_LFGuild_RequestPlayerInfo, QSG_LFGuild_UpdateGuildInfo, QSG_LFGuild_GuildMatches,
 	QSG_LFGuild_RequestGuildInfo };
 
@@ -344,6 +349,7 @@ struct ServerChannelMessage_Struct {
 	uint16 chan_num;
 	uint32 guilddbid;
 	uint16 language;
+	uint8 queued; // 0 = not queued, 1 = queued, 2 = queue full, 3 = offline
 	char message[0];
 };
 
@@ -1090,6 +1096,11 @@ struct CZClientSignal_Struct {
 	uint32 data;
 };
 
+struct CZNPCSignal_Struct {
+	uint32 npctype_id;
+	uint32 data;
+};
+
 struct CZClientSignalByName_Struct {
 	char Name[64];
 	uint32 data;
@@ -1116,6 +1127,7 @@ struct QSPlayerLogTrade_Struct {
 	uint32				char2_id;
 	MoneyUpdate_Struct	char2_money;
 	uint16				char2_count;
+	uint16				_detail_count;
 	QSTradeItems_Struct items[0];
 };
 
@@ -1139,6 +1151,7 @@ struct QSPlayerLogHandin_Struct {
 	uint32				npc_id;
 	MoneyUpdate_Struct	npc_money;
 	uint16				npc_count;
+	uint16				_detail_count;
 	QSHandinItems_Struct items[0];
 };
 
@@ -1219,14 +1232,28 @@ struct QSMerchantLogTransaction_Struct {
 	QSTransactionItems_Struct items[0];
 };
 
+struct QSGeneralQuery_Struct {
+	char QueryString[0];
+};
+
 struct CZMessagePlayer_Struct {
 	uint32	Type;
 	char	CharName[64];
 	char	Message[512];
 };
 
+struct CZSetEntVarByNPCTypeID_Struct {
+	uint32 npctype_id;
+	char id[256];
+	char m_var[256];
+};
+
 struct ReloadWorld_Struct{
 	uint32 Option;
+};
+
+struct ServerRequestTellQueue_Struct {
+	char	name[64];
 };
 
 #pragma pack()

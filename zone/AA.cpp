@@ -18,8 +18,10 @@ Copyright (C) 2001-2004 EQEMu Development Team (http://eqemulator.net)
 
 // Test 1
 
+#include <iostream>
+
 #include "../common/debug.h"
-#include "AA.h"
+#include "aa.h"
 #include "mob.h"
 #include "client.h"
 #include "groups.h"
@@ -34,10 +36,13 @@ Copyright (C) 2001-2004 EQEMu Development Team (http://eqemulator.net)
 #include "../common/classes.h"
 #include "../common/eq_packet_structs.h"
 #include "../common/packet_dump.h"
-#include "../common/StringUtil.h"
+#include "../common/string_util.h"
 #include "../common/logsys.h"
 #include "zonedb.h"
-#include "StringIDs.h"
+#include "string_ids.h"
+#include "queryserv.h"
+
+extern QueryServ* QServ;
 
 //static data arrays, really not big enough to warrant shared mem.
 AA_DBAction AA_Actions[aaHighestID][MAX_AA_ACTION_RANKS];	//[aaid][rank]
@@ -297,7 +302,7 @@ void Client::ActivateAA(aaID activate){
 					return;
 				}
 			} else {
-				if(!CastSpell(caa->spell_id, target_id, 10, -1, -1, 0, -1, AATimerID + pTimerAAStart, timer_base, 1)) {
+				if (!CastSpell(caa->spell_id, target_id, USE_ITEM_SPELL_SLOT, -1, -1, 0, -1, AATimerID + pTimerAAStart, timer_base, 1)) {
 					//Reset on failed cast
 					SendAATimer(AATimerID, 0, 0xFFFFFF);
 					Message_StringID(15,ABILITY_FAILED);
@@ -313,13 +318,14 @@ void Client::ActivateAA(aaID activate){
 		}
 	}
 	// Check if AA is expendable
-	if (aas_send[activate - activate_val]->special_category == 7)
-	{
+	if (aas_send[activate - activate_val]->special_category == 7) {
+		
 		// Add the AA cost to the extended profile to track overall total
 		m_epp.expended_aa += aas_send[activate]->cost;
+		
 		SetAA(activate, 0);
 
-		Save();
+		SaveAA(); /* Save Character AA */
 		SendAA(activate);
 		SendAATable();
 	}
@@ -458,7 +464,7 @@ void Client::HandleAAAction(aaID activate) {
 			Escape();
 			break;
 
-		// Don't think this code is used any longer for Bestial Alignment as the AA has a spell_id and no nonspell_action.
+		// Don't think this code is used any longer for Bestial Alignment as the aa.has a spell_id and no nonspell_action.
 		case aaActionBeastialAlignment:
 			switch(GetBaseRace()) {
 				case BARBARIAN:
@@ -522,7 +528,7 @@ void Client::HandleAAAction(aaID activate) {
 	//cast the spell, if we have one
 	if(IsValidSpell(spell_id)) {
 		int aatid = GetAATimerID(activate);
-		if(!CastSpell(spell_id, target_id , 10, -1, -1, 0, -1, pTimerAAStart + aatid , CalcAAReuseTimer(caa), 1)) {
+		if (!CastSpell(spell_id, target_id, USE_ITEM_SPELL_SLOT, -1, -1, 0, -1, pTimerAAStart + aatid, CalcAAReuseTimer(caa), 1)) {
 			SendAATimer(aatid, 0, 0xFFFFFF);
 			Message_StringID(15,ABILITY_FAILED);
 			p_timers.Clear(&database, pTimerAAStart + aatid);
@@ -912,7 +918,7 @@ void Mob::WakeTheDead(uint16 spell_id, Mob *target, uint32 duration)
 
 	//gear stuff, need to make sure there's
 	//no situation where this stuff can be duped
-	for(int x = 0; x < 21; x++)
+	for(int x = EmuConstants::EQUIPMENT_BEGIN; x <= EmuConstants::EQUIPMENT_END; x++) // (< 21) added MainAmmo
 	{
 		uint32 sitem = 0;
 		sitem = CorpseToUse->GetWornItem(x);
@@ -1032,23 +1038,26 @@ void Client::BuyAA(AA_Action* action)
 	uint32 real_cost;
 	std::map<uint32, AALevelCost_Struct>::iterator RequiredLevel = AARequiredLevelAndCost.find(action->ability);
 
-	if(RequiredLevel != AARequiredLevelAndCost.end())
-	{
+	if(RequiredLevel != AARequiredLevelAndCost.end()) {
 		real_cost = RequiredLevel->second.Cost;
 	}
 	else
 		real_cost = aa2->cost + (aa2->cost_inc * cur_level);
 
-	if(m_pp.aapoints >= real_cost && cur_level < aa2->max_level) {
-		SetAA(aa2->id, cur_level+1);
+	if (m_pp.aapoints >= real_cost && cur_level < aa2->max_level) {
+		SetAA(aa2->id, cur_level + 1);
 
-		mlog(AA__MESSAGE, "Set AA %d to level %d", aa2->id, cur_level+1);
+		mlog(AA__MESSAGE, "Set AA %d to level %d", aa2->id, cur_level + 1);
 
 		m_pp.aapoints -= real_cost;
 
-		Save();
+		/* Do Player Profile rank calculations and set player profile */
+		SaveAA();
+		/* Save to Database to avoid having to write the whole AA array to the profile, only write changes*/
+		// database.SaveCharacterAA(this->CharacterID(), aa2->id, (cur_level + 1)); 
+
 		if ((RuleB(AA, Stacking) && (GetClientVersionBit() >= 4) && (aa2->hotkey_sid == 4294967295u))
-			&& ((aa2->max_level == (cur_level+1)) && aa2->sof_next_id)){
+			&& ((aa2->max_level == (cur_level + 1)) && aa2->sof_next_id)){
 			SendAA(aa2->id);
 			SendAA(aa2->sof_next_id);
 		}
@@ -1057,13 +1066,31 @@ void Client::BuyAA(AA_Action* action)
 
 		SendAATable();
 
-		//we are building these messages ourself instead of using the stringID to work around patch discrepencies
-		//these are AA_GAIN_ABILITY	(410) & AA_IMPROVE (411), respectively, in both Titanium & SoF. not sure about 6.2
-		if(cur_level<1)
-			Message(15,"You have gained the ability \"%s\" at a cost of %d ability %s.", aa2->name, real_cost, (real_cost>1)?"points":"point");
-		else
-			Message(15,"You have improved %s %d at a cost of %d ability %s.", aa2->name, cur_level+1, real_cost, (real_cost>1)?"points":"point");
+		/*
+			We are building these messages ourself instead of using the stringID to work around patch discrepencies
+				these are AA_GAIN_ABILITY	(410) & AA_IMPROVE (411), respectively, in both Titanium & SoF. not sure about 6.2
+		*/
 
+		/* Initial purchase of an AA ability */
+		if (cur_level < 1){
+			Message(15, "You have gained the ability \"%s\" at a cost of %d ability %s.", aa2->name, real_cost, (real_cost>1) ? "points" : "point");
+
+			/* QS: Player_Log_AA_Purchases */ 
+			if (RuleB(QueryServ, PlayerLogAAPurchases)){
+				std::string event_desc = StringFormat("Initial AA Purchase :: aa_name:%s aa_id:%i at cost:%i in zoneid:%i instid:%i", aa2->name, aa2->id, real_cost, this->GetZoneID(), this->GetInstanceID());
+				QServ->PlayerLogEvent(Player_Log_AA_Purchases, this->CharacterID(), event_desc);
+			}
+		}
+		/* Ranked purchase of an AA ability */
+		else{
+			Message(15, "You have improved %s %d at a cost of %d ability %s.", aa2->name, cur_level + 1, real_cost, (real_cost > 1) ? "points" : "point");
+
+			/* QS: Player_Log_AA_Purchases */
+			if (RuleB(QueryServ, PlayerLogAAPurchases)){
+				std::string event_desc = StringFormat("Ranked AA Purchase :: aa_name:%s aa_id:%i at cost:%i in zoneid:%i instid:%i", aa2->name, aa2->id, real_cost, this->GetZoneID(), this->GetInstanceID());
+				QServ->PlayerLogEvent(Player_Log_AA_Purchases, this->CharacterID(), event_desc);
+			}
+		}
 
 		SendAAStats();
 
@@ -1237,7 +1264,7 @@ void Client::SendAA(uint32 id, int seq) {
 	Note: There were many ways to achieve this effect - The method used proved to be the most straight forward and consistent.
 	Stacking does not currently work ideally for AA's that use hotkeys, therefore they will be excluded at this time.
 
-	TODO: Problem with AA hotkeys - When you reach max rank of an AA tier (ie 5/5), it automatically displays the next AA in
+	TODO: Problem with aa.hotkeys - When you reach max rank of an AA tier (ie 5/5), it automatically displays the next AA in
 	the series and you can not transfer the hotkey to the next AA series. To the best of the my ability and through many
 	different variations of coding I could not find an ideal solution to this issue.
 
@@ -1318,6 +1345,8 @@ void Client::SendAA(uint32 id, int seq) {
 			//Prevent removal of previous AA from window if next AA belongs to a higher client version.
 			SendAA_Struct* saa_next = nullptr;
 			saa_next = zone->FindAA(saa->sof_next_id);
+
+			// hard-coding values like this is dangerous and makes adding/updating clients a nightmare...
 			if (saa_next &&
 				(((GetClientVersionBit() == 4) && (saa_next->clientver > 4))
 				|| ((GetClientVersionBit() == 8) && (saa_next->clientver > 5))
@@ -1464,40 +1493,42 @@ void Zone::LoadAAs() {
 bool ZoneDatabase::LoadAAEffects2() {
 	aa_effects.clear();	//start fresh
 
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT aaid, slot, effectid, base1, base2 FROM aa_effects ORDER BY aaid ASC, slot ASC"), errbuf, &result)) {
-		int count = 0;
-		while((row = mysql_fetch_row(result))!= nullptr) {
-			int aaid = atoi(row[0]);
-			int slot = atoi(row[1]);
-			int effectid = atoi(row[2]);
-			int base1 = atoi(row[3]);
-			int base2 = atoi(row[4]);
-			aa_effects[aaid][slot].skill_id = effectid;
-			aa_effects[aaid][slot].base1 = base1;
-			aa_effects[aaid][slot].base2 = base2;
-			aa_effects[aaid][slot].slot = slot;	//not really needed, but we'll populate it just in case
-			count++;
-		}
-		mysql_free_result(result);
-		if (count < 1)	//no results
-			LogFile->write(EQEMuLog::Error, "Error loading AA Effects, none found in the database.");
-	} else {
-		LogFile->write(EQEMuLog::Error, "Error in ZoneDatabase::LoadAAEffects2 query: '%s': %s", query, errbuf);
+	const std::string query = "SELECT aaid, slot, effectid, base1, base2 FROM aa_effects ORDER BY aaid ASC, slot ASC";
+	auto results = QueryDatabase(query);
+	if (!results.Success()) {
+        LogFile->write(EQEMuLog::Error, "Error in ZoneDatabase::LoadAAEffects2 query: '%s': %s", query.c_str(), results.ErrorMessage().c_str());
 		return false;
 	}
-	safe_delete_array(query);
+
+	if (!results.RowCount()) { //no results
+        LogFile->write(EQEMuLog::Error, "Error loading AA Effects, none found in the database.");
+        return false;
+	}
+
+    for(auto row = results.begin(); row != results.end(); ++row) {
+        int aaid = atoi(row[0]);
+        int slot = atoi(row[1]);
+        int effectid = atoi(row[2]);
+        int base1 = atoi(row[3]);
+        int base2 = atoi(row[4]);
+        aa_effects[aaid][slot].skill_id = effectid;
+        aa_effects[aaid][slot].base1 = base1;
+        aa_effects[aaid][slot].base2 = base2;
+        aa_effects[aaid][slot].slot = slot;	//not really needed, but we'll populate it just in case
+    }
+
 	return true;
 }
 void Client::ResetAA(){
+	RefundAA(); 
 	uint32 i;
 	for(i=0;i<MAX_PP_AA_ARRAY;i++){
 		aa[i]->AA = 0;
 		aa[i]->value = 0;
+		m_pp.aa_array[MAX_PP_AA_ARRAY].AA = 0;
+		m_pp.aa_array[MAX_PP_AA_ARRAY].value = 0; 
 	}
+
 	std::map<uint32,uint8>::iterator itr;
 	for(itr=aa_points.begin();itr!=aa_points.end();++itr)
 		aa_points[itr->first] = 0;
@@ -1509,6 +1540,12 @@ void Client::ResetAA(){
 	m_pp.raid_leadership_points = 0;
 	m_pp.group_leadership_exp = 0;
 	m_pp.raid_leadership_exp = 0;
+
+	database.DeleteCharacterAAs(this->CharacterID());
+	SaveAA(); 
+	SendAATable();
+	database.DeleteCharacterLeadershipAAs(this->CharacterID());
+	Kick();
 }
 
 int Client::GroupLeadershipAAHealthEnhancement()
@@ -1631,73 +1668,62 @@ void Client::InspectBuffs(Client* Inspector, int Rank)
 
 //this really need to be renamed to LoadAAActions()
 bool ZoneDatabase::LoadAAEffects() {
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-
 	memset(AA_Actions, 0, sizeof(AA_Actions));	//I hope the compiler is smart about this size...
 
-	const char *query = "SELECT aaid,rank,reuse_time,spell_id,target,nonspell_action,nonspell_mana,nonspell_duration,"
-					"redux_aa,redux_rate,redux_aa2,redux_rate2 FROM aa_actions";
-
-	if(RunQuery(query, static_cast<uint32>(strlen(query)), errbuf, &result)) {
-		//safe_delete_array(query);
-		int r;
-		while ((row = mysql_fetch_row(result))) {
-			r = 0;
-			int aaid = atoi(row[r++]);
-			int rank = atoi(row[r++]);
-			if(aaid < 0 || aaid >= aaHighestID || rank < 0 || rank >= MAX_AA_ACTION_RANKS)
-				continue;
-			AA_DBAction *caction = &AA_Actions[aaid][rank];
-
-			caction->reuse_time = atoi(row[r++]);
-			caction->spell_id = atoi(row[r++]);
-			caction->target = (aaTargetType) atoi(row[r++]);
-			caction->action = (aaNonspellAction) atoi(row[r++]);
-			caction->mana_cost = atoi(row[r++]);
-			caction->duration = atoi(row[r++]);
-			caction->redux_aa = (aaID) atoi(row[r++]);
-			caction->redux_rate = atoi(row[r++]);
-			caction->redux_aa2 = (aaID) atoi(row[r++]);
-			caction->redux_rate2 = atoi(row[r++]);
-
-		}
-		mysql_free_result(result);
-	}
-	else {
-		LogFile->write(EQEMuLog::Error, "Error in LoadAAEffects query '%s': %s", query, errbuf);;
-		//safe_delete_array(query);
+	const std::string query = "SELECT aaid, rank, reuse_time, spell_id, target, "
+                            "nonspell_action, nonspell_mana, nonspell_duration, "
+                            "redux_aa, redux_rate, redux_aa2, redux_rate2 FROM aa_actions";
+    auto results = QueryDatabase(query);
+    if (!results.Success()) {
+        LogFile->write(EQEMuLog::Error, "Error in LoadAAEffects query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
 		return false;
-	}
+    }
+
+    for (auto row = results.begin(); row != results.end(); ++row) {
+
+        int aaid = atoi(row[0]);
+        int rank = atoi(row[1]);
+        if(aaid < 0 || aaid >= aaHighestID || rank < 0 || rank >= MAX_AA_ACTION_RANKS)
+            continue;
+        AA_DBAction *caction = &AA_Actions[aaid][rank];
+
+        caction->reuse_time = atoi(row[2]);
+        caction->spell_id = atoi(row[3]);
+        caction->target = (aaTargetType) atoi(row[4]);
+        caction->action = (aaNonspellAction) atoi(row[5]);
+        caction->mana_cost = atoi(row[6]);
+        caction->duration = atoi(row[7]);
+        caction->redux_aa = (aaID) atoi(row[8]);
+        caction->redux_rate = atoi(row[9]);
+        caction->redux_aa2 = (aaID) atoi(row[10]);
+        caction->redux_rate2 = atoi(row[11]);
+
+    }
 
 	return true;
 }
 
-//Returns the number effects an AA has when we send them to the client
+//Returns the number effects an aa.has when we send them to the client
 //For the purposes of sizing a packet because every skill does not
 //have the same number effects, they can range from none to a few depending on AA.
 //counts the # of effects by counting the different slots of an AAID in the DB.
 
 //AndMetal: this may now be obsolete since we have Zone::GetTotalAALevels()
 uint8 ZoneDatabase::GetTotalAALevels(uint32 skill_id) {
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	int total=0;
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT count(slot) from aa_effects where aaid=%i", skill_id), errbuf, &result)) {
-		safe_delete_array(query);
-		if (mysql_num_rows(result) == 1) {
-			row = mysql_fetch_row(result);
-			total=atoi(row[0]);
-		}
-		mysql_free_result(result);
-	} else {
-		LogFile->write(EQEMuLog::Error, "Error in GetTotalAALevels '%s: %s", query, errbuf);
-		safe_delete_array(query);
-	}
-	return total;
+
+	std::string query = StringFormat("SELECT count(slot) FROM aa_effects WHERE aaid = %i", skill_id);
+    auto results = QueryDatabase(query);
+    if (!results.Success()) {
+        LogFile->write(EQEMuLog::Error, "Error in GetTotalAALevels '%s: %s", query.c_str(), results.ErrorMessage().c_str());
+        return 0;
+    }
+
+    if (results.RowCount() != 1)
+        return 0;
+
+    auto row = results.begin();
+
+	return atoi(row[0]);
 }
 
 //this will allow us to count the number of effects for an AA by pulling the info from memory instead of the database. hopefully this will same some CPU cycles
@@ -1725,59 +1751,50 @@ void ZoneDatabase::FillAAEffects(SendAA_Struct* aa_struct){
 	if(!aa_struct)
 		return;
 
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT effectid, base1, base2, slot from aa_effects where aaid=%i order by slot asc", aa_struct->id), errbuf, &result)) {
-		int ndx=0;
-		while((row = mysql_fetch_row(result))!=nullptr) {
-			aa_struct->abilities[ndx].skill_id=atoi(row[0]);
-			aa_struct->abilities[ndx].base1=atoi(row[1]);
-			aa_struct->abilities[ndx].base2=atoi(row[2]);
-			aa_struct->abilities[ndx].slot=atoi(row[3]);
-			ndx++;
+	auto it = aa_effects.find(aa_struct->id);
+	if (it != aa_effects.end()) {
+		for (int slot = 0; slot < aa_struct->total_abilities; slot++) {
+			// aa_effects is a map of a map, so the slot reference does not start at 0
+			aa_struct->abilities[slot].skill_id = it->second[slot + 1].skill_id;
+			aa_struct->abilities[slot].base1 = it->second[slot + 1].base1;
+			aa_struct->abilities[slot].base2 = it->second[slot + 1].base2;
+			aa_struct->abilities[slot].slot = it->second[slot + 1].slot;
 		}
-		mysql_free_result(result);
-	} else {
-		LogFile->write(EQEMuLog::Error, "Error in Client::FillAAEffects query: '%s': %s", query, errbuf);
 	}
-	safe_delete_array(query);
 }
 
 uint32 ZoneDatabase::CountAAs(){
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	int count=0;
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT count(title_sid) from altadv_vars"), errbuf, &result)) {
-		if((row = mysql_fetch_row(result))!=nullptr)
-			count = atoi(row[0]);
-		mysql_free_result(result);
-	} else {
-		LogFile->write(EQEMuLog::Error, "Error in ZoneDatabase::CountAAs query '%s': %s", query, errbuf);
+
+	const std::string query = "SELECT count(title_sid) FROM altadv_vars";
+	auto results = QueryDatabase(query);
+	if (!results.Success()) {
+        LogFile->write(EQEMuLog::Error, "Error in ZoneDatabase::CountAAs query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        return 0;
 	}
-	safe_delete_array(query);
-	return count;
+
+	if (results.RowCount() != 1)
+        return 0;
+
+    auto row = results.begin();
+
+	return atoi(row[0]);;
 }
 
-uint32 ZoneDatabase::CountAAEffects(){
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	int count=0;
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT count(id) from aa_effects"), errbuf, &result)) {
-		if((row = mysql_fetch_row(result))!=nullptr){
-			count = atoi(row[0]);
-		}
-		mysql_free_result(result);
-	} else {
-		LogFile->write(EQEMuLog::Error, "Error in ZoneDatabase::CountAALevels query '%s': %s", query, errbuf);
+uint32 ZoneDatabase::CountAAEffects() {
+
+	const std::string query = "SELECT count(id) FROM aa_effects";
+	auto results = QueryDatabase(query);
+	if (!results.Success()) {
+        LogFile->write(EQEMuLog::Error, "Error in ZoneDatabase::CountAALevels query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        return 0;
 	}
-	safe_delete_array(query);
-	return count;
+
+	if (results.RowCount() != 1)
+        return 0;
+
+    auto row = results.begin();
+
+	return atoi(row[0]);
 }
 
 uint32 ZoneDatabase::GetSizeAA(){
@@ -1790,164 +1807,127 @@ uint32 ZoneDatabase::GetSizeAA(){
 void ZoneDatabase::LoadAAs(SendAA_Struct **load){
 	if(!load)
 		return;
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT skill_id from altadv_vars order by skill_id"), errbuf, &result)) {
-		int skill=0,ndx=0;
-		while((row = mysql_fetch_row(result))!=nullptr) {
-			skill=atoi(row[0]);
-			load[ndx] = GetAASkillVars(skill);
-			load[ndx]->seq = ndx+1;
-			ndx++;
+
+	std::string query = "SELECT skill_id FROM altadv_vars ORDER BY skill_id";
+	auto results = QueryDatabase(query);
+	if (results.Success()) {
+		int skill = 0, index = 0;
+		for (auto row = results.begin(); row != results.end(); ++row, ++index) {
+			skill = atoi(row[0]);
+			load[index] = GetAASkillVars(skill);
+			load[index]->seq = index+1;
 		}
-		mysql_free_result(result);
 	} else {
-		LogFile->write(EQEMuLog::Error, "Error in ZoneDatabase::LoadAAs query '%s': %s", query, errbuf);
+		LogFile->write(EQEMuLog::Error, "Error in ZoneDatabase::LoadAAs query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
 	}
-	safe_delete_array(query);
 
 	AARequiredLevelAndCost.clear();
+    query = "SELECT skill_id, level, cost from aa_required_level_cost order by skill_id";
+    results = QueryDatabase(query);
+    if (!results.Success()) {
+        LogFile->write(EQEMuLog::Error, "Error in ZoneDatabase::LoadAAs query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        return;
+    }
 
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT skill_id, level, cost from aa_required_level_cost order by skill_id"), errbuf, &result))
-	{
-		AALevelCost_Struct aalcs;
-		while((row = mysql_fetch_row(result))!=nullptr)
-		{
-			aalcs.Level = atoi(row[1]);
-			aalcs.Cost = atoi(row[2]);
-			AARequiredLevelAndCost[atoi(row[0])] = aalcs;
-		}
-		mysql_free_result(result);
-	}
-	else
-		LogFile->write(EQEMuLog::Error, "Error in ZoneDatabase::LoadAAs query '%s': %s", query, errbuf);
+    AALevelCost_Struct aalcs;
+    for (auto row = results.begin(); row != results.end(); ++row) {
+        aalcs.Level = atoi(row[1]);
+        aalcs.Cost = atoi(row[2]);
+        AARequiredLevelAndCost[atoi(row[0])] = aalcs;
+    }
 
-	safe_delete_array(query);
 }
 
 SendAA_Struct* ZoneDatabase::GetAASkillVars(uint32 skill_id)
 {
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	SendAA_Struct* sendaa = nullptr;
-	uchar* buffer;
-	if (RunQuery(query, MakeAnyLenString(&query, "SET @row = 0"), errbuf)) {	//initialize "row" variable in database for next query
-		safe_delete_array(query);
-		MYSQL_RES *result;	//we don't really need these unless we get to this point, so why bother?
-		MYSQL_ROW row;
+	std::string query = "SET @row = 0"; //initialize "row" variable in database for next query
+    auto results = QueryDatabase(query);
+    if (!results.Success()) {
+        LogFile->write(EQEMuLog::Error, "Error in GetAASkillVars '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        return nullptr;
+    }
 
-		if (RunQuery(query, MakeAnyLenString(&query,
-			"SELECT "
-				"a.cost, "
-				"a.max_level, "
-				"a.hotkey_sid, "
-				"a.hotkey_sid2, "
-				"a.title_sid, "
-				"a.desc_sid, "
-				"a.type, "
-				"COALESCE("	//so we can return 0 if it's null
-					"("	//this is our derived table that has the row # that we can SELECT from, because the client is stupid
-					"SELECT "
-						"p.prereq_index_num "
-					"FROM "
-						"("
-						"SELECT "
-							"a2.skill_id, "
-							"@row := @row + 1 AS prereq_index_num "
-						"FROM "
-							"altadv_vars a2"
-						") AS p "
-					"WHERE "
-						"p.skill_id = a.prereq_skill"
-					"), "
-					"0) AS prereq_skill_index, "
-				"a.prereq_minpoints, "
-				"a.spell_type, "
-				"a.spell_refresh, "
-				"a.classes, "
-				"a.berserker, "
-				"a.spellid, "
-				"a.class_type, "
-				"a.name, "
-				"a.cost_inc, "
-				"a.aa_expansion, "
-				"a.special_category, "
-				"a.sof_type, "
-				"a.sof_cost_inc, "
-				"a.sof_max_level, "
-				"a.sof_next_skill, "
-				"a.clientver, "	// Client Version 0 = None, 1 = All, 2 = Titanium/6.2, 4 = SoF 5 = SOD 6 = UF
-				"a.account_time_required, "
-				"a.sof_current_level,"
-				"a.sof_next_id, "
-				"a.level_inc "
-			" FROM altadv_vars a WHERE skill_id=%i", skill_id), errbuf, &result)) {
-			safe_delete_array(query);
-			if (mysql_num_rows(result) == 1) {
-				int total_abilities = GetTotalAALevels(skill_id);	//eventually we'll want to use zone->GetTotalAALevels(skill_id) since it should save queries to the DB
-				int totalsize = total_abilities * sizeof(AA_Ability) + sizeof(SendAA_Struct);
+    query = StringFormat("SELECT a.cost, a.max_level, a.hotkey_sid, a.hotkey_sid2, a.title_sid, a.desc_sid, a.type, "
+                        "COALESCE("	//So we can return 0 if it's null.
+                        "("	// this is our derived table that has the row #
+                            // that we can SELECT from, because the client is stupid.
+                        "SELECT p.prereq_index_num "
+                        "FROM (SELECT a2.skill_id, @row := @row + 1 AS prereq_index_num "
+						"FROM altadv_vars a2) AS p "
+                        "WHERE p.skill_id = a.prereq_skill), 0) "
+                        "AS prereq_skill_index, a.prereq_minpoints, a.spell_type, a.spell_refresh, a.classes, "
+                        "a.berserker, a.spellid, a.class_type, a.name, a.cost_inc, a.aa_expansion, a.special_category, "
+                        "a.sof_type, a.sof_cost_inc, a.sof_max_level, a.sof_next_skill, "
+                        "a.clientver, "	// Client Version 0 = None, 1 = All, 2 = Titanium/6.2, 4 = SoF 5 = SOD 6 = UF
+                        "a.account_time_required, a.sof_current_level, a.sof_next_id, a.level_inc "
+                        "FROM altadv_vars a WHERE skill_id=%i", skill_id);
+    results = QueryDatabase(query);
+    if (!results.Success()) {
+        LogFile->write(EQEMuLog::Error, "Error in GetAASkillVars '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        return nullptr;
+    }
 
-				buffer = new uchar[totalsize];
-				memset(buffer,0,totalsize);
-				sendaa = (SendAA_Struct*)buffer;
+    if (results.RowCount() != 1)
+        return nullptr;
 
-				row = mysql_fetch_row(result);
+    int total_abilities = GetTotalAALevels(skill_id);	//eventually we'll want to use zone->GetTotalAALevels(skill_id) since it should save queries to the DB
+	int totalsize = total_abilities * sizeof(AA_Ability) + sizeof(SendAA_Struct);
 
-				//ATOI IS NOT UNISGNED LONG-SAFE!!!
+    SendAA_Struct* sendaa = nullptr;
+    uchar* buffer;
 
-				sendaa->cost = atoul(row[0]);
-				sendaa->cost2 = sendaa->cost;
-				sendaa->max_level = atoul(row[1]);
-				sendaa->hotkey_sid = atoul(row[2]);
-				sendaa->id = skill_id;
-				sendaa->hotkey_sid2 = atoul(row[3]);
-				sendaa->title_sid = atoul(row[4]);
-				sendaa->desc_sid = atoul(row[5]);
-				sendaa->type = atoul(row[6]);
-				sendaa->prereq_skill = atoul(row[7]);
-				sendaa->prereq_minpoints = atoul(row[8]);
-				sendaa->spell_type = atoul(row[9]);
-				sendaa->spell_refresh = atoul(row[10]);
-				sendaa->classes = static_cast<uint16>(atoul(row[11]));
-				sendaa->berserker = static_cast<uint16>(atoul(row[12]));
-				sendaa->last_id = 0xFFFFFFFF;
-				sendaa->current_level=1;
-				sendaa->spellid = atoul(row[13]);
-				sendaa->class_type = atoul(row[14]);
-				strcpy(sendaa->name,row[15]);
+	buffer = new uchar[totalsize];
+	memset(buffer,0,totalsize);
+	sendaa = (SendAA_Struct*)buffer;
 
-				sendaa->total_abilities=total_abilities;
-				if(sendaa->max_level > 1)
-					sendaa->next_id=skill_id+1;
-				else
-					sendaa->next_id=0xFFFFFFFF;
+	auto row = results.begin();
 
-				sendaa->cost_inc = atoi(row[16]);
-				// Begin SoF Specific/Adjusted AA Fields
-				sendaa->aa_expansion = atoul(row[17]);
-				sendaa->special_category = atoul(row[18]);
-				sendaa->sof_type = atoul(row[19]);
-				sendaa->sof_cost_inc = atoi(row[20]);
-				sendaa->sof_max_level = atoul(row[21]);
-				sendaa->sof_next_skill = atoul(row[22]);
-				sendaa->clientver = atoul(row[23]);
-				sendaa->account_time_required = atoul(row[24]);
-				//Internal use only - not sent to client
-				sendaa->sof_current_level = atoul(row[25]);
-				sendaa->sof_next_id = atoul(row[26]);
-				sendaa->level_inc = static_cast<uint8>(atoul(row[27]));
-			}
-			mysql_free_result(result);
-		} else {
-			LogFile->write(EQEMuLog::Error, "Error in GetAASkillVars '%s': %s", query, errbuf);
-			safe_delete_array(query);
-		}
-	} else {
-		LogFile->write(EQEMuLog::Error, "Error in GetAASkillVars '%s': %s", query, errbuf);
-		safe_delete_array(query);
-	}
+	//ATOI IS NOT UNSIGNED LONG-SAFE!!!
+
+	sendaa->cost = atoul(row[0]);
+    sendaa->cost2 = sendaa->cost;
+	sendaa->max_level = atoul(row[1]);
+	sendaa->hotkey_sid = atoul(row[2]);
+	sendaa->id = skill_id;
+	sendaa->hotkey_sid2 = atoul(row[3]);
+	sendaa->title_sid = atoul(row[4]);
+	sendaa->desc_sid = atoul(row[5]);
+	sendaa->type = atoul(row[6]);
+	sendaa->prereq_skill = atoul(row[7]);
+	sendaa->prereq_minpoints = atoul(row[8]);
+	sendaa->spell_type = atoul(row[9]);
+	sendaa->spell_refresh = atoul(row[10]);
+	sendaa->classes = static_cast<uint16>(atoul(row[11]));
+	sendaa->berserker = static_cast<uint16>(atoul(row[12]));
+	sendaa->last_id = 0xFFFFFFFF;
+	sendaa->current_level=1;
+	sendaa->spellid = atoul(row[13]);
+	sendaa->class_type = atoul(row[14]);
+	strcpy(sendaa->name,row[15]);
+
+	sendaa->total_abilities=total_abilities;
+	if(sendaa->max_level > 1)
+		sendaa->next_id=skill_id+1;
+	else
+		sendaa->next_id=0xFFFFFFFF;
+
+	sendaa->cost_inc = atoi(row[16]);
+
+	// Begin SoF Specific/Adjusted AA Fields
+	sendaa->aa_expansion = atoul(row[17]);
+	sendaa->special_category = atoul(row[18]);
+	sendaa->sof_type = atoul(row[19]);
+	sendaa->sof_cost_inc = atoi(row[20]);
+	sendaa->sof_max_level = atoul(row[21]);
+	sendaa->sof_next_skill = atoul(row[22]);
+	sendaa->clientver = atoul(row[23]);
+	sendaa->account_time_required = atoul(row[24]);
+
+	//Internal use only - not sent to client
+	sendaa->sof_current_level = atoul(row[25]);
+	sendaa->sof_next_id = atoul(row[26]);
+	sendaa->level_inc = static_cast<uint8>(atoul(row[27]));
+
 	return sendaa;
 }
 

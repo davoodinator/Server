@@ -18,7 +18,7 @@
 #ifndef ZONE_H
 #define ZONE_H
 
-#include "../common/Mutex.h"
+#include "../common/mutex.h"
 #include "../common/linked_list.h"
 #include "../common/types.h"
 #include "../common/eqtime.h"
@@ -32,7 +32,7 @@
 #include "spawn2.h"
 #include "tasks.h"
 #include "pathing.h"
-#include "QGlobals.h"
+#include "qglobals.h"
 #include <unordered_map>
 
 class Map;
@@ -166,7 +166,6 @@ public:
 	void		SetStaticZone(bool sz)	{ staticzone = sz; }
 	inline bool	IsStaticZone()			{ return staticzone; }
 	inline void	GotCurTime(bool time)	{ gottime = time; }
-	void DBAWComplete(uint8 workpt_b1, DBAsyncWork* dbaw);
 
 	void	SpawnConditionChanged(const SpawnCondition &c, int16 old_value);
 
@@ -174,8 +173,6 @@ public:
 	void	LoadNewMerchantData(uint32 merchantid);
 	void	LoadTempMerchantData();
 	uint32	GetTempMerchantQuantity(uint32 NPCID, uint32 Slot);
-	void	LoadTempMerchantData_result(MYSQL_RES* result);
-	void	LoadMerchantData_result(MYSQL_RES* result);
 	int		SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold=false);
 	void LoadMercTemplates();
 	void LoadMercSpells();

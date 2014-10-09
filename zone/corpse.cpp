@@ -35,12 +35,12 @@ Child of the Mob class.
 
 #include "masterentity.h"
 #include "../common/packet_functions.h"
-#include "../common/StringUtil.h"
+#include "../common/string_util.h"
 #include "../common/crc32.h"
-#include "StringIDs.h"
+#include "string_ids.h"
 #include "worldserver.h"
 #include "../common/rulesys.h"
-#include "QuestParserCollection.h"
+#include "quest_parser_collection.h"
 
 extern EntityList entity_list;
 extern Zone* zone;
@@ -97,6 +97,7 @@ Corpse* Corpse::LoadFromDBData(uint32 in_dbid, uint32 in_charid, char* in_charna
 		for (unsigned int i=0; i < dbpcs->itemcount; i++) {
 			tmp = new ServerLootItem_Struct;
 			memcpy(tmp, &dbpcs->items[i], sizeof(player_lootitem::ServerLootItem_Struct));
+			tmp->lootslot = CorpseToServerSlot(tmp->lootslot); // temp hack until corpse blobs are removed
 			itemlist.push_back(tmp);
 		}
 
@@ -147,6 +148,7 @@ Corpse* Corpse::LoadFromDBData(uint32 in_dbid, uint32 in_charid, char* in_charna
 		for (unsigned int i=0; i < dbpc->itemcount; i++) {
 			tmp = new ServerLootItem_Struct;
 			memcpy(tmp, &dbpc->items[i], sizeof(player_lootitem::ServerLootItem_Struct));
+			tmp->lootslot = CorpseToServerSlot(tmp->lootslot); // temp hack until corpse blobs are removed
 			itemlist.push_back(tmp);
 		}
 
@@ -364,9 +366,9 @@ Corpse::Corpse(Client* client, int32 in_rezexp)
 		// worn + inventory + cursor
 		std::list<uint32> removed_list;
 		bool cursor = false;
-		for(i = 0; i <= 30; i++)
+		for(i = MAIN_BEGIN; i < EmuConstants::MAP_POSSESSIONS_SIZE; i++)
 		{
-			if(i == 21 && client->GetClientVersion() >= EQClientSoF) {
+			if(i == MainAmmo && client->GetClientVersion() >= EQClientSoF) {
 				item = client->GetInv().GetItem(MainPowerSource);
 				if((item && (!client->IsBecomeNPC())) || (item && client->IsBecomeNPC() && !item->GetItem()->NoRent)) {
 					std::list<uint32> slot_list = MoveItemToCorpse(client, item, MainPowerSource);
@@ -449,9 +451,9 @@ std::list<uint32> Corpse::MoveItemToCorpse(Client *client, ItemInst *item, int16
 	returnlist.push_back(equipslot);
 
 	// Qualified bag slot iterations. processing bag slots that don't exist is probably not a good idea.
-	if(item->IsType(ItemClassContainer) && ((equipslot >= 22 && equipslot <=30))) // Limit the bag check to inventory and cursor slots.
+	if(item->IsType(ItemClassContainer) && ((equipslot >= EmuConstants::GENERAL_BEGIN && equipslot <= MainCursor))) // Limit the bag check to inventory and cursor slots.
 	{
-		for(bagindex = 0; bagindex <= 9; bagindex++)
+		for(bagindex = SUB_BEGIN; bagindex <= EmuConstants::ITEM_CONTAINER_SIZE; bagindex++)
 		{
 			// For empty bags in cursor queue, slot was previously being resolved as SLOT_INVALID (-1)
 			interior_slot = Inventory::CalcSlotId(equipslot, bagindex);
@@ -600,6 +602,7 @@ bool Corpse::Save() {
 	end = itemlist.end();
 	for(; cur != end; ++cur) {
 		ServerLootItem_Struct* item = *cur;
+		item->lootslot = ServerToCorpseSlot(item->lootslot); // temp hack until corpse blobs are removed
 		memcpy((char*) &dbpc->items[x++], (char*) item, sizeof(player_lootitem::ServerLootItem_Struct));
 	}
 
@@ -685,7 +688,7 @@ ServerLootItem_Struct* Corpse::GetItem(uint16 lootslot, ServerLootItem_Struct** 
 
 	if (sitem && bag_item_data && Inventory::SupportsContainers(sitem->equipSlot))
 	{
-		int16 bagstart = Inventory::CalcSlotId(sitem->equipSlot, 0);
+		int16 bagstart = Inventory::CalcSlotId(sitem->equipSlot, SUB_BEGIN);
 
 		cur = itemlist.begin();
 		end = itemlist.end();
@@ -750,7 +753,7 @@ void Corpse::RemoveItem(ServerLootItem_Struct* item_data)
 			itemlist.erase(cur);
 
 			material = Inventory::CalcMaterialFromSlot(sitem->equipSlot);
-			if(material != 0xFF)
+			if(material != _MaterialInvalid)
 				SendWearChange(material);
 
 			safe_delete(sitem);
@@ -971,8 +974,7 @@ void Corpse::MakeLootRequestPackets(Client* client, const EQApplicationPacket* a
 			}
 
 			RemoveCash();
-			Save();
-			client->Save();
+			Save(); 
 		}
 
 		outapp->priority = 6;
@@ -983,7 +985,7 @@ void Corpse::MakeLootRequestPackets(Client* client, const EQApplicationPacket* a
 			const Item_Struct* item = database.GetItem(pkitem);
 			ItemInst* inst = database.CreateItem(item, item->MaxCharges);
 			if(inst) {
-				client->SendItemPacket(22, inst, ItemPacketLoot);
+				client->SendItemPacket(EmuConstants::CORPSE_BEGIN, inst, ItemPacketLoot);
 				safe_delete(inst);
 			}
 			else { client->Message(13, "Could not find item number %i to send!!", GetPKItem()); }
@@ -1016,7 +1018,8 @@ void Corpse::MakeLootRequestPackets(Client* client, const EQApplicationPacket* a
 					if(client && item) {
 						ItemInst* inst = database.CreateItem(item, item_data->charges, item_data->aug1, item_data->aug2, item_data->aug3, item_data->aug4, item_data->aug5);
 						if(inst) {
-							client->SendItemPacket(i + 22, inst, ItemPacketLoot); // 22 is the corpse inventory start offset for Ti(EMu)
+							// MainGeneral1 is the corpse inventory start offset for Ti(EMu) - CORPSE_END = MainGeneral1 + MainCursor
+							client->SendItemPacket(i + EmuConstants::CORPSE_BEGIN, inst, ItemPacketLoot);
 							safe_delete(inst);
 						}
 
@@ -1110,9 +1113,9 @@ void Corpse::LootItem(Client* client, const EQApplicationPacket* app)
 	if(GetPKItem()>1)
 		item = database.GetItem(GetPKItem());
 	else if(GetPKItem()==-1 || GetPKItem()==1)
-		item_data = GetItem(lootitem->slot_id - 22); //dont allow them to loot entire bags of items as pvp reward
+		item_data = GetItem(lootitem->slot_id - EmuConstants::CORPSE_BEGIN); //dont allow them to loot entire bags of items as pvp reward
 	else
-		item_data = GetItem(lootitem->slot_id - 22, bag_item_data);
+		item_data = GetItem(lootitem->slot_id - EmuConstants::CORPSE_BEGIN, bag_item_data);
 
 	if (GetPKItem()<=1 && item_data != 0)
 	{
@@ -1141,7 +1144,7 @@ void Corpse::LootItem(Client* client, const EQApplicationPacket* app)
 
 		if(inst->IsAugmented())
 		{
-			for (int i = 0; i<EmuConstants::ITEM_COMMON_SIZE; i++)
+			for (int i = AUG_BEGIN; i<EmuConstants::ITEM_COMMON_SIZE; i++)
 			{
 				ItemInst *itm = inst->GetAugment(i);
 				if(itm)
@@ -1163,7 +1166,7 @@ void Corpse::LootItem(Client* client, const EQApplicationPacket* app)
 		strcpy(corpse_name, orgname);
 		snprintf(buf, 87, "%d %d %s", inst->GetItem()->ID, inst->GetCharges(), EntityList::RemoveNumbers(corpse_name));
 		buf[87] = '\0';
-		std::vector<void*> args;
+		std::vector<EQEmu::Any> args;
 		args.push_back(inst);
 		args.push_back(this);
 		parse->EventPlayer(EVENT_LOOT, client, buf, 0, &args);
@@ -1238,7 +1241,7 @@ void Corpse::LootItem(Client* client, const EQApplicationPacket* app)
 		// remove bag contents too
 		if (item->ItemClass == ItemClassContainer && (GetPKItem()!=-1 || GetPKItem()!=1))
 		{
-			for (int i=0; i < 10; i++)
+			for (int i = SUB_BEGIN; i < EmuConstants::ITEM_CONTAINER_SIZE; i++)
 			{
 				if (bag_item_data[i])
 				{
@@ -1971,14 +1974,14 @@ bool ZoneDatabase::DeletePlayerCorpse(uint32 dbid) {
 uint32 Corpse::GetEquipment(uint8 material_slot) const {
 	int invslot;
 
-	if(material_slot > 8)
+	if(material_slot > EmuConstants::MATERIAL_END)
 	{
-		return 0;
+		return NO_ITEM;
 	}
 
 	invslot = Inventory::CalcSlotFromMaterial(material_slot);
-	if(invslot == -1)
-		return 0;
+	if(invslot == INVALID_INDEX) // GetWornItem() should be returning a NO_ITEM for any invalid index...
+		return NO_ITEM;
 
 	return GetWornItem(invslot);
 }
@@ -1986,13 +1989,13 @@ uint32 Corpse::GetEquipment(uint8 material_slot) const {
 uint32 Corpse::GetEquipmentColor(uint8 material_slot) const {
 	const Item_Struct *item;
 
-	if(material_slot > 8)
+	if(material_slot > EmuConstants::MATERIAL_END)
 	{
 		return 0;
 	}
 
 	item = database.GetItem(GetEquipment(material_slot));
-	if(item != 0)
+	if(item != NO_ITEM)
 	{
 		return item_tint[material_slot].rgb.use_tint ?
 			item_tint[material_slot].color :
@@ -2052,6 +2055,113 @@ void Corpse::LoadPlayerCorpseDecayTime(uint32 dbid){
 	}
 	else
 		safe_delete_array(query);
+}
+
+/*
+**	Corpse slot translations are needed until corpse database blobs are converted
+**	
+**	To account for the addition of MainPowerSource, MainGeneral9 and MainGeneral10 into
+**	the contiguous possessions slot enumeration, the following designations will be used:
+**	
+**	Designatiom			Server		Corpse		Offset
+**	--------------------------------------------------
+**	MainCharm			0			0			0
+**	...					...			...			0
+**	MainWaist			20			20			0
+**	MainPowerSource		21			9999		+9978
+**	MainAmmo			22			21			-1
+**
+**	MainGeneral1		23			22			-1
+**	...					...			...			-1
+**	MainGeneral8		30			29			-1
+**	MainGeneral9		31			9997		+9966
+**	MainGeneral10		32			9998		+9966
+**
+**	MainCursor			33			30			-3
+**
+**	MainGeneral1_1		251			251			0
+**	...					...			...			0
+**	MainGeneral8_10		330			330			0
+**	MainGeneral9_1		331			341			+10
+**	...					...			...			+10
+**	MainGeneral10_10	350			360			+10
+**
+**	MainCursor_1		351			331			-20
+**	...					...			...			-20
+**	MainCursor_10		360			340			-20
+**
+**	(Not all slot designations are valid to all clients..see <client>##_constants.h files for valid slot enumerations)
+*/
+uint16 Corpse::ServerToCorpseSlot(uint16 server_slot)
+{
+	return server_slot; // temporary return
+
+	/*
+	switch (server_slot)
+	{
+	case MainPowerSource:
+		return 9999;
+	case MainGeneral9:
+		return 9997;
+	case MainGeneral10:
+		return 9998;
+	case MainCursor:
+		return 30;
+	case MainAmmo:
+	case MainGeneral1:
+	case MainGeneral2:
+	case MainGeneral3:
+	case MainGeneral4:
+	case MainGeneral5:
+	case MainGeneral6:
+	case MainGeneral7:
+	case MainGeneral8:
+		return server_slot - 1;
+	default:
+		if (server_slot >= EmuConstants::CURSOR_BAG_BEGIN && server_slot <= EmuConstants::CURSOR_BAG_END)
+			return server_slot - 20;
+		else if (server_slot >= EmuConstants::GENERAL_BAGS_END - 19 && server_slot <= EmuConstants::GENERAL_BAGS_END)
+			return server_slot + 10;
+		else
+			return server_slot;
+	}
+	*/
+}
+
+uint16 Corpse::CorpseToServerSlot(uint16 corpse_slot)
+{
+	return corpse_slot; // temporary return
+
+	/*
+	switch (corpse_slot)
+	{
+	case 9999:
+		return MainPowerSource;
+	case 9997:
+		return MainGeneral9;
+	case 9998:
+		return MainGeneral10;
+	case 30:
+		return MainCursor;
+	case 21: // old SLOT_AMMO
+	case 22: // old PERSONAL_BEGIN
+	case 23:
+	case 24:
+	case 25:
+	case 26:
+	case 27:
+	case 28:
+	case 29: // old PERSONAL_END
+		return corpse_slot + 1;
+	default:
+		if (corpse_slot >= 331 && corpse_slot <= 340)
+			return corpse_slot + 20;
+		else if (corpse_slot >= 341 && corpse_slot <= 360)
+			return corpse_slot - 10;
+		else
+			return corpse_slot;
+	}
+	*/
 }
 
 /*

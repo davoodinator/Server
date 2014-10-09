@@ -24,28 +24,29 @@ class Client;
 #include "../common/emu_opcodes.h"
 #include "../common/eq_packet_structs.h"
 #include "../common/eq_constants.h"
-#include "../common/EQStreamIntf.h"
-#include "../common/EQPacket.h"
+#include "../common/eq_stream_intf.h"
+#include "../common/eq_packet.h"
 #include "../common/linked_list.h"
 #include "../common/extprofile.h"
 #include "../common/classes.h"
 #include "../common/races.h"
 #include "../common/deity.h"
 #include "../common/seperator.h"
-#include "../common/Item.h"
+#include "../common/item.h"
 #include "../common/guilds.h"
 #include "../common/item_struct.h"
 #include "../common/clientversions.h"
 
+#include "common.h"
 #include "zonedb.h"
 #include "errno.h"
 #include "mob.h"
 #include "npc.h"
 #include "merc.h"
 #include "zone.h"
-#include "AA.h"
+#include "aa.h"
 #include "questmgr.h"
-#include "QGlobals.h"
+#include "qglobals.h"
 
 #ifdef _WINDOWS
 	// since windows defines these within windef.h (which windows.h include)
@@ -101,11 +102,6 @@ enum {	//scribing argument to MemorizeSpell
 	memSpellForget = 2,
 	memSpellSpellbar = 3
 };
-
-#define USE_ITEM_SPELL_SLOT 10
-#define POTION_BELT_SPELL_SLOT 11
-#define DISCIPLINE_SPELL_SLOT 10
-#define ABILITY_SPELL_SLOT 9
 
 //Modes for the zoning state of the client.
 typedef enum {
@@ -222,6 +218,8 @@ public:
 	virtual Group* GetGroup() { return entity_list.GetGroupByClient(this); }
 	virtual inline bool IsBerserk() { return berserk; }
 	virtual int32 GetMeleeMitDmg(Mob *attacker, int32 damage, int32 minhit, float mit_rating, float atk_rating);
+	virtual void SetAttackTimer();
+	float GetQuiverHaste();
 
 	void	AI_Init();
 	void	AI_Start(uint32 iMoveDelay = 0);
@@ -238,8 +236,6 @@ public:
 	bool	KeyRingCheck(uint32 item_id);
 	void	KeyRingList();
 	virtual bool IsClient() const { return true; }
-	virtual void DBAWComplete(uint8 workpt_b1, DBAsyncWork* dbaw);
-	bool	FinishConnState2(DBAsyncWork* dbaw);
 	void	CompleteConnect();
 	bool	TryStacking(ItemInst* item, uint8 type = ItemPacketTrade, bool try_worn = true, bool try_cursor = true);
 	void	SendTraderPacket(Client* trader, uint32 Unknown72 = 51);
@@ -258,6 +254,8 @@ public:
 			const char *message5 = nullptr, const char *message6 = nullptr,
 			const char *message7 = nullptr, const char *message8 = nullptr,
 			const char *message9 = nullptr);
+	void	Tell_StringID(uint32 string_id, const char *who, const char *message);
+	void	SendColoredText(uint32 color, std::string message);
 	void	SendBazaarResults(uint32 trader_id,uint32 class_,uint32 race,uint32 stat,uint32 slot,uint32 type,char name[64],uint32 minprice,uint32 maxprice);
 	void	SendTraderItem(uint32 item_id,uint16 quantity);
 	uint16	FindTraderItem(int32 SerialNumber,uint16 Quantity);
@@ -268,7 +266,7 @@ public:
 	void	TradeRequestFailed(const EQApplicationPacket* app);
 	void	BuyTraderItem(TraderBuy_Struct* tbs,Client* trader,const EQApplicationPacket* app);
 	void	TraderUpdate(uint16 slot_id,uint32 trader_id);
-	void	FinishTrade(Mob* with, ServerPacket* qspack = nullptr, bool finalizer = false);
+	void	FinishTrade(Mob* with, bool finalizer = false, void* event_entry = nullptr, std::list<void*>* event_details = nullptr);
 	void	SendZonePoints();
 
 	void	SendBuyerResults(char *SearchQuery, uint32 SearchID);
@@ -312,6 +310,10 @@ public:
 	virtual bool	Save() { return Save(0); }
 			bool	Save(uint8 iCommitNow); // 0 = delayed, 1=async now, 2=sync now
 			void	SaveBackup();
+
+	/* New PP Save Functions */
+	bool SaveCurrency(){ return database.SaveCharacterCurrency(this->CharacterID(), &m_pp); }
+	bool SaveAA();
 
 	inline bool ClientDataLoaded() const { return client_data_loaded; }
 	inline bool	Connected()		const { return (client_state == CLIENT_CONNECTED); }
@@ -594,7 +596,7 @@ public:
 	FACTION_VALUE	GetFactionLevel(uint32 char_id, uint32 npc_id, uint32 p_race, uint32 p_class, uint32 p_deity, int32 pFaction, Mob* tnpc);
 	int32	GetCharacterFactionLevel(int32 faction_id);
 	int32	GetModCharacterFactionLevel(int32 faction_id);
-	bool	HatedByClass(uint32 p_race, uint32 p_class, uint32 p_deity, int32 pFaction);
+	void	MerchantRejectMessage(Mob *merchant, int primaryfaction);
 	void	SendFactionMessage(int32 tmpvalue, int32 faction_id, int32 totalvalue, uint8 temp);
 
 	void	SetFactionLevel(uint32 char_id, uint32 npc_id, uint8 char_class, uint8 char_race, uint8 char_deity);
@@ -655,12 +657,12 @@ public:
 
 	void	OnDisconnect(bool hard_disconnect);
 
-	uint16	GetSkillPoints() {return m_pp.points;}
-	void	SetSkillPoints(int inp) {m_pp.points = inp;}
+	uint16	GetSkillPoints() { return m_pp.points;}
+	void	SetSkillPoints(int inp) { m_pp.points = inp;}
 
 	void	IncreaseSkill(int skill_id, int value = 1) { if (skill_id <= HIGHEST_SKILL) { m_pp.skills[skill_id] += value; } }
 	void	IncreaseLanguageSkill(int skill_id, int value = 1);
-	virtual uint16 GetSkill(SkillUseTypes skill_id) const { if (skill_id <= HIGHEST_SKILL) { return((itembonuses.skillmod[skill_id] > 0)? m_pp.skills[skill_id]*(100 + itembonuses.skillmod[skill_id])/100 : m_pp.skills[skill_id]); } return 0; }
+	virtual uint16 GetSkill(SkillUseTypes skill_id) const { if (skill_id <= HIGHEST_SKILL) { return((itembonuses.skillmod[skill_id] > 0) ? m_pp.skills[skill_id] * (100 + itembonuses.skillmod[skill_id]) / 100 : m_pp.skills[skill_id]); } return 0; }
 	uint32	GetRawSkill(SkillUseTypes skill_id) const { if (skill_id <= HIGHEST_SKILL) { return(m_pp.skills[skill_id]); } return 0; }
 	bool	HasSkill(SkillUseTypes skill_id) const;
 	bool	CanHaveSkill(SkillUseTypes skill_id) const;
@@ -679,7 +681,7 @@ public:
 	inline	uint16	MaxSkill(SkillUseTypes skillid) const { return MaxSkill(skillid, GetClass(), GetLevel()); }
 	uint8	SkillTrainLevel(SkillUseTypes skillid, uint16 class_);
 
-	void TradeskillSearchResults(const char *query, unsigned long qlen, unsigned long objtype, unsigned long someid);
+	void TradeskillSearchResults(const std::string query, unsigned long objtype, unsigned long someid);
 	void SendTradeskillDetails(uint32 recipe_id);
 	bool TradeskillExecute(DBTradeskillRecipe_Struct *spec);
 	void CheckIncreaseTradeskill(int16 bonusstat, int16 stat_modifier, float skillup_modifier, uint16 success_modifier, SkillUseTypes tradeskill);
@@ -783,14 +785,15 @@ public:
 	int16 acmod();
 
 	// Item methods
+	void EVENT_ITEM_ScriptStopReturn();
 	uint32	NukeItem(uint32 itemnum, uint8 where_to_check =
 		(invWhereWorn | invWherePersonal | invWhereBank | invWhereSharedBank | invWhereTrading | invWhereCursor));
 	void	SetTint(int16 slot_id, uint32 color);
 	void	SetTint(int16 slot_id, Color_Struct& color);
 	void	SetMaterial(int16 slot_id, uint32 item_id);
 	void	Undye();
-	uint32	GetItemIDAt(int16 slot_id);
-	uint32	GetAugmentIDAt(int16 slot_id, uint8 augslot);
+	int32	GetItemIDAt(int16 slot_id);
+	int32	GetAugmentIDAt(int16 slot_id, uint8 augslot);
 	bool	PutItemInInventory(int16 slot_id, const ItemInst& inst, bool client_update = false);
 	bool	PushItemOnCursor(const ItemInst& inst, bool client_update = false);
 	void	DeleteItemInInventory(int16 slot_id, int8 quantity = 0, bool client_update = false, bool update_db = true);
@@ -893,7 +896,8 @@ public:
 
 	//This is used to later set the buff duration of the spell, in slot to duration.
 	//Doesn't appear to work directly after the client recieves an action packet.
-	void SendBuffDurationPacket(uint16 spell_id, int duration, int inlevel);
+	void SendBuffDurationPacket(Buffs_Struct &buff);
+	void SendBuffNumHitPacket(Buffs_Struct &buff, int slot);
 
 	void	ProcessInspectRequest(Client* requestee, Client* requester);
 	bool	ClientFinishedLoading() { return (conn_state == ClientConnectFinished); }
@@ -1043,9 +1047,9 @@ public:
 	void MarkSingleCompassLoc(float in_x, float in_y, float in_z, uint8 count=1);
 
 	void CalcItemScale();
-	bool CalcItemScale(uint32 slot_x, uint32 slot_y);
+	bool CalcItemScale(uint32 slot_x, uint32 slot_y); // behavior change: 'slot_y' is now [RANGE]_END and not [RANGE]_END + 1
 	void DoItemEnterZone();
-	bool DoItemEnterZone(uint32 slot_x, uint32 slot_y);
+	bool DoItemEnterZone(uint32 slot_x, uint32 slot_y); // behavior change: 'slot_y' is now [RANGE]_END and not [RANGE]_END + 1
 	void SummonAndRezzAllCorpses();
 	void SummonAllCorpses(float dest_x, float dest_y, float dest_z, float dest_heading);
 	void DepopAllCorpses();
@@ -1097,7 +1101,7 @@ public:
 	inline void ClearDraggedCorpses() { DraggedCorpses.clear(); }
 	void SendAltCurrencies();
 	void SetAlternateCurrencyValue(uint32 currency_id, uint32 new_amount);
-	void AddAlternateCurrencyValue(uint32 currency_id, int32 amount);
+	void AddAlternateCurrencyValue(uint32 currency_id, int32 amount, int8 method = 0);
 	void SendAlternateCurrencyValues();
 	void SendAlternateCurrencyValue(uint32 currency_id, bool send_if_null = true);
 	uint32 GetAlternateCurrencyValue(uint32 currency_id) const;
@@ -1152,6 +1156,7 @@ public:
 	const char* GetClassPlural(Client* client);
 	void SendWebLink(const char* website);
 	void SendMarqueeMessage(uint32 type, uint32 priority, uint32 fade_in, uint32 fade_out, uint32 duration, std::string msg);
+	void SendSpellAnim(uint16 targetid, uint16 spell_id);
 
 	void DuplicateLoreMessage(uint32 ItemID);
 	void GarbleMessage(char *, uint8);
@@ -1194,9 +1199,14 @@ public:
 	int32 mod_client_xp(int32 in_exp, NPC *npc);
 	uint32 mod_client_xp_for_level(uint32 xp, uint16 check_level);
 	int mod_client_haste_cap(int cap);
-    int mod_consume(Item_Struct *item, ItemUseTypes type, int change);
-    int mod_food_value(const Item_Struct *item, int change);
-    int mod_drink_value(const Item_Struct *item, int change);
+	int mod_consume(Item_Struct *item, ItemUseTypes type, int change);
+	int mod_food_value(const Item_Struct *item, int change);
+	int mod_drink_value(const Item_Struct *item, int change);
+
+	void SetEngagedRaidTarget(bool value) { EngagedRaidTarget = value; }
+	bool GetEngagedRaidTarget() const { return EngagedRaidTarget; }
+
+	void ShowNumHits(); // work around function for numhits not showing on buffs
 
 protected:
 	friend class Mob;
@@ -1442,6 +1452,9 @@ private:
 	unsigned int	RestRegenHP;
 	unsigned int	RestRegenMana;
 	unsigned int	RestRegenEndurance;
+
+	bool EngagedRaidTarget;
+	uint32 SavedRaidRestTimer;
 
 	std::set<uint32> zone_flags;
 

@@ -13,9 +13,9 @@
 #include "lua_client.h"
 #include "lua_npc.h"
 #include "lua_entity_list.h"
-#include "QuestParserCollection.h"
+#include "quest_parser_collection.h"
 #include "questmgr.h"
-#include "QGlobals.h"
+#include "qglobals.h"
 #include "../common/timer.h"
 
 struct Events { };
@@ -1451,18 +1451,14 @@ luabind::scope lua_register_slot() {
 			luabind::value("General6", static_cast<int>(MainGeneral6)),
 			luabind::value("General7", static_cast<int>(MainGeneral7)),
 			luabind::value("General8", static_cast<int>(MainGeneral8)),
-			//luabind::value("General9", static_cast<int>(MainGeneral9)),
-			//luabind::value("General10", static_cast<int>(MainGeneral10)),
 			luabind::value("Cursor", static_cast<int>(MainCursor)),
-			//luabind::value("EquipmentBegin", static_cast<int>(EmuConstants::EQUIPMENT_BEGIN)),
-			//luabind::value("EquipmentEnd", static_cast<int>(EmuConstants::EQUIPMENT_END)),
 			luabind::value("PersonalBegin", static_cast<int>(EmuConstants::GENERAL_BEGIN)), // deprecated
 			luabind::value("GeneralBegin", static_cast<int>(EmuConstants::GENERAL_BEGIN)),
 			luabind::value("PersonalEnd", static_cast<int>(EmuConstants::GENERAL_END)), // deprecated
 			luabind::value("GeneralEnd", static_cast<int>(EmuConstants::GENERAL_END)),
 			luabind::value("CursorEnd", 0xFFFE), // deprecated
-			luabind::value("Tradeskill", static_cast<int>(SLOT_TRADESKILL)), // deprecated
-			luabind::value("Augment", static_cast<int>(SLOT_AUGMENT)), // deprecated
+			luabind::value("Tradeskill", static_cast<int>(legacy::SLOT_TRADESKILL)), // deprecated
+			luabind::value("Augment", static_cast<int>(legacy::SLOT_AUGMENT)), // deprecated
 			luabind::value("Invalid", INVALID_INDEX)
 		];
 }
@@ -1483,7 +1479,6 @@ luabind::scope lua_register_material() {
 			luabind::value("Secondary", static_cast<int>(MaterialSecondary)),
 			luabind::value("Max", static_cast<int>(_MaterialCount)), // deprecated
 			luabind::value("Count", static_cast<int>(_MaterialCount)),
-			//luabind::value("TintCount", static_cast<int>(_MaterialCount - 2)),
 			luabind::value("Invalid", static_cast<int>(_MaterialInvalid))
 		];
 }
@@ -1498,8 +1493,7 @@ luabind::scope lua_register_client_version() {
 			luabind::value("SoF", static_cast<int>(EQClientSoF)),
 			luabind::value("SoD", static_cast<int>(EQClientSoD)),
 			luabind::value("Underfoot", static_cast<int>(EQClientUnderfoot)),
-			luabind::value("RoF", static_cast<int>(EQClientRoF))//,
-			//luabind::value("RoF2", static_cast<int>(EQClientRoF2))
+			luabind::value("RoF", static_cast<int>(EQClientRoF))
 		];
 }
 

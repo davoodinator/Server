@@ -1,5 +1,343 @@
 EQEMu Changelog (Started on Sept 24, 2003 15:50)
 -------------------------------------------------------
+== 10/07/2014 ==
+demonstar55: Identified tutorial flag in all charcreate packets, reworked logic to correctly set homes binds
+
+== 10/05/2014 ==
+Uleat: Added Server<->Corpse slot translators needed for re-enumeration (inactive until phased in)
+
+== 10/03/2014 ==
+Uleat: Fixed Ti(6.2) OP_AugmentInfo translation that I broke (does not currently need and I mis-read a process)
+Uleat: Moved client patch OP_LootItem slot translation to external handlers
+
+== 10/02/2014 ==
+Kayen: Exported to PERL $client->SendSpellAnim(targetid, spellid)
+This function sends the spell graphic of a spell without actually having to cast the spell.
+
+== 10/02/2014 ==
+Uleat: First round of Ti/6.2 translators added - needed for re-enumeration
+
+== 10/01/2014 ==
+Kayen: Exported to PERL $client->SendColoredText(color, msg)
+demonstar55: Exported SendColoredText to lua
+
+== 09/30/2014 ==
+Uleat: Implemented click-casting from bag slots for clients that natively support it (RoF)
+
+== 09/28/2014 ==
+demonstar55: Add support for post June 18, 2014 Hundred Hands Effect spells (they changed the formula and stuff)
+set Spells:Jun182014HundredHandsRevamp to true if you're using a spell file from June 18, 2014+
+
+== 09/27/2014 ==
+Kayen: Implemented perl function $mob->GetSpellStat(spell_id, identifier, slot);
+Note: identifier is the stat field in spells_new, slot is used for certain effects like effectid, base,base2, max ect.
+Example $mob->GetSpellStat(121, "range"); //Returns spell range
+Example $mob->GetSpellStat(121, "effectid", 1); //Returns the the value of effectid1
+This will allow you to pull almost all the data for any spell in quest files.
+demonstar55: Move the client's SetAttackTimer to the end of Client::CalcBonuses to keep the haste in sync
+demonstar55: Correct haste/slow "stacking" rules
+demonstar55: Correct SE_AttackSpeed4 to respect unslowable
+demonstar55: Make the haste be between 1-225 like the client (<100 = slow, >100 = haste) to ...
+demonstar55: Correct Hundred Hands effect and use formula provided by devs
+
+== 09/24/2014 ==
+Uleat: Re-ordered server opcodes and handlers to give them some predictability of location (I need this for the inventory re-enumeration.)
+demonstar55: Added helper function bool EQEmu::IsTradeskill(uint32 skill)
+
+== 09/23/2014 ==
+Kayen: Spell recourse effects will now be applied AFTER the base spells effects have been applied (consistent with live).
+Kayen: SE_ApplySpell and SE_TriggerSpell will now be applied based on which effect slot they are used in (instead of always before all spell effects are checked).
+Note: If a spell has multiple SE_TriggerSpell effects within it. Only one will be able to trigger. (If you want multiple spells use SE_ApplySpell)
+
+== 09/22/2014 ==
+Akkadius: #resetaa now covers the function of #resetaa and #refundaa
+	- #resetaa will wipe all AA data, refund the spent points into the available points and send character to character select properly
+Akkadius: Removed #refundaa
+Akkadius: Removed a lot of debug code for blob conversion
+Akkadius: Changed status logging for loads/saves to Debug category
+
+== 09/21/2014 == 
+Akkadius: Player Profile Blob to Database Conversion
+	- Summary: HUGE difference in database speeds reads/writes and 1:10 datasize difference
+		- The new character storage engine unlike the character_ table before, is able to properly index data and make use of 
+			proper MySQL/MariaDB caching optimizations and performance has increased phenominally
+		PERFORMANCE AND STATISTICS FIGURES (Varies on hardware):
+		- EZ Server Character data size of 2.6GB `character_` table alone now takes up approx 600MB
+		- Character Data Loads take approx .03 seconds BEFORE MySQL/MariaDB cache
+		- Character Data Loads take approx .001-.0035 seconds AFTER MySQL/MariaDB cache
+		- Character Data Saves take approx .0001 - .003 for any particular save operation
+		- Database Auto Conversion: When the 'character_' table exists, World boot-up will queue an auto-conversion prompt and convert all of your characters, BACKUP
+			YOUR DATABASE BEFORE CONVERTING, here is an EASY backup script: http://wiki.eqemulator.org/p?MySQL_DB_Backup_Script
+			- On auto conversion, the following tables are created automatically:
+				- Table: `character_skills` - Stores Character Skills
+				- Table: `character_languages` - Stores Character Language
+				- Table: `character_bind` - Stores Character Bind point and Home Bind point designated by is_home bool field
+				- Table: `character_alternate_abilities` - Stores all Character AA
+				- Table: `character_currency` - Stores all Platinum/Gold/Silver/Copper and character related currencies
+				- Table: `character_data` - Stores basic character data (Fields from `character_` table migrated to this table)
+				- Table: `character_spells` - Stores character spells
+				- Table: `character_memmed_spells` - Stores character memorized spells
+				- Table: `character_disciplines` - Stores character disciplines
+				- Table: `character_material` - Stores character armor dye textures
+				- Table: `character_tribute` - Stores character tributes
+				- Table: `character_bandolier` - Stores character bandoliers
+				- Table: `character_inspect_messages` - Stores character inspection messages (Moved from `character_` table)
+				- Table: `character_leadership_abilities` - Stores character Leadership AAs
+	- Loads: Majority of Player profile loads now occur at Client::Handle_Connect_OP_ZoneEntry
+		LoadCharacterFactionValues(uint32 character_id, faction_map & val_list);
+		LoadCharacterSpellBook(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterMemmedSpells(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterLanguages(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterDisciplines(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterSkills(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterData(uint32 character_id, PlayerProfile_Struct* pp, ExtendedProfile_Struct* m_epp);
+		LoadCharacterCurrency(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterBindPoint(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterMaterialColor(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterBandolier(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterTribute(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterPotions(uint32 character_id, PlayerProfile_Struct* pp);
+		LoadCharacterLeadershipAA(uint32 character_id, PlayerProfile_Struct* pp);
+	- Saves: Occur all over the code now instead of calling full saves
+		SaveCharacterBindPoint(uint32 character_id, uint32 zone_id, uint32 instance_id, float x, float y, float z, float heading, uint8 is_home);
+		SaveCharacterCurrency(uint32 character_id, PlayerProfile_Struct* pp);
+		SaveCharacterData(uint32 character_id, uint32 account_id, PlayerProfile_Struct* pp, ExtendedProfile_Struct* m_epp);
+		SaveCharacterAA(uint32 character_id, uint32 aa_id, uint32 current_level);
+		SaveCharacterSpell(uint32 character_id, uint32 spell_id, uint32 slot_id);
+		SaveCharacterMemorizedSpell(uint32 character_id, uint32 spell_id, uint32 slot_id);
+		SaveCharacterMaterialColor(uint32 character_id, uint32 slot_id, uint32 color); 
+		SaveCharacterSkill(uint32 character_id, uint32 skill_id, uint32 value);
+		SaveCharacterLanguage(uint32 character_id, uint32 lang_id, uint32 value);
+		SaveCharacterDisc(uint32 character_id, uint32 slot_id, uint32 disc_id);
+		SaveCharacterTribute(uint32 character_id, PlayerProfile_Struct* pp);
+		SaveCharacterBandolier(uint32 character_id, uint8 bandolier_id, uint8 bandolier_slot, uint32 item_id, uint32 icon, const char* bandolier_name);
+		SaveCharacterPotionBelt(uint32 character_id, uint8 potion_id, uint32 item_id, uint32 icon);
+		SaveCharacterLeadershipAA(uint32 character_id, PlayerProfile_Struct* pp);
+	- Deletes:
+		DeleteCharacterSpell(uint32 character_id, uint32 spell_id, uint32 slot_id);
+		DeleteCharacterMemorizedSpell(uint32 character_id, uint32 spell_id, uint32 slot_id);
+		DeleteCharacterDisc(uint32 character_id, uint32 slot_id); 
+		DeleteCharacterBandolier(uint32 character_id, uint32 band_id);
+		DeleteCharacterLeadershipAAs(uint32 character_id);
+	- Now occur all over the code and only trigger when necessary
+	- Two FULL saves when looting a corpse, this has been reduced to just currency saves on initial loot and trimmed to one save since AddToMoneyPP did it already
+	- Every time a player moves coin with any situation (Splits/Trades/Merchant/Skills/Bank Coin Exchange/Coin Moves), a full save is made, this is now just a currency save
+	- Every time a player skilled up at a skill vendor, a full blob save hit was made, this is not just a currency hit
+	- Every time an AA was purchased, a full save was made
+	- Every time a spell was scribed/swapped, disc was trained
+	- When a client exists a zone, when a client enters a zone
+	- NOTE: These amount of excessive saves have caused scalability issues that cause the `character_` table to hang which causes process hangs that affect the whole server
+		because of the slowness of the `character_` table and the blob not allowing any indexing to occur
+	- All functions that once depended on the `character_` table are now rewritten to appropriately read from the `character_data` table
+	- Database query errors that occur during conversion or from and load/save/delete character functions are now leveraged via ThrowDBError and logs now go to 
+		Server_Folder_Root/eqemu_query_error_log.txt (You cannot log errors natively through MySQL)
+	- DBASYNC IS NOW COMPLETELY REMOVED - This was mainly for Character data async loads/saves and merchantlist loads
+	- Side implementations: 
+		Perl Exports:
+			- quest::crosszonesetentityvariablebynpctypeid(npctype_id, id, m_var) - Sets entity variables world wide with specified npctype_id
+			- quest::crosszonesignalnpcbynpctypeid(npctype_id, data) - Signals all NPC entities world wide with specified npctype_id
+			- $client->GetTaskActivityDoneCount(TaskID, ActivityID) - Gets task activity done count by task id and activity id for client entity
+	
+	VIEW TABLE SIZE AFTER CONVERT:
+		
+	SELECT CONCAT(table_schema, '.', table_name) as table_name,
+		   CONCAT(ROUND(table_rows / 1000000, 2), 'M')                                    rows,
+		   CONCAT(ROUND(data_length / ( 1024 * 1024 * 1024 ), 2), 'G')                    DATA,
+		   CONCAT(ROUND(index_length / ( 1024 * 1024 * 1024 ), 2), 'G')                   idx,
+		   CONCAT(ROUND(( data_length + index_length ) / ( 1024 * 1024 * 1024 ), 2), 'G') total_size,
+		   ROUND(index_length / data_length, 2)                                           idxfrac
+	FROM   information_schema.TABLES
+	WHERE `table_name` LIKE 'character_%'
+	ORDER  BY DATA DESC;
+
+== 09/20/2014 ==
+demonstar55: Fix crash in SendEnterWorld on illegally long names
+demonstar55: The client only lets you enter 15 characters for your name (UF at least)
+demonstar55: Add rule Spells:SHDProcIDOffByOne for pre-UF spell file, set to true, UF+ set to false
+KLS: #suspend and #ban now have required messages to record the reason for the ban/suspension.
+
+== 09/19/2014 ==
+demonstar55: Added Client::Tell_StringID (used in tell queue messages)
+demonstar55: Tell queues (and offline) messages now show correctly
+demonstar55: Fix starting with capital check
+
+== 09/18/2014==
+demonstar55: Implement tell queues
+	Currently set to a limit of 20 by default (World:TellQueueSize) I was unable to hit the limit on live though (100+)
+	The required SQL nukes the old tell queue table, which may or may not be in your DB
+	Optional SQL adds the rule to the DB to allow easy of change
+	Note: this does not play well with multiple sessions with the same name on (crash and relog and have multiple sessions) but normal tells don't play well either
+
+== 09/16/2014 ==
+demonstar55: Implement spell formula 137 (BER AA Desperation)
+Uleat (NateDog): Fix for LoadBuffs() crash when a spell with a non-persistent Illusion effect was loaded.
+demonstar55: Fix some effect calcs + implement more (derived from the client)
+
+== 09/15/2014 ==
+Kayen: Nimbus effects will now be reapplied after zoning and will be removed when associated buff fades.
+
+== 09/13/2014 ==
+demonstar55: Fix rogues not having Thieves' Cant
+
+== 09/09/2014 ==
+demonstar55: Incrase Mob kick/bash timer by 3
+	see: http://www.eqemulator.org/forums/showthread.php?t=38734
+demonstar55: Fix slow effect on NPC special attack reuse timers
+	see: http://www.eqemulator.org/forums/showthread.php?t=38734
+demonstar55: Slow fixes to bots!
+demonstar55: Revamped how NPC attack rate is set
+	SQL: 2014_09_09_attack_delay.sql
+demonstar55: Added attackdelay to #npcedit
+
+== 09/08/2014 ==
+demonstar55: Fix slow calc
+	see: http://www.eqemulator.org/forums/showthread.php?t=38734
+
+== 09/07/2014 ==
+Akkadius: Fixed ROF Augment item dupe with not checking for available slots properly and adding items to the virtual instance
+
+== 09/06/2014 ==
+Uleat: Tweaked 'Smart' trading code to return main slots before sub slots in stackable and free space search processes. (If enough people ask for it, I'll add an optional rule to allow 'bag packing' - the original implementation behavior)
+
+== 09/05/2014 ==
+Uleat: Fix for cursor item loss when zoning. (Thanks to the other devs who traced and fixed the 'macro' issue!)
+demonstar55: Fix size getting nuked with lua's SendIllusionPacket
+
+== 09/03/2014 ==
+Secrets: Identified the routines needed to augment items in RoF. Currently, only Insert and Remove are supported. Swap and Destroy do not work due to missing functions related to the cursor.
+demonstar55: Added work around command to show numhits on your buffs (#shownumhits)
+Uleat: Fix for timer issue introduced by Zone::ShutDown() fix.
+
+== 09/02/2014 ==
+Secrets: Identified OP_GuildPromote for RoF clients.
+Secrets: Fixed promotion, demotion, transferring a leader and displaying of client ranks in the Rain of Fear client. The rain of fear client, as such, will only have 3 ranks like the other clients, but supports a theoretical 8 ranks later.
+Secrets/Akkadius: Fixed an issue involving character name lookup in the new DB code.
+demonstar55: crash fix checking DivineAura in hate_list.cpp
+Secrets: Reverted some code that got in the main branch that shouldn't have gotten there.
+Uleat: Changed #loc to report the same precision as /loc for Cartesians
+
+== 08/31/2014 ==
+KLS: Fixed a bug in fishing in S3D zones
+KLS: Fixed a bug in turnins with new any abstraction
+KLS: Fixed a few quest related inconsistencies.
+KLS: Added Lua EntityList::ChannelMessage(from, type, msg, language)
+
+== 08/30/2014 ==
+demonstar55: (noudess) Merchants should be more descriptive of why they don't sell to you
+
+== 08/26/2014 ==
+Uleat: Implemented 'Smart' Player Trade transfers. Trades are processed by containers, stackables and then all remaining. QueryServ logs have been updated to match these transactions.
+Note: QueryServ logs previously listed 'Items' on the main entry table. This indicated the number of slots affected and not the actual number of items.
+This field now indicates the actual number of items transferred. For non-stackable, the value is '1' and stackable is the number of charges. A _detail_count
+property has been added to both 'Trade' and 'Handin' structs to indicate the number of details recorded..though, not tracked..it could be added.
+
+== 08/24/2014 ==
+Uleat: Fix (attempted) for zone crashes related to zone shut-down. This change disables all Mob AI and disables/deletes all Mob timers once Zone::ShutDown() is called. More areas will be addressed as reports come in.
+Note: Perl and Lua quests tested to work..please post any aberrant behavior. (I finally set my spell-check to US English...)
+Akkadius: Character creation process crash fix and query cleanup
+Akkadius: Created `character_lookup` table for applications that mirrors all `character_` table fields minus blob fields for application lookups
+	- A 2.4GB character_ table will take 7 seconds to query on a SSD versus .1s on the character_lookup table
+	- This also causes applications like Magelo to burst reads of the entire character table because of the blob fields that come with the reads, as much as 500-600MB/s even if a indexed id filter is provided
+	- This field is synchronized on player save and has 0.001s DB hit
+	- When we split out from the blob, ideally this table can be removed
+	- Required SQL: utils\sql\git\required\2014_08_24_character_lookup.sql
+
+== 08/23/2014 ==
+Akkadius: Changed zone process window title format, example: 'crushbone :: clients: 6 inst_id: 1 inst_ver: 0 :: port: 7015'
+Akkadius: Most of the following changes are QueryServ related, fully implemented its original functionality to be able to offload
+	intensive or metric based logging to a remote server process that could exist on another server entirely
+Akkadius: Implemented Player Event Logging Types (Go to table `qs_player_events`):
+			1 = Player_Log_Quest,
+			2 = Player_Log_Zoning,
+			3 = Player_Log_Deaths,
+			4 = Player_Log_Connect_State,
+			5 = Player_Log_Levels,
+			6 = Player_Log_Keyring_Addition,
+			7 = Player_Log_QGlobal_Update,
+			8 = Player_Log_Task_Updates,
+			9 = Player_Log_AA_Purchases,
+			10 = Player_Log_Trade_Skill_Events,
+			11 = Player_Log_Issued_Commands,
+			12 = Player_Log_Money_Transactions,
+			13 = Player_Log_Alternate_Currency_Transactions,
+		- All QueryServ logging will be implemented with a front end in EoC 2.0 very soon
+		- Architecture page: http://wiki.eqemulator.org/p?QueryServ_Architecture
+Akkadius: Changed all QS Error related logging to 'QUERYSERV__ERROR'
+Akkadius: (Natedog) (Crash Fix) Legacy MySQL bug revert for loading AA's COALESCE( from COALESCE (
+Akkadius: Implemented Perl Quest objects (LUA still needed to be exported):
+	- quest::qs_send_query("MySQL query") - Will send a raw query to the QueryServ process, useful for custom logging
+	- quest::qs_player_event(char_id, event_desc); - Will process a quest type event to table `qs_player_events` 
+Akkadius: Added MySQL Tables
+	- `qs_player_aa_rate_hourly`
+	- `qs_player_events` 
+	- Source table structures from:
+		- utils\sql\git\queryserv\required\08_23_2014_player_events_and_player_aa_rate_hourly
+		To get the complete QueryServ schema, source from here:
+		- utils\sql\git\queryserv\required\Complete_QueryServ_Table_Structures.sql
+Akkadius: Added rules for each logging type, source rules here with them enabled by default:
+	- utils\sql\git\queryserv\required\Complete_QueryServ_Rules_Enabled.sql
+Akkadius: Spawn related logging cleanup
+Akkadius: General code cleanup
+Akkadius: More to come for QueryServ 
+
+== 08/22/2014 ==
+Uleat: Rework of Trade::FinishedTrade() and Trade::ResetTrade() to parse items a little more intelligently.
+
+Trade window items are now sent to client inventory in this order:
+	- Bags
+	- Partial stack movements
+	- All remaining items
+
+If any of these procedures cause any problems, please post them immediately.
+
+== 08/20/2014 ==
+Uleat: Rework of Trade::AddEntity() - function used to move items into the trade window. Now accepts argument for 'stack_size' and updates client properly.
+Note: I tested trade with Titanium:{SoF,SoD,UF,RoF} in both directions and no client generated an OP_MoveItem event for attempting to place a stackable
+onto a partial stack already in the trade window. The only way to achieve stacking is to click on the receiving client. If there is a partial stack remaining
+on the cursor after the OP_MoveItem event, and there is room available, the client will generate subsequent events to move the remaining count.
+
+== 08/19/2014 ==
+Akkadius: Implemented a Stop_Return feature (Accidental item handin prevention) that will be symmetrically used with plugin::return_items that I am currently running live testing on EZ before releasing to EQEmu. This does not hurt to have this in the source.
+Akkadius: Fixed crash where 'attacker' validation is not being checked
+Akkadius: Removed petition console spam that does not follow traditional logging and is useless
+Akkadius: Made fix with SympatheticProcChances where it was checking for TempItem->Focus.Effect instead of TempItemAug->Focus.Effect
+
+== 08/18/2014 ==
+Uleat: Fix for https://github.com/EQEmu/Server/issues/127 -- also activated a remarked action in doors.cpp to eliminate a memory leak.
+
+== 08/16/2014 ==
+KLS: (addmoreice) Trying out some unstable DB changes.  Do backup your database before trying them as master will be considered unstable for a few days at least.
+Uleat (Noudness): Fixed a floating-point comparison error that led to the notorious 'client bounce' (this is not related to the
+'mob falling' due to not having maps installed.) This fix also eliminates a sizeable amount of unnecessary out-going packets due
+to invalid orientation corrections.
+Note: This patch is probably of significant enough importance that admins may wish to manually apply this to older server builds.
+The number of packets reduced per second should be approximately (num_stationary_close_clients * (num_close_clients - 1)). This will
+likely have the most effect in zones like: Nexus, Bazaar, Guilds (Halls) and RAID INSTANCES - where players don't move around a lot.
+
+== 08/15/2014 ==
+Uleat: Reactivated the Bot::Spawn() code for sending post-spawn wear change updates..temporary until I can sort out the proper usage.
+
+== 08/13/2014 ==
+Uleat (Kingly_Krab): Fix for bot chest armor graphic glitch. (fix also caused RoF #wc to work properly)
+
+== 08/02/2014 ==
+Kayen: Implemented spell_news fields
+- npc_no_los (check if LOS is required for spells) 
+- InCombat, OutofCombat - Used together to restrict spells to only be cast while 
+in/out of combat (beneficial) or if target is in/out of combat (detrimental).
+-min_dist, min_dist_mod, max_dist, max_dist_mod - Scales spell power based on targets distance from caster.
+*This will require further work to fully implement but will work with 90% of live spells as is.
+*If making custom spells do not include effects that can't be scaled (like a spell trigger)
+- min_rage sets minimum distance range that must be away from target.
+
+Required SQL: utils/sql/git/required/2014_08_02_spells_new.sql
+
+== 07/31/2014 ==
+Uleat: More inventory slot constant conversions. This should be the bulk of everything..but, due to the size of the server code, there
+may be some hidden ones. (client_packet.cpp and the client translators still need a thorough review.)
+Note: Please report any abnormal behaviour with inventory-related content..each diff file was reviewed 3 times..but, things CAN be missed.
+Uleat: Test fix for client crashes in Bazaar, while actively selling, with a charm in the Trader's Satchel.
+
 == 07/27/2014 ==
 Uleat: More updates to the dictionary. Added a 'constants' file for each client translator..these will tie-in to the dictionary. Started
 replacement of hard-coded numeric values with a pre-defined constant. This will help in the transition.

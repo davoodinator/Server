@@ -519,7 +519,7 @@ struct CastSpell_Struct
 	uint32	spell_id;
 	uint32	inventoryslot;  // slot for clicky item, 0xFFFF = normal cast
 	uint32	target_id;
-	uint32    cs_unknown[5];
+	uint32	cs_unknown[5];
 };
 
 /*
@@ -564,7 +564,7 @@ struct SpellBuffFade_Struct_Underfoot {
 /*008*/	float unknown008;
 /*012*/	uint32 spellid;
 /*016*/	uint32 duration;
-/*020*/	uint32 unknown016;
+/*020*/	uint32 num_hits;
 /*024*/ uint32 playerId;	// Global player ID?
 /*028*/	uint32 unknown020;
 /*032*/ uint8 unknown0028[48];
@@ -588,6 +588,25 @@ struct SpellBuffFade_Struct {
 /*032*/	uint32 bufffade;
 /*036*/
 };
+
+#if 0
+struct BuffIconEntry_Struct {
+/*000*/ uint32 buff_slot;
+/*004*/ uint32 spell_id;
+/*008*/ uint32 tics_remaining;
+/*012*/ uint32 num_hits;
+// char name[0]; caster name is also here sometimes
+// uint8  unknownend; 1 when single, 0 when all opposite of all_buffs?
+};
+
+struct BuffIcon_Struct {
+/*000*/ uint32 entity_id;
+/*004*/ uint32 unknown004;
+/*008*/ uint8  all_buffs; // 1 when updating all buffs, 0 when doing one
+/*009*/ uint16 count;
+/*011*/ BuffIconEntry_Struct entires[0];
+};
+#endif
 
 struct BuffRemoveRequest_Struct
 {
@@ -766,7 +785,7 @@ struct BindStruct {
 ** OpCode: 0x006a
  */
 static const uint32 MAX_PP_LANGUAGE		= 25; //
-static const uint32 MAX_PP_SPELLBOOK	= 480; // Confirmed 60 pages on Underfoot now
+static const uint32 MAX_PP_SPELLBOOK	= 720; // Confirmed 60 pages on Underfoot now
 static const uint32 MAX_PP_MEMSPELL		= 10; //was 9 now 10 on Underfoot
 static const uint32 MAX_PP_SKILL		= _SkillPacketArraySize;	// 100 - actual skills buffer size
 static const uint32 MAX_PP_AA_ARRAY		= 300; //was 299
@@ -879,7 +898,6 @@ struct PlayerProfile_Struct
 /*04216*/ uint8   face;					// Player face - Actually uint32?
 /*04217*/ uint8   unknown04217[147];		// was [175]
 /*04364*/ uint32   spell_book[MAX_PP_SPELLBOOK];	// List of the Spells in spellbook 720 = 90 pages [2880] was [1920]
-/*06284*/ uint8   unknown06284[960];			// Spacer for the end of the book for now (pages 60 to 90)
 /*07244*/ uint32   mem_spells[MAX_PP_MEMSPELL]; // List of spells memorized
 /*07284*/ uint8   unknown07284[28];		//#### uint8 unknown04396[32]; in Titanium ####[28]
 /*07312*/ uint32  platinum;				// Platinum Pieces on player
@@ -1506,11 +1524,11 @@ struct BulkItemPacket_Struct
 
 struct Consume_Struct
 {
-/*0000*/ uint32 slot;
-/*0004*/ uint32 auto_consumed; // 0xffffffff when auto eating e7030000 when right click
-/*0008*/ uint8  c_unknown1[4];
-/*0012*/ uint8  type; // 0x01=Food 0x02=Water
-/*0013*/ uint8  unknown13[3];
+/*0000*/ uint32	slot;
+/*0004*/ uint32	auto_consumed; // 0xffffffff when auto eating e7030000 when right click
+/*0008*/ uint8	c_unknown1[4];
+/*0012*/ uint8	type; // 0x01=Food 0x02=Water
+/*0013*/ uint8	unknown13[3];
 /*0016*/
 };
 
@@ -1540,17 +1558,17 @@ struct ItemProperties_Struct {
 };
 
 struct DeleteItem_Struct {
-/*0000*/ uint32 from_slot;
-/*0004*/ uint32 to_slot;
-/*0008*/ uint32 number_in_stack;
+/*0000*/ uint32	from_slot;
+/*0004*/ uint32	to_slot;
+/*0008*/ uint32	number_in_stack;
 /*0012*/
 };
 
 struct MoveItem_Struct
 {
-/*0000*/ uint32 from_slot;
-/*0004*/ uint32 to_slot;
-/*0008*/ uint32 number_in_stack;
+/*0000*/ uint32	from_slot;
+/*0004*/ uint32	to_slot;
+/*0008*/ uint32	number_in_stack;
 /*0012*/
 };
 
@@ -3130,10 +3148,10 @@ struct TributeInfo_Struct {
 };
 
 struct TributeItem_Struct {
-	uint32   slot;
-	uint32   quantity;
-	uint32   tribute_master_id;
-	int32  tribute_points;
+	uint32	slot;
+	uint32	quantity;
+	uint32	tribute_master_id;
+	int32	tribute_points;
 };
 
 struct TributePoint_Struct {
@@ -3169,7 +3187,7 @@ struct Split_Struct
 */
 struct NewCombine_Struct {
 /*00*/	int16	container_slot;
-/*02*/	char	unknown02[2];
+/*02*/	int16	guildtribute_slot;
 /*04*/
 };
 
@@ -3736,7 +3754,7 @@ struct GMToggle_Struct {
 	uint32 toggle;
 };
 
-struct BuffFadeMsg_Struct {
+struct ColoredText_Struct {
 	uint32 color;
 	char msg[1]; //was 1
 /*0???*/ uint8  paddingXXX[3];          // always 0's
@@ -4161,9 +4179,9 @@ struct ItemQuaternaryBodyStruct
 
 struct AugmentInfo_Struct
 {
-/*000*/ uint32	itemid;		// id of the solvent needed
-/*004*/ uint8	window;		// window to display the information in
-/*005*/	uint8	unknown005[71];	// total packet length 76, all the rest were always 00
+/*000*/ uint32	itemid;			// id of the solvent needed
+/*004*/ uint8	window;			// window to display the information in
+/*005*/ uint8	unknown005[71];	// total packet length 76, all the rest were always 00
 /*076*/
 };
 

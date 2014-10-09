@@ -21,7 +21,7 @@
 #define COMMAND_H
 
 #include "../common/seperator.h"
-#include "../common/EQStream.h"
+#include "../common/eq_stream.h"
 #include "client.h"
 
 #define	COMMAND_CHAR	'#'
@@ -125,7 +125,6 @@ void command_worldshutdown(Client *c, const Seperator *sep);
 void command_sendzonespawns(Client *c, const Seperator *sep);
 void command_zsave(Client *c, const Seperator *sep);
 void command_dbspawn2(Client *c, const Seperator *sep);
-void command_copychar(Client *c, const Seperator *sep);
 void command_shutdown(Client *c, const Seperator *sep);
 void command_delacct(Client *c, const Seperator *sep);
 void command_setpass(Client *c, const Seperator *sep);
@@ -151,7 +150,6 @@ void command_texture(Client *c, const Seperator *sep);
 void command_npctypespawn(Client *c, const Seperator *sep);
 void command_heal(Client *c, const Seperator *sep);
 void command_appearance(Client *c, const Seperator *sep);
-void command_charbackup(Client *c, const Seperator *sep);
 void command_nukeitem(Client *c, const Seperator *sep);
 void command_peekinv(Client *c, const Seperator *sep);
 void command_findnpctype(Client *c, const Seperator *sep);
@@ -217,7 +215,6 @@ void command_guild(Client *c, const Seperator *sep);
 bool helper_guild_edit(Client *c, uint32 dbid, uint32 eqid, uint8 rank, const char* what, const char* value);
 void command_zonestatus(Client *c, const Seperator *sep);
 void command_manaburn(Client *c, const Seperator *sep);
-void command_viewmessage(Client *c, const Seperator *sep);
 void command_doanim(Client *c, const Seperator *sep);
 void command_randomfeatures(Client *c, const Seperator *sep);
 void command_face(Client *c, const Seperator *sep);
@@ -325,6 +322,7 @@ void command_showspellslist(Client *c, const Seperator *sep);
 void command_npctype_cache(Client *c, const Seperator *sep);
 void command_merchantopenshop(Client *c, const Seperator *sep);
 void command_merchantcloseshop(Client *c, const Seperator *sep);
+void command_shownumhits(Client *c, const Seperator *sep);
 
 #ifdef EQPROFILE
 void command_profiledump(Client *c, const Seperator *sep);

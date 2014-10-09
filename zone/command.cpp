@@ -47,10 +47,10 @@
 #include "../common/packet_dump.h"
 #include "../common/serverinfo.h"
 #include "../common/opcodemgr.h"
-#include "../common/EQPacket.h"
+#include "../common/eq_packet.h"
 #include "../common/guilds.h"
 #include "../common/rulesys.h"
-#include "../common/StringUtil.h"
+#include "../common/string_util.h"
 //#include "../common/servertalk.h" // for oocmute and revoke
 #include "worldserver.h"
 #include "masterentity.h"
@@ -62,17 +62,18 @@
 #include "guild_mgr.h"
 #include "titles.h"
 #include "../common/patches/patches.h"
+#include "queryserv.h"
 
-// these should be in the headers...
+extern QueryServ* QServ;
 extern WorldServer worldserver;
 extern TaskManager *taskmanager;
 void CatchSignal(int sig_num);
 
-#include "QuestParserCollection.h"
+#include "quest_parser_collection.h"
 
-#include "StringIDs.h"
+#include "string_ids.h"
 #include "command.h"
-#include "QGlobals.h"
+#include "qglobals.h"
 
 //struct cl_struct *commandlist;	// the actual linked list of commands
 int commandcount;								// how many commands we have
@@ -148,7 +149,7 @@ Access Levels:
 int command_init(void) {
 	if
 	(
-		command_add("resetaa","- Resets a Player's AA in their profile.",200,command_resetaa) ||
+		command_add("resetaa","- Resets a Player's AA in their profile and refunds spent AA's to unspent, disconnects player.",200,command_resetaa) ||
 		command_add("qtest","- QueryServ testing command.",255,command_qtest) ||
 		command_add("bind","- Sets your targets bind spot to their current location",200,command_bind) ||
 		command_add("sendop","[opcode] - LE's Private test command, leave it alone",200,command_sendop) ||
@@ -224,7 +225,6 @@ int command_init(void) {
 		command_add("worldshutdown","- Shut down world and all zones",200,command_worldshutdown) ||
 		command_add("sendzonespawns","- Refresh spawn list for all clients in zone",150,command_sendzonespawns) ||
 		command_add("dbspawn2","[spawngroup] [respawn] [variance] - Spawn an NPC from a predefined row in the spawn2 table",100,command_dbspawn2) ||
-		command_add("copychar","[character name] [new character] [new account id] - Create a copy of a character",100,command_copychar) ||
 		command_add("shutdown","- Shut this zone process down",150,command_shutdown) ||
 		command_add("delacct","[accountname] - Delete an account",150,command_delacct) ||
 		command_add("setpass","[accountname] [password] - Set local password for accountname",150,command_setpass) ||
@@ -257,12 +257,11 @@ int command_init(void) {
 		command_add("dbspawn",nullptr,0,command_npctypespawn) ||
 		command_add("heal","- Completely heal your target",10,command_heal) ||
 		command_add("appearance","[type] [value] - Send an appearance packet for you or your target",150,command_appearance) ||
-		command_add("charbackup","[list/restore] - Query or restore character backups",150,command_charbackup) ||
 		command_add("nukeitem","[itemid] - Remove itemid from your player target's inventory",150,command_nukeitem) ||
 		command_add("peekinv","[worn/cursor/inv/bank/trade/trib/all] - Print out contents of your player target's inventory",100,command_peekinv) ||
 		command_add("findnpctype","[search criteria] - Search database NPC types",100,command_findnpctype) ||
 		command_add("findzone","[search criteria] - Search database zones",100,command_findzone) ||
-		command_add("fz",nullptr,100,command_findzone) ||
+		command_add("fz",nullptr,100, command_findzone) ||
 		command_add("viewnpctype","[npctype id] - Show info about an npctype",100,command_viewnpctype) ||
 		command_add("reloadstatic","- Reload Static Zone Data",150,command_reloadstatic) ||
 		command_add("reloadquest"," - Clear quest cache (any argument causes it to also stop all timers)",150,command_reloadqst) ||
@@ -332,8 +331,6 @@ int command_init(void) {
 		command_add("guilds",nullptr,0,command_guild) ||
 		command_add("zonestatus","- Show connected zoneservers, synonymous with /servers",150,command_zonestatus) ||
 		command_add("manaburn","- Use AA Wizard class skill manaburn on target",10,command_manaburn) ||
-		command_add("viewmessage","[id] - View messages in your tell queue",100,command_viewmessage) ||
-		command_add("viewmessages",nullptr,0,command_viewmessage) ||
 		command_add("doanim","[animnum] [type] - Send an EmoteAnim for you or your target",50,command_doanim) ||
 		command_add("randomfeatures","- Temporarily randomizes the Facial Features of your target",80,command_randomfeatures) ||
 		command_add("rf",nullptr,80,command_randomfeatures) ||
@@ -373,8 +370,8 @@ int command_init(void) {
 		command_add("opcode","- opcode management",250,command_opcode) ||
 		command_add("logs","[status|normal|error|debug|quest|all] - Subscribe to a log type",250,command_logs) ||
 		command_add("nologs","[status|normal|error|debug|quest|all] - Unsubscribe to a log type",250,command_nologs) ||
-		command_add("ban","[name] - Ban by character name",150,command_ban) ||
-		command_add("suspend","[name][days] - Suspend by character name and for specificed number of days",150,command_suspend) ||
+		command_add("ban","[name] [reason]- Ban by character name",150,command_ban) ||
+		command_add("suspend","[name] [days] [reason] - Suspend by character name and for specificed number of days",150,command_suspend) ||
 		command_add("ipban","[IP address] - Ban IP by character name",200,command_ipban) ||
 		command_add("oocmute","[1/0] - Mutes OOC chat",200,command_oocmute) ||
 		command_add("revoke","[charname] [1/0] - Makes charname unable to talk on OOC",200,command_revoke) ||
@@ -385,7 +382,7 @@ int command_init(void) {
 		command_add("npcshout","[message] - Make your NPC target shout a message.",150,command_npcshout) ||
 		command_add("timers","- Display persistent timers for target",200,command_timers) ||
 		command_add("hp","- Refresh your HP bar from the server.",0,command_hp) ||
-		command_add("pf","- ",0,command_pf) ||
+		command_add("pf","- Display additional mob coordinate and wandering data",0,command_pf) ||
 		command_add("logsql","- enable SQL logging",200,command_logsql) ||
 		command_add("bestz","- Ask map for a good Z coord for your x,y coords.",0,command_bestz) ||
 		command_add("ginfo","- get group info on target.",20,command_ginfo) ||
@@ -406,7 +403,6 @@ int command_init(void) {
 		command_add("guildapprove","[guildapproveid] - Approve a guild with specified ID (guild creator receives the id)",0,command_guildapprove) ||
 		command_add("guildlist","[guildapproveid] - Lists character names who have approved the guild specified by the approve id",0,command_guildlist) ||
 		command_add("altactivate", "[argument] - activates alternate advancement abilities, use altactivate help for more information", 0, command_altactivate) ||
-		command_add("refundaa", "- Refunds your target's AA points, will disconnect them in the process as well.", 100, command_refundaa) ||
 
 #ifdef BOTS
 		command_add("bot","- Type \"#bot help\" to the see the list of available commands for bots.", 0, command_bot) ||
@@ -452,7 +448,8 @@ int command_init(void) {
 		command_add("merchant_open_shop", "Opens a merchants shop", 100, command_merchantopenshop) ||
 		command_add("open_shop", nullptr, 100, command_merchantopenshop) ||
 		command_add("merchant_close_shop", "Closes a merchant shop", 100, command_merchantcloseshop) ||
-		command_add("close_shop", nullptr, 100, command_merchantcloseshop)
+		command_add("close_shop", nullptr, 100, command_merchantcloseshop) ||
+		command_add("shownumhits", "Shows buffs numhits for yourself.", 0, command_shownumhits)
 		)
 	{
 		command_deinit();
@@ -586,6 +583,12 @@ int command_realdispatch(Client *c, const char *message)
 	if(c->Admin() < cur->access){
 		c->Message(13,"Your access level is not high enough to use this command.");
 		return(-1);
+	}
+
+	/* QS: Player_Log_Issued_Commands */
+	if (RuleB(QueryServ, PlayerLogIssuedCommandes)){
+		std::string event_desc = StringFormat("Issued command :: '%s' in zoneid:%i instid:%i", message, c->GetZoneID(), c->GetInstanceID());
+		QServ->PlayerLogEvent(Player_Log_Issued_Commands, c->CharacterID(), event_desc); 
 	}
 
 #ifdef COMMANDS_LOGGING
@@ -2150,8 +2153,8 @@ void command_worldshutdown(Client *c, const Seperator *sep)
 	uint32 interval=0;
 	if (worldserver.Connected()) {
 		if(sep->IsNumber(1) && sep->IsNumber(2) && ((time=atoi(sep->arg[1]))>0) && ((interval=atoi(sep->arg[2]))>0)) {
-			worldserver.SendEmoteMessage(0,0,15,"<SYSTEMWIDE MESSAGE>:SYSTEM MSG:World coming down in %i seconds, everyone log out before this time.",time);
-			c->Message(0, "Sending shutdown packet now, World will shutdown in: %i Seconds with an interval of: %i",time,interval);
+			worldserver.SendEmoteMessage(0,0,15,"<SYSTEMWIDE MESSAGE>:SYSTEM MSG:World coming down in %i minutes, everyone log out before this time.", (time / 60 ));
+			c->Message(0, "Sending shutdown packet now, World will shutdown in: %i minutes with an interval of: %i seconds", (time / 60), interval);
 			ServerPacket* pack = new ServerPacket(ServerOP_ShutdownAll,sizeof(WorldShutDown_Struct));
 			WorldShutDown_Struct* wsd = (WorldShutDown_Struct*)pack->pBuffer;
 			wsd->time=time*1000;
@@ -2217,28 +2220,6 @@ void command_dbspawn2(Client *c, const Seperator *sep)
 	}
 	else {
 		c->Message(0, "Usage: #dbspawn2 spawngroup respawn variance [condition_id] [condition_min]");
-	}
-}
-
-void command_copychar(Client *c, const Seperator *sep)
-{
-	if(sep->arg[1][0]==0 || sep->arg[2][0] == 0 || sep->arg[3][0] == 0)
-		c->Message(0, "Usage: #copychar [character name] [new character] [new account id]");
-	//CheckUsedName.... TRUE=No Char, FALSE=Char/Error
-	//If there is no source...
-	else if (database.CheckUsedName((char*)sep->arg[1])) {
-		c->Message(0, "Source character not found!");
-	}
-	else {
-		//If there is a name is not used....
-		if (database.CheckUsedName((char*) sep->arg[2])) {
-			if (!database.CopyCharacter((char*) sep->arg[1], (char*) sep->arg[2], atoi(sep->arg[3])))
-				c->Message(0, "Character copy operation failed!");
-			else
-				c->Message(0, "Character copy complete.");
-		}
-		else
-			c->Message(0, "Target character already exists!");
 	}
 }
 
@@ -2416,8 +2397,8 @@ void command_showskills(Client *c, const Seperator *sep)
 
 	c->Message(0, "Skills for %s", t->GetName());
 	for (SkillUseTypes i=Skill1HBlunt; i <= HIGHEST_SKILL; i=(SkillUseTypes)(i+1))
-		c->Message(0, "Skill [%d] is at [%d]", i, t->GetSkill(i));
-}
+		c->Message(0, "Skill [%d] is at [%d] - %u", i, t->GetSkill(i), t->GetRawSkill(i)); 
+} 
 
 void command_findspell(Client *c, const Seperator *sep)
 {
@@ -2484,14 +2465,14 @@ void command_castspell(Client *c, const Seperator *sep)
 		else
 			if (c->GetTarget() == 0)
 				if(c->Admin() >= commandInstacast)
-					c->SpellFinished(spellid, 0, 10, 0, -1, spells[spellid].ResistDiff);
+					c->SpellFinished(spellid, 0, USE_ITEM_SPELL_SLOT, 0, -1, spells[spellid].ResistDiff);
 				else
-					c->CastSpell(spellid, 0, 10, 0);
+					c->CastSpell(spellid, 0, USE_ITEM_SPELL_SLOT, 0);
 			else
 				if(c->Admin() >= commandInstacast)
 					c->SpellFinished(spellid, c->GetTarget(), 10, 0, -1, spells[spellid].ResistDiff);
 				else
-					c->CastSpell(spellid, c->GetTarget()->GetID(), 10, 0);
+					c->CastSpell(spellid, c->GetTarget()->GetID(), USE_ITEM_SPELL_SLOT, 0);
 	}
 }
 
@@ -2704,14 +2685,14 @@ void command_texture(Client *c, const Seperator *sep)
 		// Player Races Wear Armor, so Wearchange is sent instead
 		int i;
 		if (!c->GetTarget())
-			for (i = 0; i < 7; i++)
+			for (i = EmuConstants::MATERIAL_BEGIN; i <= EmuConstants::MATERIAL_TINT_END; i++)
 			{
 				c->SendTextureWC(i, texture);
 			}
 		else if ((c->GetTarget()->GetRace() > 0 && c->GetTarget()->GetRace() <= 12) ||
 			c->GetTarget()->GetRace() == 128 || c->GetTarget()->GetRace() == 130 ||
 			c->GetTarget()->GetRace() == 330 || c->GetTarget()->GetRace() == 522) {
-			for (i = 0; i < 7; i++)
+			for (i = EmuConstants::MATERIAL_BEGIN; i <= EmuConstants::MATERIAL_TINT_END; i++)
 			{
 				c->GetTarget()->SendTextureWC(i, texture);
 			}
@@ -2783,85 +2764,6 @@ void command_appearance(Client *c, const Seperator *sep)
 	}
 }
 
-void command_charbackup(Client *c, const Seperator *sep)
-{
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES* result;
-	MYSQL_ROW row;
-	if (strcasecmp(sep->arg[1], "list") == 0) {
-		uint32 charid = 0;
-		if (sep->IsNumber(2))
-			charid = atoi(sep->arg[2]);
-		else
-			database.GetAccountIDByChar(sep->arg[2], &charid);
-		if (charid) {
-			if (database.RunQuery(query, MakeAnyLenString(&query,
-				"Select id, backupreason, charid, account_id, zoneid, DATE_FORMAT(ts, '%%m/%%d/%%Y %%H:%%i:%%s') "
-				" from character_backup where charid=%u", charid), errbuf, &result)) {
-				safe_delete(query);
-				uint32 x = 0;
-				while ((row = mysql_fetch_row(result))) {
-					c->Message(0, " %u: %s, %s (%u), reason=%u", atoi(row[0]), row[5], database.GetZoneName(atoi(row[4])), atoi(row[4]), atoi(row[1]));
-					x++;
-				}
-				c->Message(0, " %u backups found.", x);
-				mysql_free_result(result);
-			}
-			else {
-				c->Message(13, "Query error: '%s' %s", query, errbuf);
-				safe_delete(query);
-			}
-		}
-		else
-			c->Message(0, "Usage: #charbackup list [char name/id]");
-	}
-	else if (strcasecmp(sep->arg[1], "restore") == 0) {
-		uint32 charid = 0;
-		if (sep->IsNumber(2))
-			charid = atoi(sep->arg[2]);
-		else
-			database.GetAccountIDByChar(sep->arg[2], &charid);
-
-		if (charid && sep->IsNumber(3)) {
-			uint32 cbid = atoi(sep->arg[3]);
-			if (database.RunQuery(query, MakeAnyLenString(&query,
-				"Insert into character_backup (backupreason, charid, account_id, name, profile, level, class, x, y, z, zoneid, alt_adv) "
-				" select 1, id, account_id, name, profile, level, class, x, y, z, zoneid, alt_adv from character_ where id=%u", charid), errbuf)) {
-				if (database.RunQuery(query, MakeAnyLenString(&query,
-					"update character_ inner join character_backup on character_.id = character_backup.charid "
-					" set character_.name = character_backup.name, "
-					" character_.profile = character_backup.profile, "
-					" character_.level = character_backup.level, "
-					" character_.class = character_backup.class, "
-					" character_.x = character_backup.x, "
-					" character_.y = character_backup.y, "
-					" character_.z = character_backup.z, "
-					" character_.zoneid = character_backup.zoneid "
-					" where character_backup.charid=%u and character_backup.id=%u", charid, cbid), errbuf)) {
-					safe_delete(query);
-					c->Message(0, "Character restored.");
-				}
-				else {
-					c->Message(13, "Query error: '%s' %s", query, errbuf);
-					safe_delete(query);
-				}
-			}
-			else {
-				c->Message(13, "Query error: '%s' %s", query, errbuf);
-				safe_delete(query);
-			}
-		}
-		else
-			c->Message(0, "Usage: #charbackup list [char name/id]");
-	}
-	else {
-		c->Message(0, "#charbackup sub-commands:");
-		c->Message(0, "  list [char name/id]");
-		c->Message(0, "  restore [char name/id] [backup#]");
-	}
-}
-
 void command_nukeitem(Client *c, const Seperator *sep)
 {
 	int numitems, itemid;
@@ -2892,11 +2794,12 @@ void command_peekinv(Client *c, const Seperator *sep)
 	if (bAll || (strcasecmp(sep->arg[1], "worn")==0)) {
 		// Worn items
 		bFound = true;
-		for (int16 i=0; i<=21; i++) {
+		for (int16 i = EmuConstants::EQUIPMENT_BEGIN; i <= EmuConstants::EQUIPMENT_END; i++) {
 			const ItemInst* inst = client->GetInv().GetItem(i);
 			item = (inst) ? inst->GetItem() : nullptr;
 			if (c->GetClientVersion() >= EQClientSoF)
 			{
+				// this kind of stuff needs to be pushed to the client translators
 				c->Message((item==0), "WornSlot: %i, Item: %i (%c%06X00000000000000000000000000000000000000000000%s%c), Charges: %i", i,
 					((item==0)?0:item->ID),0x12, ((item==0)?0:item->ID),
 					((item==0)?"null":item->Name), 0x12,
@@ -2914,7 +2817,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 	if (bAll || (strcasecmp(sep->arg[1], "inv")==0)) {
 		// Personal inventory items
 		bFound = true;
-		for (int16 i=22; i<=29; i++) {
+		for (int16 i = EmuConstants::GENERAL_BEGIN; i <= EmuConstants::GENERAL_END; i++) {
 			const ItemInst* inst = client->GetInv().GetItem(i);
 			item = (inst) ? inst->GetItem() : nullptr;
 			if (c->GetClientVersion() >= EQClientSoF)
@@ -2933,7 +2836,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 			}
 
 			if (inst && inst->IsType(ItemClassContainer)) {
-				for (uint8 j=0; j<10; j++) {
+				for (uint8 j = SUB_BEGIN; j < EmuConstants::ITEM_CONTAINER_SIZE; j++) {
 					const ItemInst* instbag = client->GetInv().GetItem(i, j);
 					item = (instbag) ? instbag->GetItem() : nullptr;
 					if (c->GetClientVersion() >= EQClientSoF)
@@ -3006,7 +2909,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 				}
 
 				if (inst && inst->IsType(ItemClassContainer) && i==0) { // 'CSD 1' - only display contents of slot 30[0] container..higher ones don't exist
-					for (uint8 j=0; j<10; j++) {
+					for (uint8 j = SUB_BEGIN; j < EmuConstants::ITEM_CONTAINER_SIZE; j++) {
 						const ItemInst* instbag = client->GetInv().GetItem(MainCursor, j);
 						item = (instbag) ? instbag->GetItem() : nullptr;
 						if (c->GetClientVersion() >= EQClientSoF)
@@ -3058,7 +2961,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 		// Bank and shared bank items
 		bFound = true;
 		int16 i = 0;
-		for (i=2000; i<=2023; i++) {
+		for (i = EmuConstants::BANK_BEGIN; i <= EmuConstants::BANK_END; i++) {
 			const ItemInst* inst = client->GetInv().GetItem(i);
 			item = (inst) ? inst->GetItem() : nullptr;
 			if (c->GetClientVersion() >= EQClientSoF)
@@ -3077,7 +2980,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 			}
 
 			if (inst && inst->IsType(ItemClassContainer)) {
-				for (uint8 j=0; j<10; j++) {
+				for (uint8 j = SUB_BEGIN; j < EmuConstants::ITEM_CONTAINER_SIZE; j++) {
 					const ItemInst* instbag = client->GetInv().GetItem(i, j);
 					item = (instbag) ? instbag->GetItem() : nullptr;
 					if (c->GetClientVersion() >= EQClientSoF)
@@ -3099,7 +3002,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 				}
 			}
 		}
-		for (i=2500; i<=2501; i++) {
+		for (i = EmuConstants::SHARED_BANK_BEGIN; i <= EmuConstants::SHARED_BANK_END; i++) {
 			const ItemInst* inst = client->GetInv().GetItem(i);
 			item = (inst) ? inst->GetItem() : nullptr;
 			if (c->GetClientVersion() >= EQClientSoF)
@@ -3118,7 +3021,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 			}
 
 			if (inst && inst->IsType(ItemClassContainer)) {
-				for (uint8 j=0; j<10; j++) {
+				for (uint8 j = SUB_BEGIN; j < EmuConstants::ITEM_CONTAINER_SIZE; j++) {
 					const ItemInst* instbag = client->GetInv().GetItem(i, j);
 					item = (instbag) ? instbag->GetItem() : nullptr;
 					if (c->GetClientVersion() >= EQClientSoF)
@@ -3144,7 +3047,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 	if (bAll || (strcasecmp(sep->arg[1], "trade")==0)) {
 		// Items in trade window (current trader only, not the other trader)
 		bFound = true;
-		for (int16 i=3000; i<=3007; i++) {
+		for (int16 i = EmuConstants::TRADE_BEGIN; i <= EmuConstants::TRADE_END; i++) {
 			const ItemInst* inst = client->GetInv().GetItem(i);
 			item = (inst) ? inst->GetItem() : nullptr;
 			if (c->GetClientVersion() >= EQClientSoF)
@@ -3163,7 +3066,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 			}
 
 			if (inst && inst->IsType(ItemClassContainer)) {
-				for (uint8 j=0; j<10; j++) {
+				for (uint8 j = SUB_BEGIN; j < EmuConstants::ITEM_CONTAINER_SIZE; j++) {
 					const ItemInst* instbag = client->GetInv().GetItem(i, j);
 					item = (instbag) ? instbag->GetItem() : nullptr;
 					if (c->GetClientVersion() >= EQClientSoF)
@@ -3532,7 +3435,7 @@ void command_listpetition(Client *c, const Seperator *sep)
 void command_equipitem(Client *c, const Seperator *sep)
 {
 	uint32 slot_id = atoi(sep->arg[1]);
-	if (sep->IsNumber(1) && (slot_id>=0) && (slot_id<=21)) {
+	if (sep->IsNumber(1) && ((slot_id >= EmuConstants::EQUIPMENT_BEGIN) && (slot_id <= EmuConstants::EQUIPMENT_END) || (slot_id == MainPowerSource))) {
 		const ItemInst* from_inst = c->GetInv().GetItem(MainCursor);
 		const ItemInst* to_inst = c->GetInv().GetItem(slot_id); // added (desync issue when forcing stack to stack)
 		bool partialmove = false;
@@ -3567,6 +3470,8 @@ void command_equipitem(Client *c, const Seperator *sep)
 			}
 			else if(c->SwapItem(mi)) {
 				c->FastQueuePacket(&outapp);
+
+				// if the below code is still needed..just send an an item trade packet to each slot..it should overwrite the client instance
 
 				// below code has proper logic, but client does not like to have cursor charges changed
 				// (we could delete the cursor item and resend, but issues would arise if there are queued items)
@@ -4682,7 +4587,7 @@ void command_loc(Client *c, const Seperator *sep)
 {
 	Mob *t=c->GetTarget()?c->GetTarget():c->CastToMob();
 
-	c->Message(0, "%s's Location (XYZ): %1.1f, %1.1f, %1.1f; heading=%1.1f", t->GetName(), t->GetX(), t->GetY(), t->GetZ(), t->GetHeading());
+	c->Message(0, "%s's Location (XYZ): %1.2f, %1.2f, %1.2f; heading=%1.1f", t->GetName(), t->GetX(), t->GetY(), t->GetZ(), t->GetHeading());
 }
 
 void command_goto(Client *c, const Seperator *sep)
@@ -5280,53 +5185,6 @@ void command_manaburn(Client *c, const Seperator *sep)
 			else
 				c->Message(0, "You have not learned this skill.");
 		}
-	}
-}
-
-void command_viewmessage(Client *c, const Seperator *sep)
-{
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	if(sep->arg[1][0]==0)
-	{
-		if (database.RunQuery(query, MakeAnyLenString(&query, "SELECT id,date,receiver,sender,message from tellque where receiver='%s'",c->GetName()), errbuf, &result))
-		{
-			if (mysql_num_rows(result)>0)
-			{
-				c->Message(0,"You have messages waiting for you to view.");
-				c->Message(0,"Type #Viewmessage <Message ID> to view the message.");
-				c->Message(0," ID , Message Sent Date, Message Sender");
-				while ((row = mysql_fetch_row(result)))
-					c->Message(0,"ID: %s Sent Date: %s Sender: %s ",row[0],row[1],row[3]);
-			}
-			else
-				c->Message(0,"You have no new messages");
-				mysql_free_result(result);
-		}
-		safe_delete_array(query);
-	}
-	else
-	{
-		if (database.RunQuery(query, MakeAnyLenString(&query, "SELECT id,date,receiver,sender,message from tellque where id=%s",sep->argplus[1]), errbuf, &result))
-		{
-			if (mysql_num_rows(result)==1)
-			{
-				row = mysql_fetch_row(result);
-				mysql_free_result(result);
-				if (strcasecmp((const char *) c->GetName(), (const char *) row[2]) == 0)
-				{
-					c->Message(15,"ID: %s,Sent Date: %s,Sender: %s,Message: %s",row[0],row[1],row[3],row[4]);
-					database.RunQuery(query, MakeAnyLenString(&query, "Delete from tellque where id=%s",row[0]), errbuf);
-				}
-				else
-					c->Message(13,"Invalid Message Number, check the number and try again.");
-			}
-			else
-				c->Message(13,"Invalid Message Number, check the number and try again.");
-		}
-		safe_delete_array(query);
 	}
 }
 
@@ -6263,13 +6121,13 @@ void command_setcrystals(Client *c, const Seperator *sep)
 	{
 		t->SetRadiantCrystals(atoi(sep->arg[2]));
 		t->SendCrystalCounts();
-		t->Save();
+		t->SaveCurrency();
 	}
 	else if(!strcasecmp(sep->arg[1], "ebon"))
 	{
 		t->SetEbonCrystals(atoi(sep->arg[2]));
 		t->SendCrystalCounts();
-		t->Save();
+		t->SaveCurrency();
 	}
 	else
 	{
@@ -6296,36 +6154,49 @@ void command_stun(Client *c, const Seperator *sep)
 		c->Message(0, "Usage: #stun [duration]");
 }
 
+
 void command_ban(Client *c, const Seperator *sep)
 {
 	char errbuf[MYSQL_ERRMSG_SIZE];
 	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
 
-	if(sep->arg[1][0] == 0)
+	if(sep->arg[1][0] == 0 || sep->arg[2][0] == 0)
 	{
-		c->Message(0, "Usage: #ban [charname]");
+		c->Message(0, "Usage: #ban <charname> <message>");
 	}
 	else
 	{
-		database.RunQuery(query, MakeAnyLenString(&query, "SELECT account_id from character_ where name = '%s'", sep->arg[1]), errbuf, &result);
-		if(query)
-		{
-			safe_delete_array(query);
+		auto account_id = database.GetAccountIDByChar(sep->arg[1]);
+
+		std::string message;
+		int i = 2;
+		while(1) {
+			if(sep->arg[i][0] == 0) {
+				break;
+			}
+
+			if(message.length() > 0) {
+				message.push_back(' ');
+			}
+
+			message += sep->arg[i];
+			++i;
 		}
 
-		if(mysql_num_rows(result))
-		{
-			row = mysql_fetch_row(result);
-			database.RunQuery(query, MakeAnyLenString(&query, "UPDATE account set status = -2 where id = %i", atoi(row[0])), errbuf, 0);
-			c->Message(13,"Account number %i with the character %s has been banned.", atoi(row[0]), sep->arg[1]);
+		if(message.length() == 0) {
+			c->Message(0, "Usage: #ban <charname> <message>");
+			return;
+		}
 
-			ServerPacket* pack = new ServerPacket(ServerOP_FlagUpdate, 6);
-			*((uint32*) pack->pBuffer) = atoi(row[0]);
-			*((int16*) &pack->pBuffer[4]) = -2;
-			worldserver.SendPacket(pack);
-			safe_delete(pack);
+		if(account_id > 0)
+		{
+			database.RunQuery(query, MakeAnyLenString(&query, "UPDATE account set status = -2, ban_reason = '%s' where id = %i", EscapeString(message).c_str(), account_id), errbuf, 0);
+			c->Message(13, "Account number %i with the character %s has been banned with message: \"%s\"", account_id, sep->arg[1], message.c_str());
+
+			ServerPacket pack(ServerOP_FlagUpdate, 6);
+			*((uint32*)&pack.pBuffer[0]) = account_id;
+			*((int16*)&pack.pBuffer[4]) = -2;
+			worldserver.SendPacket(&pack);
 
 			Client *client = nullptr;
 			client = entity_list.GetClientByName(sep->arg[1]);
@@ -6335,25 +6206,20 @@ void command_ban(Client *c, const Seperator *sep)
 			}
 			else
 			{
-				ServerPacket* pack = new ServerPacket(ServerOP_KickPlayer, sizeof(ServerKickPlayer_Struct));
-				ServerKickPlayer_Struct* skp = (ServerKickPlayer_Struct*) pack->pBuffer;
+				ServerPacket pack(ServerOP_KickPlayer, sizeof(ServerKickPlayer_Struct));
+				ServerKickPlayer_Struct* skp = (ServerKickPlayer_Struct*)pack.pBuffer;
 				strcpy(skp->adminname, c->GetName());
 				strcpy(skp->name, sep->arg[1]);
 				skp->adminrank = c->Admin();
-				worldserver.SendPacket(pack);
-				safe_delete(pack);
+				worldserver.SendPacket(&pack);
 			}
-
-			mysql_free_result(result);
 		}
 		else
 		{
-			c->Message(13,"Character does not exist.");
+			c->Message(13, "Character does not exist.");
 		}
-		if(query)
-		{
-			safe_delete_array(query);
-		}
+
+		safe_delete_array(query);
 	}
 }
 
@@ -6363,7 +6229,7 @@ void command_suspend(Client *c, const Seperator *sep)
 	char *query = nullptr;
 
 	if((sep->arg[1][0] == 0) || (sep->arg[2][0] == 0))
-		c->Message(0, "Usage: #suspend <charname> <days> (Specify 0 days to lift the suspension immediately)");
+		c->Message(0, "Usage: #suspend <charname> <days>(Specify 0 days to lift the suspension immediately) <message>");
 	else
 	{
 		int Duration = atoi(sep->arg[2]);
@@ -6371,22 +6237,40 @@ void command_suspend(Client *c, const Seperator *sep)
 		if(Duration < 0)
 			Duration = 0;
 
-		char *EscName = new char[strlen(sep->arg[1]) * 2 + 1];
+		std::string message;
+		if(Duration > 0) {
+			int i = 3;
+			while(1) {
+				if(sep->arg[i][0] == 0) {
+					break;
+				}
 
-		database.DoEscapeString(EscName, sep->arg[1], strlen(sep->arg[1]));
+				if(message.length() > 0) {
+					message.push_back(' ');
+				}
+
+				message += sep->arg[i];
+				++i;
+			}
+
+			if(message.length() == 0) {
+				c->Message(0, "Usage: #suspend <charname> <days>(Specify 0 days to lift the suspension immediately) <message>");
+				return;
+			}
+		}
 
 		int AccountID;
 
-		if((AccountID = database.GetAccountIDByChar(EscName)) > 0)
+		if((AccountID = database.GetAccountIDByChar(sep->arg[1])) > 0)
 		{
-			database.RunQuery(query, MakeAnyLenString(&query, "UPDATE `account` SET `suspendeduntil` = DATE_ADD(NOW(), INTERVAL %i DAY)"
-									" WHERE `id` = %i", Duration, AccountID), errbuf, 0);
+			database.RunQuery(query, MakeAnyLenString(&query, "UPDATE `account` SET `suspendeduntil` = DATE_ADD(NOW(), INTERVAL %i DAY), "
+				"suspend_reason = '%s' WHERE `id` = %i", Duration, EscapeString(message).c_str(), AccountID), errbuf, 0);
 
 			if(Duration)
-				c->Message(13,"Account number %i with the character %s has been temporarily suspended for %i day(s).", AccountID, sep->arg[1],
-					Duration);
+				c->Message(13, "Account number %i with the character %s has been temporarily suspended for %i day(s) with the message: \"%s\"", AccountID, sep->arg[1],
+				Duration, message.c_str());
 			else
-				c->Message(13,"Account number %i with the character %s is no longer suspended.", AccountID, sep->arg[1]);
+				c->Message(13, "Account number %i with the character %s is no longer suspended.", AccountID, sep->arg[1]);
 
 			safe_delete_array(query);
 
@@ -6396,22 +6280,20 @@ void command_suspend(Client *c, const Seperator *sep)
 				BannedClient->WorldKick();
 			else
 			{
-				ServerPacket* pack = new ServerPacket(ServerOP_KickPlayer, sizeof(ServerKickPlayer_Struct));
-				ServerKickPlayer_Struct* sks = (ServerKickPlayer_Struct*) pack->pBuffer;
+				ServerPacket pack(ServerOP_KickPlayer, sizeof(ServerKickPlayer_Struct));
+				ServerKickPlayer_Struct* sks = (ServerKickPlayer_Struct*)pack.pBuffer;
 
 				strn0cpy(sks->adminname, c->GetName(), sizeof(sks->adminname));
 				strn0cpy(sks->name, sep->arg[1], sizeof(sks->name));
 				sks->adminrank = c->Admin();
 
-				worldserver.SendPacket(pack);
-
-				safe_delete(pack);
+				worldserver.SendPacket(&pack);
 			}
 
-		} else
-			c->Message(13,"Character does not exist.");
-
-		safe_delete_array(EscName);
+		}
+		else {
+			c->Message(13, "Character does not exist.");
+		}
 	}
 }
 
@@ -6647,6 +6529,7 @@ void command_npcedit(Client *c, const Seperator *sep)
 		c->Message(0, "#npcedit qglobal - Sets an NPC's quest global flag");
 		c->Message(0, "#npcedit limit - Sets an NPC's spawn limit counter");
 		c->Message(0, "#npcedit Attackspeed - Sets an NPC's attack speed modifier");
+		c->Message(0, "#npcedit Attackdelay - Sets an NPC's attack delay");
 		c->Message(0, "#npcedit findable - Sets an NPC's findable flag");
 		c->Message(0, "#npcedit wep1 - Sets an NPC's primary weapon model");
 		c->Message(0, "#npcedit wep2 - Sets an NPC's secondary weapon model");
@@ -6757,7 +6640,7 @@ void command_npcedit(Client *c, const Seperator *sep)
 		char errbuf[MYSQL_ERRMSG_SIZE];
 		char *query = 0;
 		c->Message(15,"NPCID %u now regens %i hitpoints per tick.",c->GetTarget()->CastToNPC()->GetNPCTypeID(),atoi(sep->arg[2]));
-		database.RunQuery(query, MakeAnyLenString(&query, "update npc_types set hp_regen_rate=%i where hp_regen_rate=%i",atoi(sep->argplus[2]),c->GetTarget()->CastToNPC()->GetNPCTypeID()), errbuf);
+		database.RunQuery(query, MakeAnyLenString(&query, "update npc_types set hp_regen_rate=%i where id=%i",atoi(sep->argplus[2]),c->GetTarget()->CastToNPC()->GetNPCTypeID()), errbuf);
 		c->LogSQL(query);
 		safe_delete_array(query);
 	}
@@ -7145,6 +7028,15 @@ void command_npcedit(Client *c, const Seperator *sep)
 		char *query = 0;
 		c->Message(15,"NPCID %u now has attack_speed set to %f",c->GetTarget()->CastToNPC()->GetNPCTypeID(),atof(sep->arg[2]));
 		database.RunQuery(query, MakeAnyLenString(&query, "update npc_types set attack_speed=%f where id=%i",atof(sep->argplus[2]),c->GetTarget()->CastToNPC()->GetNPCTypeID()), errbuf);
+		c->LogSQL(query);
+		safe_delete_array(query);
+	}
+	else if ( strcasecmp( sep->arg[1], "Attackdelay" ) == 0 )
+	{
+		char errbuf[MYSQL_ERRMSG_SIZE];
+		char *query = 0;
+		c->Message(15,"NPCID %u now has attack_delay set to %i",c->GetTarget()->CastToNPC()->GetNPCTypeID(),atoi(sep->arg[2]));
+		database.RunQuery(query, MakeAnyLenString(&query, "update npc_types set attack_delay=%i where id=%i",atoi(sep->argplus[2]),c->GetTarget()->CastToNPC()->GetNPCTypeID()), errbuf);
 		c->LogSQL(query);
 		safe_delete_array(query);
 	}
@@ -7776,17 +7668,20 @@ void command_path(Client *c, const Seperator *sep)
 }
 
 void Client::Undye() {
-	for (int cur_slot = 0; cur_slot < 9 ; cur_slot++ ){
+	for (int cur_slot = EmuConstants::MATERIAL_BEGIN; cur_slot <= EmuConstants::MATERIAL_END; cur_slot++ ) {
 		uint8 slot2=SlotConvert(cur_slot);
 		ItemInst* inst = m_inv.GetItem(slot2);
+
 		if(inst != nullptr) {
 			inst->SetColor(inst->GetItem()->Color);
 			database.SaveInventory(CharacterID(), inst, slot2);
 		}
+
 		m_pp.item_tint[cur_slot].color = 0;
 		SendWearChange(cur_slot);
 	}
-	Save(0);
+
+	database.DeleteCharacterDye(this->CharacterID());
 }
 
 void command_undye(Client *c, const Seperator *sep)
@@ -8638,25 +8533,6 @@ void command_altactivate(Client *c, const Seperator *sep){
 	}
 }
 
-void command_refundaa(Client *c, const Seperator *sep){
-	Client* refundee = nullptr;
-	if(c) {
-		if(c->GetTarget()){
-			if(c->GetTarget()->IsClient())
-				refundee = c->GetTarget()->CastToClient();
-			else
-				c->Message(0, "Your target must be a client.");
-		}
-		else{
-			c->Message(0, "You must have a target selected.");
-		}
-
-		if(refundee) {
-			refundee->RefundAA();
-		}
-	}
-}
-
 void command_traindisc(Client *c, const Seperator *sep)
 {
 	uint8 max_level, min_level;
@@ -8712,6 +8588,7 @@ void command_traindisc(Client *c, const Seperator *sep)
 						break;	//continue the 1st loop
 					} else if(t->GetPP().disciplines.values[r] == 0) {
 						t->GetPP().disciplines.values[r] = curspell;
+						database.SaveCharacterDisc(c->CharacterID(), r, curspell);
 						t->SendDisciplineUpdate();
 						t->Message(0, "You have learned a new discipline!");
 						count++;	//success counter
@@ -11415,9 +11292,7 @@ void command_augmentitem(Client *c, const Seperator *sep)
 		return;
 
 		AugmentItem_Struct* in_augment = new AugmentItem_Struct[sizeof(AugmentItem_Struct)];
-		in_augment->container_slot = 1000;
-		in_augment->unknown02[0] = 0;
-		in_augment->unknown02[1] = 0;
+		in_augment->container_slot = 1000; // <watch>
 		in_augment->augment_slot = -1;
 		if(c->GetTradeskillObject() != nullptr)
 		Object::HandleAugmentation(c, in_augment, c->GetTradeskillObject());
@@ -11543,4 +11418,10 @@ void command_merchantcloseshop(Client *c, const Seperator *sep)
 	}
 
 	merchant->CastToNPC()->MerchantCloseShop();
+}
+
+void command_shownumhits(Client *c, const Seperator *sep)
+{
+	c->ShowNumHits();
+	return;
 }

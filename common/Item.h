@@ -121,7 +121,21 @@ public:
 	// Public Methods
 	///////////////////////////////
 
+	Inventory() { m_version = EQClientUnknown; m_versionset = false; }
 	~Inventory();
+
+	// Inventory v2 creep
+	bool SetInventoryVersion(EQClientVersion version) {
+		if (!m_versionset) {
+			m_version = version;
+			return (m_versionset = true);
+		}
+		else {
+			return false;
+		}
+	}
+
+	EQClientVersion GetInventoryVersion() { return m_version; }
 
 	static void CleanDirty();
 	static void MarkDirty(ItemInst *inst);
@@ -132,7 +146,7 @@ public:
 
 	inline iter_queue cursor_begin()	{ return m_cursor.begin(); }
 	inline iter_queue cursor_end()		{ return m_cursor.end(); }
-	inline bool CursorEmpty()		{ return (m_cursor.size() == 0); }
+	inline bool CursorEmpty()			{ return (m_cursor.size() == 0); }
 
 	// Retrieve a read-only item from inventory
 	inline const ItemInst* operator[](int16 slot_id) const { return GetItem(slot_id); }
@@ -172,6 +186,7 @@ public:
 
 	// Locate an available inventory slot
 	int16 FindFreeSlot(bool for_bag, bool try_cursor, uint8 min_size = 0, bool is_arrow = false);
+	int16 FindFreeSlotForTradeItem(const ItemInst* inst);
 
 	// Calculate slot_id for an item within a bag
 	static int16 CalcSlotId(int16 slot_id); // Calc parent bag's slot_id
@@ -181,6 +196,10 @@ public:
 	static uint8 CalcMaterialFromSlot(int16 equipslot);
 
 	static bool CanItemFitInContainer(const Item_Struct *ItemToTry, const Item_Struct *Container);
+
+	//  Test for valid inventory casting slot
+	bool SupportsClickCasting(int16 slot_id);
+	bool SupportsPotionBeltCasting(int16 slot_id);
 
 	// Test whether a given slot can support a container item
 	static bool SupportsContainers(int16 slot_id);
@@ -228,7 +247,12 @@ protected:
 	std::map<int16, ItemInst*>	m_bank;		// Items in character bank
 	std::map<int16, ItemInst*>	m_shbank;	// Items in character shared bank
 	std::map<int16, ItemInst*>	m_trade;	// Items in a trade session
-	ItemInstQueue			m_cursor;	// Items on cursor: FIFO
+	ItemInstQueue				m_cursor;	// Items on cursor: FIFO
+
+private:
+	// Active inventory version
+	EQClientVersion m_version;
+	bool m_versionset;
 };
 
 class SharedDatabase;
@@ -273,6 +297,7 @@ public:
 	inline bool IsAugmentable() const { return m_item->AugSlotType[0]!=0 || m_item->AugSlotType[1]!=0 || m_item->AugSlotType[2]!=0 || m_item->AugSlotType[3]!=0 || m_item->AugSlotType[4]!=0; }
 	bool AvailableWearSlot(uint32 aug_wear_slots) const;
 	int8 AvailableAugmentSlot(int32 augtype) const;
+	bool IsAugmentSlotAvailable(int32 augtype, uint8 slot) const;
 	inline int32 GetAugmentType() const { return m_item->AugType; }
 
 	inline bool IsExpendable() const { return ((m_item->Click.Type == ET_Expendable ) || (m_item->ItemType == ItemTypePotion)); }
@@ -365,7 +390,7 @@ public:
 	bool IsActivated()					{ return m_activated; }
 	void SetActivated(bool activated)	{ m_activated = activated; }
 	int8 GetEvolveLvl() const			{ return m_evolveLvl; }
-	void SetScaling(bool v) { m_scaling = v; }
+	void SetScaling(bool v)				{ m_scaling = v; }
 
 	void Initialize(SharedDatabase *db = nullptr);
 	void ScaleItem();
@@ -413,9 +438,9 @@ protected:
 
 	//
 	// Items inside of this item (augs or contents);
-	std::map<uint8, ItemInst*> m_contents; // Zero-based index: min=0, max=9
-	std::map<std::string, std::string> m_custom_data;
-	std::map<std::string, Timer> m_timers;
+	std::map<uint8, ItemInst*>			m_contents; // Zero-based index: min=0, max=9
+	std::map<std::string, std::string>	m_custom_data;
+	std::map<std::string, Timer>		m_timers;
 };
 
 class EvolveInfo {

@@ -1,8 +1,8 @@
 #ifndef CLIENT62_H_
 #define CLIENT62_H_
 
-#include "../StructStrategy.h"
-#include "../Item.h"
+#include "../struct_strategy.h"
+#include "../item.h"
 
 class EQStreamIdentifier;
 
@@ -27,8 +27,8 @@ namespace Client62 {
 		virtual const EQClientVersion ClientVersion() const;
 
 		//magic macro to declare our opcode processors
-		#include "SSDeclare.h"
-		#include "Client62_ops.h"
+		#include "ss_declare.h"
+		#include "client62_ops.h"
 
 	};
 

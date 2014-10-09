@@ -74,7 +74,7 @@
 #include "spdat.h"
 #include "packet_dump.h"
 #include "moremath.h"
-#include "Item.h"
+#include "item.h"
 #include "skills.h"
 #include "bodytypes.h"
 #include "classes.h"
@@ -1037,6 +1037,15 @@ bool IsCastonFadeDurationSpell(uint16 spell_id)
 		return true;
 		}
 	}
+	return false;
+}
+
+bool IsPowerDistModSpell(uint16 spell_id)
+{
+	if (IsValidSpell(spell_id) && 
+		(spells[spell_id].max_dist_mod || spells[spell_id].min_dist_mod) && spells[spell_id].max_dist > spells[spell_id].min_dist)
+		return true;
+
 	return false;
 }
 

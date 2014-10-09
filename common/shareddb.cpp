@@ -1,14 +1,15 @@
 #include <iostream>
 #include <cstring>
 #include <cstdlib>
+#include <ctime>
 
 #include "shareddb.h"
 #include "mysql.h"
-#include "Item.h"
+#include "item.h"
 #include "classes.h"
 #include "rulesys.h"
 #include "seperator.h"
-#include "StringUtil.h"
+#include "string_util.h"
 #include "eq_packet_structs.h"
 #include "guilds.h"
 #include "extprofile.h"
@@ -113,49 +114,33 @@ bool SharedDatabase::SetGMSpeed(uint32 account_id, uint8 gmspeed)
 }
 
 uint32 SharedDatabase::GetTotalTimeEntitledOnAccount(uint32 AccountID) {
-
 	uint32 EntitledTime = 0;
-
-	const char *EntitledQuery = "select sum(ascii(substring(profile, 237, 1)) + (ascii(substring(profile, 238, 1)) * 256) +"
-				"(ascii(substring(profile, 239, 1)) * 65536) + (ascii(substring(profile, 240, 1)) * 16777216))"
-				"from character_ where account_id = %i";
-
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	if (RunQuery(query, MakeAnyLenString(&query, EntitledQuery, AccountID), errbuf, &result)) {
-
-		if (mysql_num_rows(result) == 1) {
-
-			row = mysql_fetch_row(result);
-
-			EntitledTime = atoi(row[0]);
-		}
-
-		mysql_free_result(result);
+	std::string query = StringFormat("SELECT `time_played` FROM `character_data` WHERE `account_id` = %u", AccountID);
+	auto results = QueryDatabase(query);
+	for (auto row = results.begin(); row != results.end(); ++row) {
+		EntitledTime += atoi(row[0]);
 	}
-
-	safe_delete_array(query);
-
 	return EntitledTime;
 }
 
 bool SharedDatabase::SaveCursor(uint32 char_id, std::list<ItemInst*>::const_iterator &start, std::list<ItemInst*>::const_iterator &end)
 {
-iter_queue it;
-int i;
-bool ret=true;
+	iter_queue it;
+	int i;
+	bool ret = true;
 	char errbuf[MYSQL_ERRMSG_SIZE];
 	char* query = 0;
 	// Delete cursor items
-	if ((ret = RunQuery(query, MakeAnyLenString(&query, "DELETE FROM inventory WHERE charid=%i AND ( (slotid >=8000 and slotid<=8999) or slotid=30 or (slotid>=331 and slotid<=340))", char_id), errbuf))) {
-		for(it=start,i=8000;it!=end;++it,i++) {
-			ItemInst *inst=*it;
-			if (!(ret=SaveInventory(char_id,inst,(i==8000) ? 30 : i)))
+	if ((ret = RunQuery(query, MakeAnyLenString(&query, "DELETE FROM inventory WHERE charid = %i AND ((slotid >= 8000 AND slotid <= 8999) OR slotid = %i OR (slotid >= %i AND slotid <= %i))",
+		char_id, MainCursor, EmuConstants::CURSOR_BAG_BEGIN, EmuConstants::CURSOR_BAG_END), errbuf))) {
+
+		for (it = start, i = 8000; it != end; ++it, i++) {
+			ItemInst *inst = *it;
+			if (!(ret = SaveInventory(char_id, inst, (i == 8000) ? MainCursor : i)))
 				break;
 		}
-	} else {
+	}
+	else {
 		std::cout << "Clearing cursor failed: " << errbuf << std::endl;
 	}
 	safe_delete_array(query);
@@ -204,20 +189,27 @@ bool SharedDatabase::SaveInventory(uint32 char_id, const ItemInst* inst, int16 s
 	char errbuf[MYSQL_ERRMSG_SIZE];
 	char* query = 0;
 	bool ret = false;
-	uint32 augslot[5] = { 0, 0, 0, 0, 0 };
+	uint32 augslot[EmuConstants::ITEM_COMMON_SIZE] = { NO_ITEM, NO_ITEM, NO_ITEM, NO_ITEM, NO_ITEM };
+
+	// If we never save tribute slots..how are we to ever benefit from them!!? The client
+	// object is destroyed upon zoning - including its inventory object..and if tributes
+	// don't exist in the database, then they will never be loaded when the new client
+	// object is created in the new zone object... Something to consider... -U
+	//
+	// (we could add them to the 'NoRent' checks and dispose of after 30 minutes offline)
 
 	//never save tribute slots:
-	if(slot_id >= 400 && slot_id <= 404)
+	if(slot_id >= EmuConstants::TRIBUTE_BEGIN && slot_id <= EmuConstants::TRIBUTE_END)
 		return(true);
 
 	if (inst && inst->IsType(ItemClassCommon)) {
-		for(int i=0;i<5;i++) {
+		for(int i = AUG_BEGIN; i < EmuConstants::ITEM_COMMON_SIZE; i++) {
 			ItemInst *auginst=inst->GetItem(i);
-			augslot[i]=(auginst && auginst->GetItem()) ? auginst->GetItem()->ID : 0;
+			augslot[i]=(auginst && auginst->GetItem()) ? auginst->GetItem()->ID : NO_ITEM;
 		}
 	}
 
-	if (slot_id>=2500 && slot_id<=2600) { // Shared bank inventory
+	if (slot_id >= EmuConstants::SHARED_BANK_BEGIN && slot_id <= EmuConstants::SHARED_BANK_BAGS_END) { // Shared bank inventory
 		if (!inst) {
 			// Delete item
 			uint32 account_id = GetAccountIDByChar(char_id);
@@ -229,7 +221,7 @@ bool SharedDatabase::SaveInventory(uint32 char_id, const ItemInst* inst, int16 s
 			// Delete bag slots, if need be
 			if (ret && Inventory::SupportsContainers(slot_id)) {
 				safe_delete_array(query);
-				int16 base_slot_id = Inventory::CalcSlotId(slot_id, 0);
+				int16 base_slot_id = Inventory::CalcSlotId(slot_id, SUB_BEGIN);
 				ret = RunQuery(query, MakeAnyLenString(&query, "DELETE FROM sharedbank WHERE acctid=%i AND slotid>=%i AND slotid<%i",
 					account_id, base_slot_id, (base_slot_id+10)), errbuf);
 			}
@@ -268,7 +260,7 @@ bool SharedDatabase::SaveInventory(uint32 char_id, const ItemInst* inst, int16 s
 			// Delete bag slots, if need be
 			if (ret && Inventory::SupportsContainers(slot_id)) {
 				safe_delete_array(query);
-				int16 base_slot_id = Inventory::CalcSlotId(slot_id, 0);
+				int16 base_slot_id = Inventory::CalcSlotId(slot_id, SUB_BEGIN);
 				ret = RunQuery(query, MakeAnyLenString(&query, "DELETE FROM inventory WHERE charid=%i AND slotid>=%i AND slotid<%i",
 					char_id, base_slot_id, (base_slot_id+10)), errbuf);
 			}
@@ -302,7 +294,7 @@ bool SharedDatabase::SaveInventory(uint32 char_id, const ItemInst* inst, int16 s
 
 	// Save bag contents, if slot supports bag contents
 	if (inst && inst->IsType(ItemClassContainer) && Inventory::SupportsContainers(slot_id)) {
-		for (uint8 idx=0; idx<10; idx++) {
+		for (uint8 idx = SUB_BEGIN; idx < EmuConstants::ITEM_CONTAINER_SIZE; idx++) {
 			const ItemInst* baginst = inst->GetItem(idx);
 			SaveInventory(char_id, baginst, Inventory::CalcSlotId(slot_id, idx));
 		}
@@ -345,12 +337,11 @@ int32 SharedDatabase::GetSharedPlatinum(uint32 account_id)
 	return 0;
 }
 
-bool SharedDatabase::SetSharedPlatinum(uint32 account_id, int32 amount_to_add)
-{
+bool SharedDatabase::SetSharedPlatinum(uint32 account_id, int32 amount_to_add) {
 	char errbuf[MYSQL_ERRMSG_SIZE];
 	char *query = 0;
 
-	if (!RunQuery(query, MakeAnyLenString(&query, "UPDATE account SET sharedplat = sharedplat + %i WHERE id = %i", amount_to_add, account_id), errbuf)) {
+	if (!RunQuery(query, MakeAnyLenString(&query, "UPDATE `account` SET `sharedplat` = `sharedplat` + %i WHERE id = %i", amount_to_add, account_id), errbuf)) {
 		std::cerr << "Error in SetSharedPlatinum query '" << query << "' " << errbuf << std::endl;
 		safe_delete_array(query);
 		return false;
@@ -360,37 +351,26 @@ bool SharedDatabase::SetSharedPlatinum(uint32 account_id, int32 amount_to_add)
 	return true;
 }
 
-bool SharedDatabase::SetStartingItems(PlayerProfile_Struct* pp, Inventory* inv, uint32 si_race, uint32 si_class, uint32 si_deity, uint32 si_current_zone, char* si_name, int admin_level)
-{
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char* query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
+bool SharedDatabase::SetStartingItems(PlayerProfile_Struct* pp, Inventory* inv, uint32 si_race, uint32 si_class, uint32 si_deity, uint32 si_current_zone, char* si_name, int admin_level) {
 	const Item_Struct* myitem;
-
-	RunQuery
-	(
-		query,
-		MakeAnyLenString
-		(
-			&query,
-			"SELECT itemid, item_charges, slot FROM starting_items "
-			"WHERE (race = %i or race = 0) AND (class = %i or class = 0) AND "
-			"(deityid = %i or deityid=0) AND (zoneid = %i or zoneid = 0) AND "
-			"gm <= %i ORDER BY id",
-			si_race, si_class, si_deity, si_current_zone, admin_level
-		),
-		errbuf,
-		&result
-	);
-	safe_delete_array(query);
-
-	while((row = mysql_fetch_row(result))) {
-		int itemid = atoi(row[0]);
-		int charges = atoi(row[1]);
-		int slot = atoi(row[2]);
+	uint32 itemid = 0;
+	int32 charges = 0;
+	int32 slot = 0;
+	auto query = StringFormat(
+		"SELECT `itemid`, `item_charges`, `slot` FROM `starting_items`"
+		" WHERE (`race` = %i OR `race` = 0)"
+		" AND (`class` = %i OR `class` = 0)"
+		" AND  (`deityid` = %i OR `deityid` = 0)"
+		" AND (`zoneid` = %i OR `zoneid` = 0)"
+		" AND gm <= %i ORDER BY id",
+		si_race, si_class, si_deity, si_current_zone, admin_level);
+	auto results = QueryDatabase(query); 
+	for (auto row = results.begin(); row != results.end(); ++row) {
+		itemid = atoi(row[0]); 
+		charges = atoi(row[1]);
+		slot = atoi(row[2]);
 		myitem = GetItem(itemid);
-		if(!myitem)
+		if(!myitem) 
 			continue;
 		ItemInst* myinst = CreateBaseItem(myitem, charges);
 		if(slot < 0)
@@ -398,9 +378,6 @@ bool SharedDatabase::SetStartingItems(PlayerProfile_Struct* pp, Inventory* inv, 
 		inv->PutItem(slot, *myinst);
 		safe_delete(myinst);
 	}
-
-	if(result) mysql_free_result(result);
-
 	return true;
 }
 
@@ -417,7 +394,7 @@ bool SharedDatabase::GetSharedBank(uint32 id, Inventory* inv, bool is_charid) {
 	if (is_charid) {
 		len_query = MakeAnyLenString(&query,
 			"SELECT sb.slotid,sb.itemid,sb.charges,sb.augslot1,sb.augslot2,sb.augslot3,sb.augslot4,sb.augslot5,sb.custom_data from sharedbank sb "
-			"INNER JOIN character_ ch ON ch.account_id=sb.acctid "
+			"INNER JOIN character_data ch ON ch.account_id=sb.acctid "
 			"WHERE ch.id=%i", id);
 	}
 	else {
@@ -430,7 +407,7 @@ bool SharedDatabase::GetSharedBank(uint32 id, Inventory* inv, bool is_charid) {
 			int16 slot_id	= (int16)atoi(row[0]);
 			uint32 item_id	= (uint32)atoi(row[1]);
 			int8 charges	= (int8)atoi(row[2]);
-			uint32 aug[5];
+			uint32 aug[EmuConstants::ITEM_COMMON_SIZE];
 			aug[0]	= (uint32)atoi(row[3]);
 			aug[1]	= (uint32)atoi(row[4]);
 			aug[2]	= (uint32)atoi(row[5]);
@@ -443,7 +420,7 @@ bool SharedDatabase::GetSharedBank(uint32 id, Inventory* inv, bool is_charid) {
 
 				ItemInst* inst = CreateBaseItem(item, charges);
 				if (item->ItemClass == ItemClassCommon) {
-					for(int i=0;i<5;i++) {
+					for(int i = AUG_BEGIN; i < EmuConstants::ITEM_COMMON_SIZE; i++) {
 						if (aug[i]) {
 							inst->PutAugment(this, i, aug[i]);
 						}
@@ -484,8 +461,8 @@ bool SharedDatabase::GetSharedBank(uint32 id, Inventory* inv, bool is_charid) {
 						"Warning: Invalid slot_id for item in shared bank inventory: %s=%i, item_id=%i, slot_id=%i",
 						((is_charid==true) ? "charid" : "acctid"), id, item_id, slot_id);
 
-					if(is_charid)
-						SaveInventory(id,nullptr,slot_id);
+					if (is_charid)
+						SaveInventory(id, nullptr, slot_id);
 				}
 			}
 			else {
@@ -524,7 +501,7 @@ bool SharedDatabase::GetInventory(uint32 char_id, Inventory* inv) {
 			uint32 item_id	= atoi(row[1]);
 			uint16 charges	= atoi(row[2]);
 			uint32 color		= atoul(row[3]);
-			uint32 aug[5];
+			uint32 aug[EmuConstants::ITEM_COMMON_SIZE];
 			aug[0]	= (uint32)atoul(row[4]);
 			aug[1]	= (uint32)atoul(row[5]);
 			aug[2]	= (uint32)atoul(row[6]);
@@ -565,7 +542,7 @@ bool SharedDatabase::GetInventory(uint32 char_id, Inventory* inv) {
 					}
 				}
 
-				if (instnodrop || (slot_id >= 0 && slot_id <= 21 && inst->GetItem()->Attuneable))
+				if (instnodrop || (((slot_id >= EmuConstants::EQUIPMENT_BEGIN && slot_id <= EmuConstants::EQUIPMENT_END) || slot_id == MainPowerSource) && inst->GetItem()->Attuneable))
 						inst->SetInstNoDrop(true);
 				if (color > 0)
 					inst->SetColor(color);
@@ -575,17 +552,27 @@ bool SharedDatabase::GetInventory(uint32 char_id, Inventory* inv) {
 					inst->SetCharges(charges);
 
 				if (item->ItemClass == ItemClassCommon) {
-					for(int i=0;i<5;i++) {
+					for(int i = AUG_BEGIN; i < EmuConstants::ITEM_COMMON_SIZE; i++) {
 						if (aug[i]) {
 							inst->PutAugment(this, i, aug[i]);
 						}
 					}
 				}
 
-				if (slot_id>=8000 && slot_id <= 8999)
+				if (slot_id >= 8000 && slot_id <= 8999) {
 					put_slot_id = inv->PushCursor(*inst);
-				else
+				}
+				// Admins: please report any occurrences of this error
+				else if (slot_id >= 3111 && slot_id <= 3179) {
+					LogFile->write(EQEMuLog::Error,
+						"Warning: Defunct location for item in inventory: charid=%i, item_id=%i, slot_id=%i .. pushing to cursor...",
+						char_id, item_id, slot_id);
+					put_slot_id = inv->PushCursor(*inst);
+				}
+				else {
 					put_slot_id = inv->PutItem(slot_id, *inst);
+				}
+
 				safe_delete(inst);
 
 				// Save ptr to item in inventory
@@ -624,8 +611,13 @@ bool SharedDatabase::GetInventory(uint32 account_id, char* name, Inventory* inv)
 	bool ret = false;
 
 	// Retrieve character inventory
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT slotid,itemid,charges,color,augslot1,augslot2,augslot3,augslot4,augslot5,"
-		"instnodrop,custom_data FROM inventory INNER JOIN character_ ch ON ch.id=charid WHERE ch.name='%s' AND ch.account_id=%i ORDER BY slotid",
+	if (RunQuery(query, MakeAnyLenString(&query, 
+		" SELECT `slotid`, `itemid`, `charges`, `color`, `augslot1`, `augslot2`, `augslot3`, `augslot4`, `augslot5`, `instnodrop`, `custom_data`"
+		" FROM `inventory`"
+		" INNER JOIN `character_data` ch ON ch.id = charid"
+		" WHERE ch.NAME = '%s'"
+		" AND ch.account_id = % i"
+		" ORDER BY `slotid`",
 		name, account_id), errbuf, &result))
 	{
 		while ((row = mysql_fetch_row(result))) {
@@ -633,7 +625,7 @@ bool SharedDatabase::GetInventory(uint32 account_id, char* name, Inventory* inv)
 			uint32 item_id	= atoi(row[1]);
 			int8 charges	= atoi(row[2]);
 			uint32 color		= atoul(row[3]);
-			uint32 aug[5];
+			uint32 aug[EmuConstants::ITEM_COMMON_SIZE];
 			aug[0]	= (uint32)atoi(row[4]);
 			aug[1]	= (uint32)atoi(row[5]);
 			aug[2]	= (uint32)atoi(row[6]);
@@ -679,13 +671,13 @@ bool SharedDatabase::GetInventory(uint32 account_id, char* name, Inventory* inv)
 			inst->SetCharges(charges);
 
 			if (item->ItemClass == ItemClassCommon) {
-				for(int i=0;i<5;i++) {
+				for(int i = AUG_BEGIN; i < EmuConstants::ITEM_COMMON_SIZE; i++) {
 					if (aug[i]) {
 						inst->PutAugment(this, i, aug[i]);
 					}
 				}
 			}
-			if (slot_id>=8000 && slot_id <= 8999)
+			if (slot_id >= 8000 && slot_id <= 8999)
 				put_slot_id = inv->PushCursor(*inst);
 			else
 				put_slot_id = inv->PutItem(slot_id, *inst);
@@ -1198,104 +1190,6 @@ bool SharedDatabase::LoadNPCFactionLists() {
 	return true;
 }
 
-// Get the player profile and inventory for the given account "account_id" and
-// character name "name". Return true if the character was found, otherwise false.
-// False will also be returned if there is a database error.
-bool SharedDatabase::GetPlayerProfile(uint32 account_id, char* name, PlayerProfile_Struct* pp, Inventory* inv, ExtendedProfile_Struct *ext, char* current_zone, uint32 *current_instance) {
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char* query = 0;
-	MYSQL_RES* result;
-	MYSQL_ROW row;
-	bool ret = false;
-
-	unsigned long* lengths;
-
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT profile,zonename,x,y,z,extprofile,instanceid FROM character_ WHERE account_id=%i AND name='%s'", account_id, name), errbuf, &result)) {
-		if (mysql_num_rows(result) == 1) {
-			row = mysql_fetch_row(result);
-			lengths = mysql_fetch_lengths(result);
-			if (lengths[0] == sizeof(PlayerProfile_Struct)) {
-				memcpy(pp, row[0], sizeof(PlayerProfile_Struct));
-
-				if (current_zone)
-					strcpy(current_zone, row[1]);
-				pp->zone_id = GetZoneID(row[1]);
-				pp->x = atof(row[2]);
-				pp->y = atof(row[3]);
-				pp->z = atof(row[4]);
-				pp->zoneInstance = atoi(row[6]);
-				if (pp->x == -1 && pp->y == -1 && pp->z == -1)
-					GetSafePoints(pp->zone_id, GetInstanceVersion(pp->zoneInstance), &pp->x, &pp->y, &pp->z);
-
-				if(current_instance)
-					*current_instance = pp->zoneInstance;
-
-				if(ext) {
-					//SetExtendedProfile handles any conversion
-					SetExtendedProfile(ext, row[5], lengths[5]);
-				}
-
-				// Retrieve character inventory
-				ret = GetInventory(account_id, name, inv);
-			}
-			else {
-				LogFile->write(EQEMuLog::Error, "Player profile length mismatch in GetPlayerProfile. Found: %i, Expected: %i",
-					lengths[0], sizeof(PlayerProfile_Struct));
-			}
-		}
-
-		mysql_free_result(result);
-	}
-	else {
-		LogFile->write(EQEMuLog::Error, "GetPlayerProfile query '%s' %s", query, errbuf);
-	}
-
-	safe_delete_array(query);
-	return ret;
-}
-
-bool SharedDatabase::SetPlayerProfile(uint32 account_id, uint32 charid, PlayerProfile_Struct* pp, Inventory* inv, ExtendedProfile_Struct *ext, uint32 current_zone, uint32 current_instance, uint8 MaxXTargets) {
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char* query = 0;
-	uint32 affected_rows = 0;
-	bool ret = false;
-
-	if (RunQuery(query, SetPlayerProfile_MQ(&query, account_id, charid, pp, inv, ext, current_zone, current_instance, MaxXTargets), errbuf, 0, &affected_rows)) {
-		ret = (affected_rows != 0);
-	}
-
-	if (!ret) {
-		LogFile->write(EQEMuLog::Error, "SetPlayerProfile query '%s' %s", query, errbuf);
-	}
-
-	safe_delete_array(query);
-	return ret;
-}
-
-// Generate SQL for updating player profile
-uint32 SharedDatabase::SetPlayerProfile_MQ(char** query, uint32 account_id, uint32 charid, PlayerProfile_Struct* pp, Inventory* inv, ExtendedProfile_Struct *ext, uint32 current_zone, uint32 current_instance, uint8 MaxXTargets) {
-	*query = new char[396 + sizeof(PlayerProfile_Struct)*2 + sizeof(ExtendedProfile_Struct)*2 + 4];
-	char* end = *query;
-	if (!current_zone)
-		current_zone = pp->zone_id;
-
-	if (!current_instance)
-		current_instance = pp->zoneInstance;
-
-	if(strlen(pp->name) == 0) // Sanity check in case pp never loaded
-		return false;
-
-	end += sprintf(end, "UPDATE character_ SET timelaston=unix_timestamp(now()),name=\'%s\', zonename=\'%s\', zoneid=%u, instanceid=%u, x = %f, y = %f, z = %f, profile=\'", pp->name, GetZoneName(current_zone), current_zone, current_instance, pp->x, pp->y, pp->z);
-	end += DoEscapeString(end, (char*)pp, sizeof(PlayerProfile_Struct));
-	end += sprintf(end,"\', extprofile=\'");
-	end += DoEscapeString(end, (char*)ext, sizeof(ExtendedProfile_Struct));
-	end += sprintf(end,"\',class=%d,level=%d,xtargets=%u WHERE id=%u", pp->class_, pp->level, MaxXTargets, charid);
-
-	return (uint32) (end - (*query));
-}
-
-
-
 // Create appropriate ItemInst class
 ItemInst* SharedDatabase::CreateItem(uint32 item_id, int16 charges, uint32 aug1, uint32 aug2, uint32 aug3, uint32 aug4, uint32 aug5)
 {
@@ -1622,6 +1516,13 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 
 		int tempid = 0;
 		int counter = 0;
+
+		if(result && mysql_field_count(getMySQL()) <= SPELL_LOAD_FIELD_COUNT) {
+			_log(SPELLS__LOAD_ERR, "Fatal error loading spells: Spell field count < SPELL_LOAD_FIELD_COUNT(%u)", SPELL_LOAD_FIELD_COUNT);
+			mysql_free_result(result);
+			return;
+		}
+
 		while (row = mysql_fetch_row(result)) {
 			tempid = atoi(row[0]);
 			if(tempid >= max_spells) {
@@ -1700,7 +1601,7 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			for (y = 0; y < 16; y++)
 				sp[tempid].deities[y]=atoi(row[126+y]);
 
-			sp[tempid].uninterruptable=atoi(row[146]);
+			sp[tempid].uninterruptable=atoi(row[146]) != 0;
 			sp[tempid].ResistDiff=atoi(row[147]);
 			sp[tempid].dot_stacking_exempt=atoi(row[148]);
 			sp[tempid].RecourseLink = atoi(row[150]);
@@ -1710,11 +1611,13 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			sp[tempid].descnum = atoi(row[155]);
 			sp[tempid].effectdescnum = atoi(row[157]);
 
+			sp[tempid].npc_no_los = atoi(row[159]) != 0;
 			sp[tempid].reflectable = atoi(row[161]) != 0;
 			sp[tempid].bonushate=atoi(row[162]);
 
 			sp[tempid].EndurCost=atoi(row[166]);
 			sp[tempid].EndurTimerIndex=atoi(row[167]);
+			sp[tempid].IsDisciplineBuff = atoi(row[168]) != 0;
 			sp[tempid].HateAdded=atoi(row[173]);
 			sp[tempid].EndurUpkeep=atoi(row[174]);
 			sp[tempid].numhitstype = atoi(row[175]);
@@ -1730,17 +1633,26 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			sp[tempid].viral_targets = atoi(row[191]);
 			sp[tempid].viral_timer = atoi(row[192]);
 			sp[tempid].NimbusEffect = atoi(row[193]);
-			sp[tempid].directional_start = (float)atoi(row[194]);
-			sp[tempid].directional_end = (float)atoi(row[195]);
+			sp[tempid].directional_start = static_cast<float>(atoi(row[194]));
+			sp[tempid].directional_end = static_cast<float>(atoi(row[195]));
 			sp[tempid].not_extendable = atoi(row[197]) != 0;
 			sp[tempid].suspendable = atoi(row[200]) != 0;
+			sp[tempid].viral_range = atoi(row[201]);
 			sp[tempid].spellgroup=atoi(row[207]);
+			sp[tempid].rank = atoi(row[208]);
 			sp[tempid].powerful_flag=atoi(row[209]);
 			sp[tempid].CastRestriction = atoi(row[211]);
 			sp[tempid].AllowRest = atoi(row[212]) != 0;
-			sp[tempid].NotOutofCombat = atoi(row[213]) != 0;
-			sp[tempid].NotInCombat = atoi(row[214]) != 0;
+			sp[tempid].InCombat = atoi(row[213]) != 0;
+			sp[tempid].OutofCombat = atoi(row[214]) != 0;
+			sp[tempid].aemaxtargets = atoi(row[218]);
+			sp[tempid].maxtargets = atoi(row[219]);
 			sp[tempid].persistdeath = atoi(row[224]) != 0;
+			sp[tempid].min_dist = atof(row[227]);
+			sp[tempid].min_dist_mod = atof(row[228]);
+			sp[tempid].max_dist = atof(row[229]);
+			sp[tempid].max_dist_mod = atof(row[230]);
+			sp[tempid].min_range = static_cast<float>(atoi(row[231]));
 			sp[tempid].DamageShieldType = 0;
 		}
 		mysql_free_result(result);
@@ -1754,7 +1666,7 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 
 int SharedDatabase::GetMaxBaseDataLevel() {
 	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = "SELECT MAX(level) FROM base_data";
+	const char *query = "SELECT MAX(level) FROM base_data";
 	MYSQL_RES *result;
 	MYSQL_ROW row;
 	int32 ret = 0;
@@ -1805,7 +1717,7 @@ bool SharedDatabase::LoadBaseData() {
 void SharedDatabase::LoadBaseData(void *data, int max_level) {
 	char *base_ptr = reinterpret_cast<char*>(data);
 	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = "SELECT * FROM base_data ORDER BY level, class ASC";
+	const char *query = "SELECT * FROM base_data ORDER BY level, class ASC";
 	MYSQL_RES *result;
 	MYSQL_ROW row;
 	
@@ -2089,39 +2001,19 @@ const LootDrop_Struct* SharedDatabase::GetLootDrop(uint32 lootdrop_id) {
 	return nullptr;
 }
 
-void SharedDatabase::GetPlayerInspectMessage(char* playername, InspectMessage_Struct* message) {
-
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-
-	if (RunQuery(query, MakeAnyLenString(&query, "SELECT inspectmessage FROM character_ WHERE name='%s'", playername), errbuf, &result)) {
-		safe_delete_array(query);
-
-		if (mysql_num_rows(result) == 1) {
-			row = mysql_fetch_row(result);
-			memcpy(message, row[0], sizeof(InspectMessage_Struct));
-		}
-
-		mysql_free_result(result);
-	}
-	else {
-		std::cerr << "Error in GetPlayerInspectMessage query '" << query << "' " << errbuf << std::endl;
-		safe_delete_array(query);
+void SharedDatabase::LoadCharacterInspectMessage(uint32 character_id, InspectMessage_Struct* message) { 
+	std::string query = StringFormat("SELECT `inspect_message` FROM `character_inspect_messages` WHERE `id` = %u LIMIT 1", character_id);
+	auto results = QueryDatabase(query); ThrowDBError(results.ErrorMessage(), "SharedDatabase::LoadCharacterInspectMessage", query);
+	auto row = results.begin();  
+	memcpy(message, "", sizeof(InspectMessage_Struct));
+	for (auto row = results.begin(); row != results.end(); ++row) {
+		memcpy(message, row[0], sizeof(InspectMessage_Struct));
 	}
 }
 
-void SharedDatabase::SetPlayerInspectMessage(char* playername, const InspectMessage_Struct* message) {
-
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-
-	if (!RunQuery(query, MakeAnyLenString(&query, "UPDATE character_ SET inspectmessage='%s' WHERE name='%s'", message->text, playername), errbuf)) {
-		std::cerr << "Error in SetPlayerInspectMessage query '" << query << "' " << errbuf << std::endl;
-	}
-
-	safe_delete_array(query);
+void SharedDatabase::SaveCharacterInspectMessage(uint32 character_id, const InspectMessage_Struct* message) {
+	std::string query = StringFormat("REPLACE INTO `character_inspect_messages` (id, inspect_message) VALUES (%u, '%s')", character_id, EscapeString(message->text).c_str());
+	auto results = QueryDatabase(query); ThrowDBError(results.ErrorMessage(), "SharedDatabase::SaveCharacterInspectMessage", query);  
 }
 
 void SharedDatabase::GetBotInspectMessage(uint32 botid, InspectMessage_Struct* message) {
@@ -2152,7 +2044,8 @@ void SharedDatabase::SetBotInspectMessage(uint32 botid, const InspectMessage_Str
 	char errbuf[MYSQL_ERRMSG_SIZE];
 	char *query = 0;
 
-	if (!RunQuery(query, MakeAnyLenString(&query, "UPDATE bots SET BotInspectMessage='%s' WHERE BotID=%i", message->text, botid), errbuf)) {
+	std::string msg = EscapeString(message->text);
+	if (!RunQuery(query, MakeAnyLenString(&query, "UPDATE bots SET BotInspectMessage='%s' WHERE BotID=%i", msg.c_str(), botid), errbuf)) {
 		std::cerr << "Error in SetBotInspectMessage query '" << query << "' " << errbuf << std::endl;
 	}
 

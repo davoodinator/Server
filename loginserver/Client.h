@@ -20,10 +20,10 @@
 
 #include "../common/debug.h"
 #include "../common/opcodemgr.h"
-#include "../common/EQStreamType.h"
-#include "../common/EQStreamFactory.h"
+#include "../common/eq_stream_type.h"
+#include "../common/eq_stream_factory.h"
 #ifndef WIN32
-#include "EQCryptoAPI.h"
+#include "eq_crypto_api.h"
 #endif
 #include <string>
 

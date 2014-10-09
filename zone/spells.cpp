@@ -71,13 +71,13 @@ Copyright (C) 2001-2002 EQEMu Development Team (http://eqemu.org)
 #include "masterentity.h"
 #include "../common/packet_dump.h"
 #include "../common/moremath.h"
-#include "../common/Item.h"
+#include "../common/item.h"
 #include "worldserver.h"
 #include "../common/skills.h"
 #include "../common/bodytypes.h"
 #include "../common/classes.h"
 #include "../common/rulesys.h"
-#include "../common/StringUtil.h"
+#include "../common/string_util.h"
 #include <math.h>
 #include <assert.h>
 
@@ -90,8 +90,8 @@ Copyright (C) 2001-2002 EQEMu Development Team (http://eqemu.org)
 	#include "../common/packet_dump_file.h"
 #endif
 
-#include "StringIDs.h"
-#include "QuestParserCollection.h"
+#include "string_ids.h"
+#include "quest_parser_collection.h"
 
 extern Zone* zone;
 extern volatile bool ZoneLoaded;
@@ -1034,7 +1034,7 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, uint16 slot,
 
 			mlog(SPELLS__CASTING, "Checking Interruption: spell x: %f  spell y: %f  cur x: %f  cur y: %f channelchance %f channeling skill %d\n", GetSpellX(), GetSpellY(), GetX(), GetY(), channelchance, GetSkill(SkillChanneling));
 
-			if(MakeRandomFloat(0, 100) > channelchance) {
+			if(!spells[spell_id].uninterruptable && MakeRandomFloat(0, 100) > channelchance) {
 				mlog(SPELLS__CASTING_ERR, "Casting of %d canceled: interrupted.", spell_id);
 				InterruptSpell();
 				return;
@@ -1252,7 +1252,7 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, uint16 slot,
 		}
 	}
 
-	if(IsClient()) {		
+	if(IsClient()) {
 		CheckNumHitsRemaining(NUMHIT_MatchingSpells);
 		TrySympatheticProc(target, spell_id);
 	}
@@ -1378,10 +1378,56 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 			mlog(AA__MESSAGE, "Project Illusion overwrote target caster: %s spell id: %d was ON", GetName(), spell_id);
 			targetType = ST_GroupClientAndPet;
 	}
-	
+
 	if (spell_target && !spell_target->PassCastRestriction(true, spells[spell_id].CastRestriction)){
 		Message_StringID(13,SPELL_NEED_TAR);
 		return false;
+	}
+
+	//Must be out of combat. (If Beneficial checks casters combat state, Deterimental checks targets)
+	if (!spells[spell_id].InCombat && spells[spell_id].OutofCombat){
+		if (IsDetrimentalSpell(spell_id)) {
+			if ( (spell_target->IsNPC() && spell_target->IsEngaged()) ||
+				(spell_target->IsClient() && spell_target->CastToClient()->GetAggroCount())){
+					Message_StringID(13,SPELL_NO_EFFECT); //Unsure correct string
+					return false;
+			}
+		}
+
+		else if (IsBeneficialSpell(spell_id)) {
+			if ( (IsNPC() && IsEngaged()) ||
+				(IsClient() && CastToClient()->GetAggroCount())){
+					if (IsDiscipline(spell_id))
+						Message_StringID(13,NO_ABILITY_IN_COMBAT);
+					else
+						Message_StringID(13,NO_CAST_IN_COMBAT);
+
+					return false;
+			}
+		}
+	}
+
+	//Must be in combat. (If Beneficial checks casters combat state, Deterimental checks targets)
+	else if (spells[spell_id].InCombat && !spells[spell_id].OutofCombat){
+		if (IsDetrimentalSpell(spell_id)) {
+			if ( (spell_target->IsNPC() && !spell_target->IsEngaged()) ||
+				(spell_target->IsClient() && !spell_target->CastToClient()->GetAggroCount())){
+					Message_StringID(13,SPELL_NO_EFFECT); //Unsure correct string
+					return false;
+			}
+		}
+
+		else if (IsBeneficialSpell(spell_id)) {
+			if ( (IsNPC() && !IsEngaged()) ||
+				(IsClient() && !CastToClient()->GetAggroCount())){
+					if (IsDiscipline(spell_id))
+						Message_StringID(13,NO_ABILITY_OUT_OF_COMBAT);
+					else
+						Message_StringID(13,NO_CAST_OUT_OF_COMBAT);
+
+					return false;
+			}
+		}
 	}
 
 	switch (targetType)
@@ -1734,6 +1780,24 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 			break;
 		}
 
+		case ST_PetMaster:
+		{
+
+			Mob *owner = nullptr;
+
+			if (IsPet())
+				owner = GetOwner();
+			else if ((IsNPC() && CastToNPC()->GetSwarmOwner()))
+				owner = entity_list.GetMobID(CastToNPC()->GetSwarmOwner());
+
+			if (!owner)
+				return false;
+
+			spell_target = owner;
+			CastAction = SingleTarget;
+			break;
+		}
+
 		default:
 		{
 			mlog(SPELLS__CASTING_ERR, "I dont know Target Type: %d   Spell: (%d) %s", spells[spell_id].targettype, spell_id, spells[spell_id].name);
@@ -1833,7 +1897,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 	}
 
 	// check line of sight to target if it's a detrimental spell
-	if(spell_target && IsDetrimentalSpell(spell_id) && !CheckLosFN(spell_target) && !IsHarmonySpell(spell_id) && spells[spell_id].targettype != ST_TargetOptional)
+	if(!spells[spell_id].npc_no_los && spell_target && IsDetrimentalSpell(spell_id) && !CheckLosFN(spell_target) && !IsHarmonySpell(spell_id) && spells[spell_id].targettype != ST_TargetOptional)
 	{
 		mlog(SPELLS__CASTING, "Spell %d: cannot see target %s", spell_target->GetName());
 		Message_StringID(13,CANT_SEE_TARGET);
@@ -1863,12 +1927,21 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		//casting a spell on somebody but ourself, make sure they are in range
 		float dist2 = DistNoRoot(*spell_target);
 		float range2 = range * range;
+		float min_range2 = spells[spell_id].min_range * spells[spell_id].min_range;
 		if(dist2 > range2) {
 			//target is out of range.
 			mlog(SPELLS__CASTING, "Spell %d: Spell target is out of range (squared: %f > %f)", spell_id, dist2, range2);
 			Message_StringID(13, TARGET_OUT_OF_RANGE);
 			return(false);
 		}
+		else if (dist2 < min_range2){
+			//target is too close range.
+			mlog(SPELLS__CASTING, "Spell %d: Spell target is too close (squared: %f < %f)", spell_id, dist2, min_range2);
+			Message_StringID(13, TARGET_TOO_CLOSE);
+			return(false);
+		}
+
+		spell_target->CalcSpellPowerDistanceMod(spell_id, dist2);
 	}
 
 	//
@@ -1902,7 +1975,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 					if (!TrySpellProjectile(spell_target, spell_id))
 						return false;
 				}
-				
+
 				else if(!SpellOnTarget(spell_id, spell_target, false, true, resist_adjust, false)) {
 					if(IsBuffSpell(spell_id) && IsBeneficialSpell(spell_id)) {
 						// Prevent mana usage/timers being set for beneficial buffs
@@ -2052,7 +2125,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			std::list<Mob*> targets_in_range;
 			std::list<Mob*>::iterator iter;
 
-			entity_list.GetTargetsForConeArea(this, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
+			entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
 			iter = targets_in_range.begin();
 			while(iter != targets_in_range.end())
 			{
@@ -2068,16 +2141,20 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 					if((heading_to_target >= angle_start && heading_to_target <= 360.0f) ||
 						(heading_to_target >= 0.0f && heading_to_target <= angle_end))
 					{
-						if(CheckLosFN(spell_target))
-							SpellOnTarget(spell_id, spell_target, false, true, resist_adjust);
+						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los){
+							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+							SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
+						}
 					}
 				}
 				else
 				{
 					if(heading_to_target >= angle_start && heading_to_target <= angle_end)
 					{
-						if(CheckLosFN((*iter)))
+						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los){
+							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
 							SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
+						}
 					}
 				}
 				++iter;
@@ -2138,6 +2215,12 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		ItemInst *itm = CastToClient()->GetInv().GetItem(inventory_slot);
 		if(itm && itm->GetItem()->RecastDelay > 0){
 			CastToClient()->GetPTimers().Start((pTimerItemStart + itm->GetItem()->RecastType), itm->GetItem()->RecastDelay);
+			EQApplicationPacket *outapp = new EQApplicationPacket(OP_ItemRecastDelay, sizeof(ItemRecastDelay_Struct));
+			ItemRecastDelay_Struct *ird = (ItemRecastDelay_Struct *)outapp->pBuffer;
+			ird->recast_delay = itm->GetItem()->RecastDelay;
+			ird->recast_type = itm->GetItem()->RecastType;
+			CastToClient()->QueuePacket(outapp);
+			safe_delete(outapp);
 		}
 	}
 
@@ -2646,7 +2729,7 @@ int Mob::CheckStackConflict(uint16 spellid1, int caster_level1, uint16 spellid2,
 				if ((effect2 == SE_BStacker) && (!IsCastonFadeDurationSpell(spellid1) && buffs[buffslot].ticsremaining != 1 && IsEffectInSpell(spellid1, SE_CStacker)))
 					return -1;
 			}
-						
+
 			if (spellbonuses.DStacker[0]) {
 				if ((effect2 == SE_DStacker) && (sp2.effectid[i] <= spellbonuses.DStacker[1]))
 					return -1;
@@ -2698,7 +2781,7 @@ int Mob::CheckStackConflict(uint16 spellid1, int caster_level1, uint16 spellid2,
 					mlog(SPELLS__STACKING, "%s (%d) blocks effect %d on slot %d below %d, but we do not have that effect on that slot. Ignored.",
 						sp1.name, spellid1, blocked_effect, blocked_slot, blocked_below_value);
 				}
-			} 
+			}
 		}
 	} else {
 		mlog(SPELLS__STACKING, "%s (%d) and %s (%d) appear to be in the same line, skipping Stacking Overwrite/Blocking checks",
@@ -3487,7 +3570,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 			if(spell_effectiveness == 0 || !IsPartialCapableSpell(spell_id) )
 			{
 				mlog(SPELLS__RESISTS, "Spell %d was completely resisted by %s", spell_id, spelltar->GetName());
-				
+
 				if (spells[spell_id].resisttype == RESIST_PHYSICAL){
 					Message_StringID(MT_SpellFailure, PHYSICAL_RESIST_FAIL,spells[spell_id].name);
 					spelltar->Message_StringID(MT_SpellFailure, YOU_RESIST, spells[spell_id].name);
@@ -3529,108 +3612,9 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 		spell_effectiveness = 100;
 	}
 
-		// Recourse means there is a spell linked to that spell in that the recourse spell will
-		// be automatically casted on the casters group or the caster only depending on Targettype
-		// this is for things like dark empathy, shadow vortex
-		int recourse_spell=0;
-		recourse_spell = spells[spell_id].RecourseLink;
-		if(recourse_spell)
-		{
-			if(spells[recourse_spell].targettype == ST_Group || spells[recourse_spell].targettype == ST_GroupTeleport)
-			{
-				if(IsGrouped())
-				{
-					Group *g = entity_list.GetGroupByMob(this);
-					if(g)
-						g->CastGroupSpell(this, recourse_spell);
-					else{
-						SpellOnTarget(recourse_spell, this);
-#ifdef GROUP_BUFF_PETS
-						if (GetPet())
-							SpellOnTarget(recourse_spell, GetPet());
-#endif
-					}
-				}
-				else if(IsRaidGrouped() && IsClient())
-				{
-					Raid *r = entity_list.GetRaidByClient(CastToClient());
-					uint32 gid = 0xFFFFFFFF;
-					if(r)
-						gid = r->GetGroup(GetName());
-					else
-						gid = 13;	// Forces ungrouped spell casting
-
-					if(gid < 12)
-					{
-						r->CastGroupSpell(this, recourse_spell, gid);
-					}
-					else{
-						SpellOnTarget(recourse_spell, this);
-#ifdef GROUP_BUFF_PETS
-						if (GetPet())
-							SpellOnTarget(recourse_spell, GetPet());
-#endif
-					}
-				}
-				else if(HasOwner())
-				{
-					if(GetOwner()->IsGrouped())
-					{
-						Group *g = entity_list.GetGroupByMob(GetOwner());
-						if(g)
-							g->CastGroupSpell(this, recourse_spell);
-						else{
-							SpellOnTarget(recourse_spell, GetOwner());
-							SpellOnTarget(recourse_spell, this);
-						}
-					}
-					else if(GetOwner()->IsRaidGrouped() && GetOwner()->IsClient())
-					{
-						Raid *r = entity_list.GetRaidByClient(GetOwner()->CastToClient());
-						uint32 gid = 0xFFFFFFFF;
-						if(r)
-							gid = r->GetGroup(GetOwner()->GetName());
-						else
-							gid = 13;	// Forces ungrouped spell casting
-
-						if(gid < 12)
-						{
-							r->CastGroupSpell(this, recourse_spell, gid);
-						}
-						else
-						{
-							SpellOnTarget(recourse_spell, GetOwner());
-							SpellOnTarget(recourse_spell, this);
-						}
-					}
-					else
-					{
-						SpellOnTarget(recourse_spell, GetOwner());
-						SpellOnTarget(recourse_spell, this);
-					}
-				}
-				else
-				{
-					SpellOnTarget(recourse_spell, this);
-#ifdef GROUP_BUFF_PETS
-					if (GetPet())
-						SpellOnTarget(recourse_spell, GetPet());
-#endif
-				}
-
-			}
-			else
-			{
-				SpellOnTarget(recourse_spell, this);
-			}
-		}
-
 	if(spelltar->spellbonuses.SpellDamageShield && IsDetrimentalSpell(spell_id))
 		spelltar->DamageShield(this, true);
 
-	TrySpellTrigger(spelltar, spell_id);
-	TryApplyEffect(spelltar, spell_id);
-	
 	if (spelltar->IsAIControlled() && IsDetrimentalSpell(spell_id) && !IsHarmonySpell(spell_id)) {
 		int32 aggro_amount = CheckAggroAmount(spell_id, isproc);
 		mlog(SPELLS__CASTING, "Spell %d cast on %s generated %d hate", spell_id, spelltar->GetName(), aggro_amount);
@@ -3656,7 +3640,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 		safe_delete(action_packet);
 		return false;
 	}
-	
+
 	// cause the effects to the target
 	if(!spelltar->SpellEffect(this, spell_id, spell_effectiveness))
 	{
@@ -3669,11 +3653,13 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 		return false;
 	}
 
-	
+	if (IsValidSpell(spells[spell_id].RecourseLink))
+		SpellFinished(spells[spell_id].RecourseLink, this, 10, 0, -1, spells[spells[spell_id].RecourseLink].ResistDiff);
+		
 	if (IsDetrimentalSpell(spell_id)) {
-		
+
 		CheckNumHitsRemaining(NUMHIT_OutgoingSpells);
-		
+
 		if (spelltar)
 			spelltar->CheckNumHitsRemaining(NUMHIT_IncomingSpells);
 	}
@@ -4331,7 +4317,7 @@ float Mob::ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use
 
 	if (CharismaCheck)
 	{
-		/* 
+		/*
 		Charisma ONLY effects the initial resist check when charm is cast with 10 CHA = -1 Resist mod up to 255 CHA (min ~ 75 cha)
 		Charisma less than ~ 75 gives a postive modifier to resist checks at approximate ratio of -10 CHA = +6 Resist.
 		Mez spells do same initial resist check as a above.
@@ -4393,7 +4379,7 @@ float Mob::ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use
 	if (CharmTick) {
 
 		int min_charmbreakchance = ((100/RuleI(Spells, CharmBreakCheckChance))/66 * 100)*2;
-		
+
 		if (resist_chance < min_charmbreakchance)
 			resist_chance = min_charmbreakchance;
 	}
@@ -4424,13 +4410,12 @@ float Mob::ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use
 		}
 		else
 		{
-			resist_chance -= roll;
 			if(resist_chance < 1)
 			{
 				resist_chance = 1;
 			}
 
-			int partial_modifier = ((150 * (roll - resist_chance)) / resist_chance);
+			int partial_modifier = ((150 * (resist_chance - roll)) / resist_chance);
 
 			if(IsNPC())
 			{
@@ -4458,17 +4443,16 @@ float Mob::ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use
 				}
 			}
 
-			if(partial_modifier < 0)
+			if(partial_modifier <= 0)
+			{
+				return 100;
+			} 
+			else if(partial_modifier >= 100)
 			{
 				return 0;
 			}
 
-			if(partial_modifier > 100)
-			{
-				return 100;
-			}
-
-			return partial_modifier;
+			return (100.0f - partial_modifier);
 		}
 	}
 }
@@ -4625,12 +4609,10 @@ void Mob::Stun(int duration)
 	if(stunned && stunned_timer.GetRemainingTime() > uint32(duration))
 		return;
 
-	if(casting_spell_id) {
-		int persistent_casting = spellbonuses.PersistantCasting + itembonuses.PersistantCasting;
-		if(IsClient())
-			persistent_casting += aabonuses.PersistantCasting;
+	if(IsValidSpell(casting_spell_id) && !spells[casting_spell_id].uninterruptable) {
+		int persistent_casting = spellbonuses.PersistantCasting + itembonuses.PersistantCasting + aabonuses.PersistantCasting;
 
-		if(MakeRandomInt(1,99) > persistent_casting)
+		if(MakeRandomInt(0,99) > persistent_casting)
 			InterruptSpell();
 	}
 
@@ -4744,8 +4726,8 @@ void Client::MakeBuffFadePacket(uint16 spell_id, int slot_id, bool send_message)
 	if(send_message)
 	{
 		const char *fadetext = spells[spell_id].spell_fades;
-		outapp = new EQApplicationPacket(OP_BuffFadeMsg, sizeof(BuffFadeMsg_Struct) + strlen(fadetext));
-		BuffFadeMsg_Struct *bfm = (BuffFadeMsg_Struct *) outapp->pBuffer;
+		outapp = new EQApplicationPacket(OP_ColoredText, sizeof(ColoredText_Struct) + strlen(fadetext));
+		ColoredText_Struct *bfm = (ColoredText_Struct *) outapp->pBuffer;
 		bfm->color = MT_Spells;
 		memcpy(bfm->msg, fadetext, strlen(fadetext));
 		QueuePacket(outapp);
@@ -4768,6 +4750,8 @@ void Client::MemSpell(uint16 spell_id, int slot, bool update_client)
 	m_pp.mem_spells[slot] = spell_id;
 	mlog(CLIENT__SPELLS, "Spell %d memorized into slot %d", spell_id, slot);
 
+	database.SaveCharacterMemorizedSpell(this->CharacterID(), m_pp.mem_spells[slot], slot);
+
 	if(update_client)
 	{
 		MemorizeSpell(slot, spell_id, memSpellMemorize);
@@ -4782,6 +4766,8 @@ void Client::UnmemSpell(int slot, bool update_client)
 	mlog(CLIENT__SPELLS, "Spell %d forgotten from slot %d", m_pp.mem_spells[slot], slot);
 	m_pp.mem_spells[slot] = 0xFFFFFFFF;
 
+	database.DeleteCharacterMemorizedSpell(this->CharacterID(), m_pp.mem_spells[slot], slot);
+	
 	if(update_client)
 	{
 		MemorizeSpell(slot, m_pp.mem_spells[slot], memSpellForget);
@@ -4809,6 +4795,7 @@ void Client::ScribeSpell(uint16 spell_id, int slot, bool update_client)
 	}
 
 	m_pp.spell_book[slot] = spell_id;
+	database.SaveCharacterSpell(this->CharacterID(), spell_id, slot);
 	mlog(CLIENT__SPELLS, "Spell %d scribed into spell book slot %d", spell_id, slot);
 
 	if(update_client)
@@ -4824,7 +4811,8 @@ void Client::UnscribeSpell(int slot, bool update_client)
 
 	mlog(CLIENT__SPELLS, "Spell %d erased from spell book slot %d", m_pp.spell_book[slot], slot);
 	m_pp.spell_book[slot] = 0xFFFFFFFF;
-
+	
+	database.DeleteCharacterSpell(this->CharacterID(), m_pp.spell_book[slot], slot); 
 	if(update_client)
 	{
 		EQApplicationPacket* outapp = new EQApplicationPacket(OP_DeleteSpell, sizeof(DeleteSpell_Struct));
@@ -4852,8 +4840,9 @@ void Client::UntrainDisc(int slot, bool update_client)
 	if(slot >= MAX_PP_DISCIPLINES || slot < 0)
 		return;
 
-	mlog(CLIENT__SPELLS, "Discipline %d untrained from slot %d", m_pp.disciplines.values[slot], slot);
+	mlog(CLIENT__SPELLS, "Discipline %d untrained from slot %d", m_pp.disciplines.values[slot], slot); 
 	m_pp.disciplines.values[slot] = 0;
+	database.DeleteCharacterDisc(this->CharacterID(), slot);
 
 	if(update_client)
 	{
@@ -4890,68 +4879,56 @@ int Client::FindSpellBookSlotBySpellID(uint16 spellid) {
 	return -1;	//default
 }
 
-bool Client::SpellGlobalCheck(uint16 Spell_ID, uint16 Char_ID) {
+bool Client::SpellGlobalCheck(uint16 spell_ID, uint16 char_ID) {
 
-	std::string Spell_Global_Name;
-	int Spell_Global_Value;
-	int Global_Value;
+	std::string spell_Global_Name;
+	int spell_Global_Value;
+	int global_Value;
 
-	char errbuf[MYSQL_ERRMSG_SIZE];
-	char *query = 0;
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-
-	if (database.RunQuery(query,MakeAnyLenString(&query, "SELECT qglobal, value FROM spell_globals WHERE spellid=%i", Spell_ID), errbuf, &result)) {
-		safe_delete_array(query);
-
-		if (mysql_num_rows(result) == 1) {
-			row = mysql_fetch_row(result);
-			Spell_Global_Name = row[0];
-			Spell_Global_Value = atoi(row[1]);
-
-			mysql_free_result(result);
-
-			if (Spell_Global_Name.empty()) { // If the entry in the spell_globals table has nothing set for the qglobal name
-				return true;
-			}
-			else if (database.RunQuery(query,MakeAnyLenString(&query, "SELECT value FROM quest_globals WHERE charid=%i AND name='%s'", Char_ID, Spell_Global_Name.c_str()), errbuf, &result)) {
-				safe_delete_array(query);
-
-				if (mysql_num_rows(result) == 1) {
-					row = mysql_fetch_row(result);
-
-					Global_Value = atoi(row[0]);
-					mysql_free_result(result);
-					if (Global_Value == Spell_Global_Value) { // If the values match from both tables, allow the spell to be scribed
-						return true;
-					}
-					else if (Global_Value > Spell_Global_Value) { // Check if the qglobal value is greater than the require spellglobal value
-						return true;
-					}
-					else // If no matching result found in qglobals, don't scribe this spell
-					{
-						LogFile->write(EQEMuLog::Error, "Char ID: %i Spell_globals Name: '%s' Value: '%i' did not match QGlobal Value: '%i' for Spell ID %i", Char_ID, Spell_Global_Name.c_str(), Spell_Global_Value, Global_Value, Spell_ID);
-						return false;
-					}
-				}
-				else
-					LogFile->write(EQEMuLog::Error, "Char ID: %i does not have the Qglobal Name: '%s' for Spell ID %i", Char_ID, Spell_Global_Name.c_str(), Spell_ID);
-					safe_delete_array(query);
-			}
-			else
-				LogFile->write(EQEMuLog::Error, "Spell ID %i query of spell_globals with Name: '%s' Value: '%i' failed", Spell_ID, Spell_Global_Name.c_str(), Spell_Global_Value);
-		}
-		else {
-			return true; // Spell ID isn't listed in the spells_global table, so it is not restricted from scribing
-		}
-		mysql_free_result(result);
-	}
-	else {
-		LogFile->write(EQEMuLog::Error, "Error while querying Spell ID %i spell_globals table query '%s': %s", Spell_ID, query, errbuf);
-		safe_delete_array(query);
+	std::string query = StringFormat("SELECT qglobal, value FROM spell_globals "
+                                    "WHERE spellid = %i", spell_ID);
+    auto results = database.QueryDatabase(query);
+    if (!results.Success()) {
+        LogFile->write(EQEMuLog::Error, "Error while querying Spell ID %i spell_globals table query '%s': %s", spell_ID, query.c_str(), results.ErrorMessage().c_str());
 		return false; // Query failed, so prevent spell from scribing just in case
-	}
-	return false; // Default is false
+    }
+
+    if (results.RowCount() != 1)
+        return true; // Spell ID isn't listed in the spells_global table, so it is not restricted from scribing
+
+    auto row = results.begin();
+    spell_Global_Name = row[0];
+	spell_Global_Value = atoi(row[1]);
+
+	if (spell_Global_Name.empty())
+        return true; // If the entry in the spell_globals table has nothing set for the qglobal name
+
+    query = StringFormat("SELECT value FROM quest_globals "
+                        "WHERE charid = %i AND name = '%s'",
+                        char_ID, spell_Global_Name.c_str());
+    results = database.QueryDatabase(query);
+    if (!results.Success()) {
+        LogFile->write(EQEMuLog::Error, "Spell ID %i query of spell_globals with Name: '%s' Value: '%i' failed", spell_ID, spell_Global_Name.c_str(), spell_Global_Value);
+        return false;
+    }
+
+    if (results.RowCount() != 1) {
+        LogFile->write(EQEMuLog::Error, "Char ID: %i does not have the Qglobal Name: '%s' for Spell ID %i", char_ID, spell_Global_Name.c_str(), spell_ID);
+        return false;
+    }
+
+    row = results.begin();
+
+    global_Value = atoi(row[0]);
+
+    if (global_Value == spell_Global_Value)
+        return true; // If the values match from both tables, allow the spell to be scribed
+    else if (global_Value > spell_Global_Value)
+        return true; // Check if the qglobal value is greater than the require spellglobal value
+
+    // If no matching result found in qglobals, don't scribe this spell
+    LogFile->write(EQEMuLog::Error, "Char ID: %i Spell_globals Name: '%s' Value: '%i' did not match QGlobal Value: '%i' for Spell ID %i", char_ID, spell_Global_Name.c_str(), spell_Global_Value, global_Value, spell_ID);
+    return false;
 }
 
 // TODO get rid of this
@@ -5006,7 +4983,7 @@ bool Mob::FindType(uint16 type, bool bOffensive, uint16 threshold) {
 }
 
 bool Mob::IsCombatProc(uint16 spell_id) {
-	
+
 	if (RuleB(Spells, FocusCombatProcs))
 		return false;
 
@@ -5017,7 +4994,7 @@ bool Mob::IsCombatProc(uint16 spell_id) {
 	{
 
 		for (int i = 0; i < MAX_PROCS; i++){
-			if (PermaProcs[i].spellID == spell_id || SpellProcs[i].spellID == spell_id 
+			if (PermaProcs[i].spellID == spell_id || SpellProcs[i].spellID == spell_id
 				 || RangedProcs[i].spellID == spell_id){
 				return true;
 			}
@@ -5075,7 +5052,7 @@ bool Mob::AddDefensiveProc(uint16 spell_id, uint16 iChance, uint16 base_spell_id
 {
 	if(spell_id == SPELL_UNKNOWN)
 		return(false);
-	
+
 	int i;
 	for (i = 0; i < MAX_PROCS; i++) {
 		if (DefensiveProcs[i].spellID == SPELL_UNKNOWN) {
@@ -5180,20 +5157,40 @@ void Mob::_StopSong()
 //Thus I use this in the buff process to update the correct duration once after casting
 //this allows AAs and focus effects that increase buff duration to work correctly, but could probably
 //be used for other things as well
-void Client::SendBuffDurationPacket(uint16 spell_id, int duration, int inlevel)
+void Client::SendBuffDurationPacket(Buffs_Struct &buff)
 {
 	EQApplicationPacket* outapp;
 	outapp = new EQApplicationPacket(OP_Buff, sizeof(SpellBuffFade_Struct));
 	SpellBuffFade_Struct* sbf = (SpellBuffFade_Struct*) outapp->pBuffer;
 
 	sbf->entityid = GetID();
-	sbf->slot=2;
-	sbf->spellid=spell_id;
-	sbf->slotid=0;
-	sbf->effect = inlevel > 0 ? inlevel : GetLevel();
-	sbf->level = inlevel > 0 ? inlevel : GetLevel();
+	sbf->slot = 2;
+	sbf->spellid = buff.spellid;
+	sbf->slotid = 0;
+	sbf->effect = buff.casterlevel > 0 ? buff.casterlevel : GetLevel();
+	sbf->level = buff.casterlevel > 0 ? buff.casterlevel : GetLevel();
 	sbf->bufffade = 0;
-	sbf->duration = duration;
+	sbf->duration = buff.ticsremaining;
+	sbf->num_hits = buff.numhits;
+	FastQueuePacket(&outapp);
+}
+
+void Client::SendBuffNumHitPacket(Buffs_Struct &buff, int slot)
+{
+	// UF+ use this packet
+	if (GetClientVersion() < EQClientUnderfoot)
+		return;
+	EQApplicationPacket *outapp;
+	outapp = new EQApplicationPacket(OP_BuffCreate, sizeof(BuffIcon_Struct) + sizeof(BuffIconEntry_Struct));
+	BuffIcon_Struct *bi = (BuffIcon_Struct *)outapp->pBuffer;
+	bi->entity_id = GetID();
+	bi->count = 1;
+	bi->all_buffs = 0;
+
+	bi->entries[0].buff_slot = slot;
+	bi->entries[0].spell_id = buff.spellid;
+	bi->entries[0].tics_remaining = buff.ticsremaining;
+	bi->entries[0].num_hits = buff.numhits;
 	FastQueuePacket(&outapp);
 }
 
@@ -5268,6 +5265,7 @@ EQApplicationPacket *Mob::MakeBuffsPacket(bool for_target)
 	BuffIcon_Struct *buff = (BuffIcon_Struct*)outapp->pBuffer;
 	buff->entity_id = GetID();
 	buff->count = count;
+	buff->all_buffs = 1;
 
 	uint32 index = 0;
 	for(unsigned int i = 0; i < buff_count; ++i)
@@ -5277,6 +5275,7 @@ EQApplicationPacket *Mob::MakeBuffsPacket(bool for_target)
 			buff->entries[index].buff_slot = i;
 			buff->entries[index].spell_id = buffs[i].spellid;
 			buff->entries[index].tics_remaining = buffs[i].ticsremaining;
+			buff->entries[index].num_hits = buffs[i].numhits;
 			++index;
 		}
 	}
@@ -5294,7 +5293,7 @@ void Mob::BuffModifyDurationBySpellID(uint16 spell_id, int32 newDuration)
 			buffs[i].ticsremaining = newDuration;
 			if(IsClient())
 			{
-				CastToClient()->SendBuffDurationPacket(buffs[i].spellid, buffs[i].ticsremaining, buffs[i].casterlevel);
+				CastToClient()->SendBuffDurationPacket(buffs[i]);
 			}
 		}
 	}
@@ -5345,3 +5344,19 @@ void NPC::UninitializeBuffSlots()
 	safe_delete_array(buffs);
 }
 
+void Client::SendSpellAnim(uint16 targetid, uint16 spell_id)
+{
+	if (!targetid || !IsValidSpell(spell_id))
+		return;
+
+	EQApplicationPacket app(OP_Action, sizeof(Action_Struct));
+	Action_Struct* a = (Action_Struct*)app.pBuffer;
+	a->target = targetid;
+	a->source = this->GetID();
+	a->type = 231;
+	a->spell = spell_id;
+	a->sequence = 231;
+
+	app.priority = 1;
+	entity_list.QueueCloseClients(this, &app);
+}
