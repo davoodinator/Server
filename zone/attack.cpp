@@ -4209,10 +4209,6 @@ void Mob::TryCriticalHit(Mob *defender, uint16 skill, int32 &damage, ExtraAttack
 	//1: Try Slay Undead
 	if (defender && (defender->GetBodyType() == BT_Undead ||
 				defender->GetBodyType() == BT_SummonedUndead || defender->GetBodyType() == BT_Vampire)) {
-=======
-	if (defender && (defender->GetBodyType() == BT_Undead ||
-				defender->GetBodyType() == BT_SummonedUndead || defender->GetBodyType() == BT_Vampire)) {
->>>>>>> 28ac586ed8e9e0ef1cd789ff5a3d678c2e8850d5
 		int16 SlayRateBonus = aabonuses.SlayUndead[0] + itembonuses.SlayUndead[0] + spellbonuses.SlayUndead[0];
 		if (SlayRateBonus) {
 			float slayChance = static_cast<float>(SlayRateBonus) / 10000.0f;
