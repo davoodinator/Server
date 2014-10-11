@@ -1534,7 +1534,6 @@ void Bot::LoadAAs() {
                 botAAs[sendAA->id].total_levels+=1;
         }
     }
-
 }
 
 uint32 Bot::GetAA(uint32 aa_id) {
@@ -2483,7 +2482,6 @@ bool Bot::IsValidName() {
 }
 
 bool Bot::IsBotNameAvailable(std::string* errorMessage) {
-
 	if(!this->GetCleanName())
         return false;
 
@@ -2691,9 +2689,10 @@ void Bot::LoadBuffs() {
 }
 
 uint32 Bot::GetPetSaveId() {
-
 	std::string query = StringFormat("SELECT BotPetsId FROM botpets WHERE BotId = %u;", GetBotID());
     auto results = database.QueryDatabase(query);
+	if(!results.Success())
+		return 0;
 	if(!results.Success())
 		return 0;
 
@@ -4945,7 +4944,6 @@ bool Bot::DoesBotGroupNameExist(std::string botGroupName) {
 
 	if(botGroupName.empty())
         return false;
-
 	std::string query = StringFormat("SELECT BotGroupId FROM vwBotGroups "
                                     "WHERE BotGroupName = '%s'", botGroupName.c_str());
     auto results = database.QueryDatabase(query);
@@ -4992,7 +4990,6 @@ uint32 Bot::CanLoadBotGroup(uint32 botOwnerCharacterId, std::string botGroupName
 }
 
 uint32 Bot::GetBotGroupIdByBotGroupName(std::string botGroupName, std::string* errorMessage) {
-
 	if(botGroupName.empty())
         return 0;
 
@@ -5026,7 +5023,6 @@ uint32 Bot::GetBotGroupLeaderIdByBotGroupName(std::string botGroupName) {
 }
 
 uint32 Bot::AllowedBotSpawns(uint32 botOwnerCharacterID, std::string* errorMessage) {
-
 	if(botOwnerCharacterID == 0)
         return 0;
 
@@ -5079,7 +5075,6 @@ uint32 Bot::CreatedBotCount(uint32 botOwnerCharacterID, std::string* errorMessag
 }
 
 uint32 Bot::GetBotOwnerCharacterID(uint32 botID, std::string* errorMessage) {
-
 	if(botID == 0)
         return 0;
 
@@ -8747,7 +8742,6 @@ void Bot::SetBotGuildMembership(uint32 botId, uint32 guildid, uint8 rank) {
 }
 
 void Bot::LoadGuildMembership(uint32* guildId, uint8* guildRank, std::string* guildName) {
-
 	if(guildId == nullptr || guildRank == nullptr || guildName == nullptr)
         return;
 

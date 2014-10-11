@@ -4207,9 +4207,8 @@ void Mob::TryCriticalHit(Mob *defender, uint16 skill, int32 &damage, ExtraAttack
 	bool IsBerskerSPA = false;
 
 	//1: Try Slay Undead
-<<<<<<< HEAD
-	if(defender && (GetClass() == PALADIN) && defender->GetBodyType() == BT_Undead || defender->GetBodyType() == BT_SummonedUndead || defender->GetBodyType() == BT_Vampire){
-
+	if (defender && (defender->GetBodyType() == BT_Undead ||
+				defender->GetBodyType() == BT_SummonedUndead || defender->GetBodyType() == BT_Vampire)) {
 =======
 	if (defender && (defender->GetBodyType() == BT_Undead ||
 				defender->GetBodyType() == BT_SummonedUndead || defender->GetBodyType() == BT_Vampire)) {

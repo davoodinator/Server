@@ -26,16 +26,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "eq_constants.h"
 #include "clientversions.h"
 #include <string>
-#include "../common/patches/Client62_constants.h"
-#include "../common/patches/Titanium_constants.h"
-#include "../common/patches/SoF_constants.h"
-#include "../common/patches/SoD_constants.h"
-#include "../common/patches/Underfoot_constants.h"
-#include "../common/patches/RoF_constants.h"
-//#include "../common/patches/RoF2_constants.h"
+#include "../common/patches/client62_constants.h"
+#include "../common/patches/titanium_constants.h"
+#include "../common/patches/sof_constants.h"
+#include "../common/patches/sod_constants.h"
+#include "../common/patches/underfoot_constants.h"
+#include "../common/patches/rof_constants.h"
+//#include "../common/patches/rof2_constants.h"
 
 // *** DO NOT CHANGE without a full understanding of the consequences..the server is set up to use these settings explicitly!! ***
-// *** You will cause compilation failures and corrupt your database if partial or incorrect attempts to them change are made!! ***
+// *** You will cause compilation failures and corrupt your database if partial or incorrect attempts to change them are made!! ***
 
 // Hard-coded values usually indicate that further research is needed and the values given are from the old (known) system
 
@@ -43,7 +43,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //using namespace RoF2::maps;	// server inventory maps enumeration (code and database sync'd to reference)
 //using namespace RoF::slots;	// server possessions slots enumeration (code and database sync'd to reference)
 
-typedef class {
+class EmuConstants {
 	// an immutable value is required to initialize arrays, etc... use this class as a repository for those
 public:
 	// database
@@ -86,14 +86,9 @@ public:
 
 	// most of these definitions will go away with the structure-based system..this maintains compatibility for now
 	// (these are mainly to assign specific values to constants used in conversions and to identify per-client ranges/offsets)
-	static const int16 POSSESSIONS_BEGIN = MainCharm;
-	static const int16 POSSESSIONS_END = MainCursor;
-
 	static const int16 EQUIPMENT_BEGIN = MainCharm;
 	static const int16 EQUIPMENT_END = MainAmmo;
 	static const uint16 EQUIPMENT_SIZE = 22; // does not account for 'Power Source' - used mainly for npc equipment arrays
-
-	static const int16 POWER_SOURCE = MainPowerSource; // temp
 
 	static const int16 GENERAL_BEGIN = MainGeneral1;
 	static const int16 GENERAL_END = MainGeneral8;
@@ -102,7 +97,6 @@ public:
 	static const int16 GENERAL_BAGS_END_OFFSET = 79;
 	static const int16 GENERAL_BAGS_END = GENERAL_BAGS_BEGIN + GENERAL_BAGS_END_OFFSET;
 
-	static const int16 CURSOR = MainCursor;
 	static const int16 CURSOR_BAG_BEGIN = 331;
 	static const int16 CURSOR_BAG_END_OFFSET = 9;
 	static const int16 CURSOR_BAG_END = CURSOR_BAG_BEGIN + CURSOR_BAG_END_OFFSET;
@@ -128,22 +122,19 @@ public:
 
 	static const int16 WORLD_BEGIN = 4000;
 	static const int16 WORLD_END = 4009;
-	static const int16 WORLD_SIZE = 10;
+	static const int16 WORLD_SIZE = MAP_WORLD_SIZE;
 
 	static const int16 TRIBUTE_BEGIN = 400;
 	static const int16 TRIBUTE_END = 404;
-	static const int16 TRIBUTE_SIZE = 5;
+	static const int16 TRIBUTE_SIZE = MAP_TRIBUTE_SIZE;
 
 	static const int16 CORPSE_BEGIN = 22;
 	//static const int16 CORPSE_END = RoF::consts::CORPSE_END; // not ready for use
 
 	static const int16 MATERIAL_BEGIN = MaterialHead;
 	static const int16 MATERIAL_END = MaterialSecondary;
+	static const int16 MATERIAL_TINT_END = MaterialFeet;
 	static const int16 MATERIAL_SIZE = _MaterialCount;
-
-	static const int16 TINTABLE_BEGIN = MaterialHead;
-	static const int16 TINTABLE_END = MaterialFeet;
-	static const int16 TINTABLE_SIZE = 7;
 
 	// items
 	// common and container sizes will not increase until the new 'location' struct is implemented
@@ -158,9 +149,13 @@ public:
 	static const uint32 BANDOLIERS_COUNT = Titanium::consts::BANDOLIERS_COUNT;	// count = number of bandolier instances
 	static const uint32 BANDOLIER_SIZE = Titanium::consts::BANDOLIER_SIZE;		// size = number of equipment slots in bandolier instance
 	static const uint32 POTION_BELT_SIZE = Titanium::consts::POTION_BELT_SIZE;
-} EmuConstants;
 
-typedef class {
+	// legacy-related functions
+	//static int ServerToPerlSlot(int slot);	// encode
+	//static int PerlToServerSlot(int slot);	// decode
+};
+
+class EQLimits {
 	// values should default to a non-beneficial value..unless value conflicts with intended operation
 	//
 	// EmuConstants may be used as references..but, not every reference needs to be in EmuConstants (i.e., AllowsEmptyBagInBag(), CoinHasWeight(), etc...)
@@ -189,6 +184,7 @@ public:
 	static uint64	CursorBitmask(uint32 version);
 
 	static bool	AllowsEmptyBagInBag(uint32 version);
+	static bool AllowsClickCastFromBag(uint32 version);
 
 	// items
 	static uint16	ItemCommonSize(uint32 version);
@@ -201,6 +197,15 @@ public:
 	static uint32	BandolierSize(uint32 version);
 
 	static uint32	PotionBeltSize(uint32 version);
-} EQLimits;
+};
 
 #endif /* EQ_LIMITS_H */
+
+/*
+Working Notes:
+--------------
+
+- full review of client_packet.cpp and client translators needed
+
+
+*/

@@ -19,12 +19,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 */
 
-#ifndef SoD_CONSTANTS_H_
-#define SoD_CONSTANTS_H_
+#ifndef SoF_CONSTANTS_H_
+#define SoF_CONSTANTS_H_
 
-#include "../common/types.h"
+#include "../types.h"
 
-namespace SoD {
+namespace SoF {
 	namespace maps {
 		typedef enum : int16 {
 			// this needs work to match actual client equivilents
@@ -127,9 +127,6 @@ namespace SoD {
 		static const uint16 MAP_KRONO_SIZE = NOT_USED;
 		static const uint16 MAP_OTHER_SIZE = 0;
 
-		static const int16 POSSESSIONS_BEGIN = slots::MainCharm;
-		static const int16 POSSESSIONS_END = slots::MainCursor;
-
 		static const int16 EQUIPMENT_BEGIN = slots::MainCharm;
 		static const int16 EQUIPMENT_END = slots::MainAmmo;
 		static const uint16 EQUIPMENT_SIZE = slots::_MainEquipmentCount;
@@ -160,8 +157,8 @@ namespace SoD {
 
 		static const int16 TRADE_BEGIN = 3000;
 		static const int16 TRADE_END = 3007;
-		static const int16 TRADE_END_NPC = 3003;
-		static const int16 TRADE_BAGS_BEGIN = 3031; // no change from Ti?
+		static const int16 TRADE_NPC_END = 3003;
+		static const int16 TRADE_BAGS_BEGIN = 3031;
 		static const int16 TRADE_BAGS_END_OFFSET = 79;
 		static const int16 TRADE_BAGS_END = TRADE_BAGS_BEGIN + TRADE_BAGS_END_OFFSET;
 
@@ -184,15 +181,16 @@ namespace SoD {
 
 	namespace limits {
 		static const bool ALLOWS_EMPTY_BAG_IN_BAG = false;
-		static const bool COIN_HAS_WEIGHT = false;
+		static const bool ALLOWS_CLICK_CAST_FROM_BAG = false;
+		static const bool COIN_HAS_WEIGHT = true;
 	}
 
-};	//end namespace SoD
+};	//end namespace SoF
 
-#endif /*SoD_CONSTANTS_H_*/
+#endif /*SoF_CONSTANTS_H_*/
 
 /*
-SoD Notes:
+SoF Notes:
 	** Integer-based inventory **
 ok	Possessions: 0 - 31 (Corpse: 23 - 54 [Offset 23])
 ok		[Equipment: 0 - 22]
@@ -212,4 +210,7 @@ ok	Shared Bank Bags: 2532 - 2551
 
 	World: 4000 - 4009
 
+code file reviewed..
+	..SerializeItem() needs work
+	..still needs timestamp redirect code
 */

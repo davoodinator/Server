@@ -19,15 +19,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 */
 
-#ifndef Underfoot_CONSTANTS_H_
-#define Underfoot_CONSTANTS_H_
+#ifndef RoF_CONSTANTS_H_
+#define RoF_CONSTANTS_H_
 
-#include "../common/types.h"
+#include "../types.h"
 
-namespace Underfoot {
+namespace RoF {
 	namespace maps {
 		typedef enum : int16 {
-			// this needs work to match actual client equivilents
 			MapPossessions = 0,
 			MapBank,
 			MapSharedBank,
@@ -89,13 +88,15 @@ namespace Underfoot {
 			MainGeneral6,
 			MainGeneral7,
 			MainGeneral8,
+			MainGeneral9,
+			MainGeneral10,
 			MainCursor,
 			_MainCount,
 			_MainEquipmentBegin = MainCharm,
 			_MainEquipmentEnd = MainAmmo,
 			_MainEquipmentCount = (_MainEquipmentEnd - _MainEquipmentBegin + 1),
 			_MainGeneralBegin = MainGeneral1,
-			_MainGeneralEnd = MainGeneral8,
+			_MainGeneralEnd = MainGeneral10,
 			_MainGeneralCount = (_MainGeneralEnd - _MainGeneralBegin + 1)
 		};
 	}
@@ -113,7 +114,7 @@ namespace Underfoot {
 		static const uint16 MAP_MERCHANT_SIZE = 0;
 		static const uint16 MAP_DELETED_SIZE = 0;
 		static const uint16 MAP_CORPSE_SIZE = slots::_MainCount;
-		static const uint16 MAP_BAZAAR_SIZE = 80;
+		static const uint16 MAP_BAZAAR_SIZE = 200;
 		static const uint16 MAP_INSPECT_SIZE = slots::_MainEquipmentCount;
 		static const uint16 MAP_REAL_ESTATE_SIZE = 0;
 		static const uint16 MAP_VIEW_MOD_PC_SIZE = MAP_POSSESSIONS_SIZE;
@@ -127,41 +128,40 @@ namespace Underfoot {
 		static const uint16 MAP_KRONO_SIZE = NOT_USED;
 		static const uint16 MAP_OTHER_SIZE = 0;
 
-		static const int16 POSSESSIONS_BEGIN = slots::MainCharm;
-		static const int16 POSSESSIONS_END = slots::MainCursor;
-
+		// most of these definitions will go away with the structure-based system..this maintains compatibility for now
+		// (bag slots and main slots beyond Possessions are assigned for compatibility with current server coding)
 		static const int16 EQUIPMENT_BEGIN = slots::MainCharm;
 		static const int16 EQUIPMENT_END = slots::MainAmmo;
 		static const uint16 EQUIPMENT_SIZE = slots::_MainEquipmentCount;
 
 		static const int16 GENERAL_BEGIN = slots::MainGeneral1;
-		static const int16 GENERAL_END = slots::MainGeneral8;
+		static const int16 GENERAL_END = slots::MainGeneral10;
 		static const uint16 GENERAL_SIZE = slots::_MainGeneralCount;
-		static const int16 GENERAL_BAGS_BEGIN = 262;
-		static const int16 GENERAL_BAGS_END_OFFSET = 79;
+		static const int16 GENERAL_BAGS_BEGIN = 251;
+		static const int16 GENERAL_BAGS_END_OFFSET = 99;
 		static const int16 GENERAL_BAGS_END = GENERAL_BAGS_BEGIN + GENERAL_BAGS_END_OFFSET;
 
 		static const int16 CURSOR = slots::MainCursor;
-		static const int16 CURSOR_BAG_BEGIN = 342;
+		static const int16 CURSOR_BAG_BEGIN = 351;
 		static const int16 CURSOR_BAG_END_OFFSET = 9;
 		static const int16 CURSOR_BAG_END = CURSOR_BAG_BEGIN + CURSOR_BAG_END_OFFSET;
 
 		static const int16 BANK_BEGIN = 2000;
 		static const int16 BANK_END = 2023;
-		static const int16 BANK_BAGS_BEGIN = 2032;
+		static const int16 BANK_BAGS_BEGIN = 2031;
 		static const int16 BANK_BAGS_END_OFFSET = 239;
 		static const int16 BANK_BAGS_END = BANK_BAGS_BEGIN + BANK_BAGS_END_OFFSET;
 
 		static const int16 SHARED_BANK_BEGIN = 2500;
 		static const int16 SHARED_BANK_END = 2501;
-		static const int16 SHARED_BANK_BAGS_BEGIN = 2532;
+		static const int16 SHARED_BANK_BAGS_BEGIN = 2531;
 		static const int16 SHARED_BANK_BAGS_END_OFFSET = 19;
 		static const int16 SHARED_BANK_BAGS_END = SHARED_BANK_BAGS_BEGIN + SHARED_BANK_BAGS_END_OFFSET;
 
 		static const int16 TRADE_BEGIN = 3000;
 		static const int16 TRADE_END = 3007;
-		static const int16 TRADE_END_NPC = 3003;
-		static const int16 TRADE_BAGS_BEGIN = 3031; // no change from Ti?
+		static const int16 TRADE_NPC_END = 3003;
+		static const int16 TRADE_BAGS_BEGIN = 3031;
 		static const int16 TRADE_BAGS_END_OFFSET = 79;
 		static const int16 TRADE_BAGS_END = TRADE_BAGS_BEGIN + TRADE_BAGS_END_OFFSET;
 
@@ -174,8 +174,8 @@ namespace Underfoot {
 		static const int16 CORPSE_BEGIN = slots::MainGeneral1;
 		static const int16 CORPSE_END = slots::MainGeneral1 + slots::MainCursor;
 
-		static const uint16 ITEM_COMMON_SIZE = 5;
-		static const uint16 ITEM_CONTAINER_SIZE = 10;
+		static const uint16 ITEM_COMMON_SIZE = 6;
+		static const uint16 ITEM_CONTAINER_SIZE = 255; // 255; (server max will be 255..unsure what actual client is - test)
 
 		static const uint32 BANDOLIERS_COUNT = 20;	// count = number of bandolier instances
 		static const uint32 BANDOLIER_SIZE = 4;		// size = number of equipment slots in bandolier instance
@@ -183,33 +183,34 @@ namespace Underfoot {
 	}
 
 	namespace limits {
-		static const bool ALLOWS_EMPTY_BAG_IN_BAG = false;
+		static const bool ALLOWS_EMPTY_BAG_IN_BAG = true;
+		static const bool ALLOWS_CLICK_CAST_FROM_BAG = true;
 		static const bool COIN_HAS_WEIGHT = false;
 	}
 
-};	//end namespace Underfoot
+};	//end namespace RoF
 
-#endif /*Underfoot_CONSTANTS_H_*/
+#endif /*RoF_CONSTANTS_H_*/
 
 /*
-Underfoot Notes:
-	** Integer-based inventory **
-ok	Possessions: 0 - 31 (Corpse: 23 - 54 [Offset 23])
-ok		[Equipment: 0 - 22]
-ok		[General: 23 - 30]
-ok		[Cursor: 31]
-ok	General Bags: 262 - 341
-ok	Cursor Bags: 342 - 351
+RoF Notes:
+	** Structure-based inventory **
+ok	Possessions: ( 0, { 0 .. 33 }, -1, -1 ) (Corpse: { 23 .. 56 } [Offset 23])
+ok		[Equipment: ( 0, { 0 .. 22 }, -1, -1 )]
+ok		[General: ( 0, { 23 .. 32 }, -1, -1 )]
+ok		[Cursor: ( 0, 33, -1, -1 )]
+	General Bags: ( 0, { 23 .. 32 }, { 0 .. (maxsize - 1) }, -1 )
+	Cursor Bags: ( 0, 33, { 0 .. (maxsize - 1) }, -1 )
 
-ok	Bank: 2000 - 2023
-ok	Bank Bags: 2032 - 2271
+	Bank: ( 1, { 0 .. 23 }, -1, -1 )
+	Bank Bags: ( 1, { 0 .. 23 }, { 0 .. (maxsize - 1)}, -1 )
 
-ok	Shared Bank: 2500 - 2501
-ok	Shared Bank Bags: 2532 - 2551
+	Shared Bank: ( 2, { 0 .. 1 }, -1, -1 )
+	Shared Bank Bags: ( 2, { 0 .. 1 }, { 0 .. (maxsize - 1) }, -1 )
 
-	Trade: 3000 - 3007
+	Trade: ( 3, { 0 .. 8 }, -1, -1 )
 	(Trade Bags: 3031 - 3110 -- server values)
 
-	World: 4000 - 4009
+	World: ( 4, { 0 .. 10 }, -1, -1 )
 
 */

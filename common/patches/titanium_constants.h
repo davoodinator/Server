@@ -19,12 +19,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 */
 
-#ifndef SoF_CONSTANTS_H_
-#define SoF_CONSTANTS_H_
+#ifndef Titanium_CONSTANTS_H_
+#define Titanium_CONSTANTS_H_
 
-#include "../common/types.h"
+#include "../types.h"
 
-namespace SoF {
+namespace Titanium {
 	namespace maps {
 		typedef enum : int16 {
 			// this needs work to match actual client equivilents
@@ -79,7 +79,6 @@ namespace SoF {
 			MainLegs,
 			MainFeet,
 			MainWaist,
-			MainPowerSource,
 			MainAmmo,
 			MainGeneral1,
 			MainGeneral2,
@@ -102,7 +101,7 @@ namespace SoF {
 
 	namespace consts {
 		static const uint16	MAP_POSSESSIONS_SIZE = slots::_MainCount;
-		static const uint16 MAP_BANK_SIZE = 24;
+		static const uint16 MAP_BANK_SIZE = 16;
 		static const uint16 MAP_SHARED_BANK_SIZE = 2;
 		static const uint16 MAP_TRADE_SIZE = 8;
 		static const uint16 MAP_WORLD_SIZE = 10;
@@ -127,9 +126,6 @@ namespace SoF {
 		static const uint16 MAP_KRONO_SIZE = NOT_USED;
 		static const uint16 MAP_OTHER_SIZE = 0;
 
-		static const int16 POSSESSIONS_BEGIN = slots::MainCharm;
-		static const int16 POSSESSIONS_END = slots::MainCursor;
-
 		static const int16 EQUIPMENT_BEGIN = slots::MainCharm;
 		static const int16 EQUIPMENT_END = slots::MainAmmo;
 		static const uint16 EQUIPMENT_SIZE = slots::_MainEquipmentCount;
@@ -137,31 +133,31 @@ namespace SoF {
 		static const int16 GENERAL_BEGIN = slots::MainGeneral1;
 		static const int16 GENERAL_END = slots::MainGeneral8;
 		static const uint16 GENERAL_SIZE = slots::_MainGeneralCount;
-		static const int16 GENERAL_BAGS_BEGIN = 262;
+		static const int16 GENERAL_BAGS_BEGIN = 251;
 		static const int16 GENERAL_BAGS_END_OFFSET = 79;
 		static const int16 GENERAL_BAGS_END = GENERAL_BAGS_BEGIN + GENERAL_BAGS_END_OFFSET;
 
 		static const int16 CURSOR = slots::MainCursor;
-		static const int16 CURSOR_BAG_BEGIN = 342;
+		static const int16 CURSOR_BAG_BEGIN = 331;
 		static const int16 CURSOR_BAG_END_OFFSET = 9;
 		static const int16 CURSOR_BAG_END = CURSOR_BAG_BEGIN + CURSOR_BAG_END_OFFSET;
 
 		static const int16 BANK_BEGIN = 2000;
-		static const int16 BANK_END = 2023;
-		static const int16 BANK_BAGS_BEGIN = 2032;
-		static const int16 BANK_BAGS_END_OFFSET = 239;
+		static const int16 BANK_END = 2015;
+		static const int16 BANK_BAGS_BEGIN = 2031;
+		static const int16 BANK_BAGS_END_OFFSET = 159;
 		static const int16 BANK_BAGS_END = BANK_BAGS_BEGIN + BANK_BAGS_END_OFFSET;
 
 		static const int16 SHARED_BANK_BEGIN = 2500;
 		static const int16 SHARED_BANK_END = 2501;
-		static const int16 SHARED_BANK_BAGS_BEGIN = 2532;
+		static const int16 SHARED_BANK_BAGS_BEGIN = 2531;
 		static const int16 SHARED_BANK_BAGS_END_OFFSET = 19;
 		static const int16 SHARED_BANK_BAGS_END = SHARED_BANK_BAGS_BEGIN + SHARED_BANK_BAGS_END_OFFSET;
 
 		static const int16 TRADE_BEGIN = 3000;
 		static const int16 TRADE_END = 3007;
-		static const int16 TRADE_END_NPC = 3003;
-		static const int16 TRADE_BAGS_BEGIN = 3031; // no change from Ti?
+		static const int16 TRADE_NPC_END = 3003;
+		static const int16 TRADE_BAGS_BEGIN = 3031;
 		static const int16 TRADE_BAGS_END_OFFSET = 79;
 		static const int16 TRADE_BAGS_END = TRADE_BAGS_BEGIN + TRADE_BAGS_END_OFFSET;
 
@@ -177,42 +173,40 @@ namespace SoF {
 		static const uint16 ITEM_COMMON_SIZE = 5;
 		static const uint16 ITEM_CONTAINER_SIZE = 10;
 
-		static const uint32 BANDOLIERS_COUNT = 20;	// count = number of bandolier instances
+		static const uint32 BANDOLIERS_COUNT = 4;	// count = number of bandolier instances
 		static const uint32 BANDOLIER_SIZE = 4;		// size = number of equipment slots in bandolier instance
-		static const uint32 POTION_BELT_SIZE = 5;
+		static const uint32 POTION_BELT_SIZE = 4;
 	}
 
 	namespace limits {
 		static const bool ALLOWS_EMPTY_BAG_IN_BAG = false;
+		static const bool ALLOWS_CLICK_CAST_FROM_BAG = false;
 		static const bool COIN_HAS_WEIGHT = true;
 	}
 
-};	//end namespace SoF
+};	//end namespace Titanium
 
-#endif /*SoF_CONSTANTS_H_*/
+#endif /*Titanium_CONSTANTS_H_*/
 
 /*
-SoF Notes:
+Titanium Notes:
 	** Integer-based inventory **
-ok	Possessions: 0 - 31 (Corpse: 23 - 54 [Offset 23])
-ok		[Equipment: 0 - 22]
-ok		[General: 23 - 30]
-ok		[Cursor: 31]
-ok	General Bags: 262 - 341
-ok	Cursor Bags: 342 - 351
+ok	Possessions: 0 - 30 (Corpse: 22 - 52 [Offset 22])
+ok		[Equipment: 0 - 21]
+ok		[General: 22 - 29]
+ok		[Cursor: 30]
+ok	General Bags: 251 - 330
+ok	Cursor Bags: 331 - 340
 
-ok	Bank: 2000 - 2023
-ok	Bank Bags: 2032 - 2271
+ok	Bank: 2000 - 2015
+ok	Bank Bags: 2031 - 2190
 
 ok	Shared Bank: 2500 - 2501
-ok	Shared Bank Bags: 2532 - 2551
+ok	Shared Bank Bags: 2531 - 2550
 
 	Trade: 3000 - 3007
 	(Trade Bags: 3031 - 3110 -- server values)
 
 	World: 4000 - 4009
 
-code file reviewed..
-	..SerializeItem() needs work
-	..still needs timestamp redirect code
 */
