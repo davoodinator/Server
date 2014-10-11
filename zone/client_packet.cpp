@@ -565,6 +565,7 @@ void Client::CompleteConnect()
 			raid->SendRaidAdd(GetName(), this);
 			raid->SendBulkRaid(this);
 			raid->SendGroupUpdate(this);
+			raid->SendRaidMOTD(this);
 			uint32 grpID = raid->GetGroup(GetName());
 			if (grpID < 12){
 				raid->SendRaidGroupRemove(GetName(), grpID);
@@ -10565,8 +10566,9 @@ void Client::Handle_OP_PurchaseLeadershipAA(const EQApplicationPacket *app)
 		//sell them the ability.
 		m_pp.raid_leadership_points -= cost;
 		m_pp.leader_abilities.ranks[aaid]++;
-	}
-	else {
+
+		database.SaveCharacterLeadershipAA(this->CharacterID(), &m_pp);
+	} else {
 		//it is a group ability.
 		if (cost > m_pp.group_leadership_points) {
 			Message(13, "You do not have enough points to purchase this ability.");
@@ -10585,7 +10587,10 @@ void Client::Handle_OP_PurchaseLeadershipAA(const EQApplicationPacket *app)
 	UpdateLeadershipAA_Struct *u = (UpdateLeadershipAA_Struct *)outapp->pBuffer;
 	u->ability_id = aaid;
 	u->new_rank = m_pp.leader_abilities.ranks[aaid];
-	u->pointsleft = m_pp.group_leadership_points; // FIXME: Take into account raid abilities
+	if (aaid >= raidAAMarkNPC) // raid AA
+		u->pointsleft = m_pp.raid_leadership_points;
+	else // group AA
+		u->pointsleft = m_pp.group_leadership_points;
 	FastQueuePacket(&outapp);
 
 	Group *g = GetGroup();
@@ -10652,8 +10657,8 @@ void Client::Handle_OP_PVPLeaderBoardRequest(const EQApplicationPacket *app)
 
 void Client::Handle_OP_RaidCommand(const EQApplicationPacket *app)
 {
-	if (app->size != sizeof(RaidGeneral_Struct)) {
-		LogFile->write(EQEMuLog::Error, "Wrong size: OP_RaidCommand, size=%i, expected %i", app->size, sizeof(RaidGeneral_Struct));
+	if (app->size < sizeof(RaidGeneral_Struct)) {
+		LogFile->write(EQEMuLog::Error, "Wrong size: OP_RaidCommand, size=%i, expected at least %i", app->size, sizeof(RaidGeneral_Struct));
 		DumpPacket(app);
 		return;
 	}
@@ -11212,6 +11217,19 @@ void Client::Handle_OP_RaidCommand(const EQApplicationPacket *app)
 				r->SetRaidLeader(GetName(), ri->leader_name);
 			}
 		}
+		break;
+	}
+
+	case RaidCommandSetMotd:
+	{
+		Raid *r = entity_list.GetRaidByClient(this);
+		if (!r)
+			break;
+		// we don't use the RaidGeneral here!
+		RaidMOTD_Struct *motd = (RaidMOTD_Struct *)app->pBuffer;
+		r->SetRaidMOTD(std::string(motd->motd));
+		r->SaveRaidMOTD();
+		r->SendRaidMOTDToWorld();
 		break;
 	}
 
