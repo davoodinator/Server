@@ -8293,7 +8293,3 @@ void Client::SendColoredText(uint32 color, std::string message)
 	QueuePacket(outapp);
 	safe_delete(outapp);
 }
-
-
-
->>>>>>> 28ac586ed8e9e0ef1cd789ff5a3d678c2e8850d5
