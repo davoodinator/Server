@@ -19,7 +19,7 @@
 
 /*
 
-	solar:	General outline of spell casting process
+	General outline of spell casting process
 
 	1.
 		a)	Client clicks a spell bar gem, ability, or item. client_process.cpp
@@ -70,15 +70,13 @@
 
 */
 
-#include "debug.h"
-#include "spdat.h"
-#include "packet_dump.h"
-#include "moremath.h"
-#include "item.h"
-#include "skills.h"
-#include "bodytypes.h"
+
+
+#include "../common/eqemu_logsys.h"
+
 #include "classes.h"
-#include <math.h>
+#include "spdat.h"
+
 #ifndef WIN32
 #include <stdlib.h>
 #include "unix.h"
@@ -164,7 +162,7 @@ bool IsCureSpell(uint16 spell_id)
 	bool CureEffect = false;
 
 	for(int i = 0; i < EFFECT_COUNT; i++){
-		if (sp.effectid[i] == SE_DiseaseCounter || sp.effectid[i] == SE_PoisonCounter 
+		if (sp.effectid[i] == SE_DiseaseCounter || sp.effectid[i] == SE_PoisonCounter
 			|| sp.effectid[i] == SE_CurseCounter || sp.effectid[i] == SE_CorruptionCounter)
 			CureEffect = true;
 	}
@@ -407,7 +405,7 @@ bool IsPartialCapableSpell(uint16 spell_id)
 {
 	if (spells[spell_id].no_partial_resist)
 		return false;
-	
+
 	if (IsPureNukeSpell(spell_id))
 		return true;
 
@@ -449,7 +447,7 @@ bool IsTGBCompatibleSpell(uint16 spell_id)
 
 bool IsBardSong(uint16 spell_id)
 {
-	if (IsValidSpell(spell_id) && spells[spell_id].classes[BARD - 1] < 255)
+	if (IsValidSpell(spell_id) && spells[spell_id].classes[BARD - 1] < 255 && !spells[spell_id].IsDisciplineBuff)
 		return true;
 
 	return false;
@@ -695,9 +693,9 @@ bool IsCombatSkill(uint16 spell_id)
 {
 	if (!IsValidSpell(spell_id))
 		return false;
-	
+
 	//Check if Discipline
-	if ((spells[spell_id].mana == 0 &&	(spells[spell_id].EndurCost || spells[spell_id].EndurUpkeep)))			
+	if ((spells[spell_id].mana == 0 &&	(spells[spell_id].EndurCost || spells[spell_id].EndurUpkeep)))
 		return true;
 
 	return false;
@@ -841,7 +839,7 @@ DmgShieldType GetDamageShieldType(uint16 spell_id, int32 DSType)
 	// If we have a DamageShieldType for this spell from the damageshieldtypes table, return that,
 	// else, make a guess, based on the resist type. Default return value is DS_THORNS
 	if (IsValidSpell(spell_id)) {
-		_log(SPELLS__EFFECT_VALUES, "DamageShieldType for spell %i (%s) is %X\n", spell_id,
+		Log.Out(Logs::Detail, Logs::Spells, "DamageShieldType for spell %i (%s) is %X\n", spell_id,
 			spells[spell_id].name, spells[spell_id].DamageShieldType);
 
 		if (spells[spell_id].DamageShieldType)
@@ -896,7 +894,7 @@ bool IsHealOverTimeSpell(uint16 spell_id)
 bool IsCompleteHealSpell(uint16 spell_id)
 {
 	if (spell_id == 13 || IsEffectInSpell(spell_id, SE_CompleteHeal) ||
-			IsPercentalHealSpell(spell_id) && !IsGroupSpell(spell_id))
+			(IsPercentalHealSpell(spell_id) && !IsGroupSpell(spell_id)))
 		return true;
 
 	return false;
@@ -1042,7 +1040,7 @@ bool IsCastonFadeDurationSpell(uint16 spell_id)
 
 bool IsPowerDistModSpell(uint16 spell_id)
 {
-	if (IsValidSpell(spell_id) && 
+	if (IsValidSpell(spell_id) &&
 		(spells[spell_id].max_dist_mod || spells[spell_id].min_dist_mod) && spells[spell_id].max_dist > spells[spell_id].min_dist)
 		return true;
 

@@ -231,6 +231,17 @@
 #define MISSED_NOTE_OTHER			1219	//A missed note brings %1's song to a close!
 #define SPELL_LEVEL_REQ				1226	//This spell only works on people who are level %1 and under.
 #define CORPSE_DECAY_NOW			1227	//This corpse is waiting to expire.
+#define CORPSE_ITEM_LOST			1228	//Your items will no longer stay with you when you respawn on death. You will now need to return to your corpse for your items.
+#define CORPSE_EXP_LOST				1229	//You will now lose experience when you die.
+#define FLICKERS_PALE_LIGHT			1230	//Your %1 flickers with a pale light.
+#define PULSES_WITH_LIGHT			1231	//Your %1 pulses with light as your vision sharpens.
+#define FEEDS_WITH_POWER			1232	//Your %1 feeds you with power.
+#define POWER_DRAIN_INTO			1233	//You feel your power drain into your %1.
+#define SEEMS_DRAINED				1234	//Your %1 seems drained of power.
+#define ALIVE_WITH_POWER			1235	//Your %1 feels alive with power.
+#define SPARKLES					1236	//Your %1 sparkles.
+#define GROWS_DIM					1237	//Your %1 grows dim.
+#define BEGINS_TO_SHINE				1238	//Your %1 begins to shine.
 #define SURNAME_REJECTED			1374	//Your new surname was rejected. Please try a different name.
 #define DUEL_DECLINE				1383	//%1 has declined your challenge to duel to the death.
 #define DUEL_ACCEPTED				1384	//%1 has already accepted a duel with someone else.
@@ -264,6 +275,7 @@
 #define TRADESKILL_MISSING_COMPONENTS	3456	//Sorry, but you don't have everything you need for this recipe in your general inventory.
 #define TRADESKILL_LEARN_RECIPE		3457	//You have learned the recipe %1!
 #define EXPEDITION_MIN_REMAIN		3551	//You only have %1 minutes remaining before this expedition comes to an end.
+#define NO_CAST_ON_PET				4045	//You cannot cast this spell on your pet.
 #define REWIND_WAIT					4059	//You must wait a bit longer before using the rewind command again.
 #define CORPSEDRAG_LIMIT			4061	//You are already dragging as much as you can!
 #define CORPSEDRAG_ALREADY			4062	//You are already dragging %1.
@@ -295,10 +307,14 @@
 #define GUILD_BANK_FULL				6098	// There is no more room in the Guild Bank.
 #define GUILD_BANK_TRANSFERRED		6100	// '%1' transferred to Guild Bank from Deposits.
 #define GUILD_BANK_EMPTY_HANDS		6108	// You must empty your hands to withdraw from the Guild Bank.
+#define TRANSFORM_FAILED			6326	//This mold cannot be applied to your %1.
+#define TRANSFORM_COMPLETE			6327	//You have successfully transformed your %1.
+#define DETRANSFORM_FAILED			6341 	//%1 has no transformation that can be removed.
 #define GENERIC_STRING				6688	//%1 (used to any basic message)
 #define SENTINEL_TRIG_YOU			6724	//You have triggered your sentinel.
 #define SENTINEL_TRIG_OTHER			6725	//%1 has triggered your sentinel.
 #define IDENTIFY_SPELL				6765	//Item Lore: %1.
+#define BUFF_NOT_BLOCKABLE			7608	//You cannot block this effect.
 #define LDON_DONT_KNOW_TRAPPED		7552	//You do not know if this object is trapped.
 #define LDON_HAVE_DISARMED			7553	//You have disarmed %1!
 #define LDON_ACCIDENT_SETOFF		7554	//You accidentally set off the trap!
@@ -334,10 +350,13 @@
 #define YOU_HEAL					9068	//You have healed %1 for %2 points of damage.
 #define YOUR_HIT_DOT				9072	//%1 has taken %2 damage from your %3.
 #define HIT_NON_MELEE				9073	//%1 hit %2 for %3 points of non-melee damage.
+#define GLOWS_BLUE					9074	//Your %1 glows blue.
+#define GLOWS_RED					9075	//Your %1 glows red.
 #define SHAKE_OFF_STUN				9077
 #define STRIKETHROUGH_STRING		9078	//You strike through your opponent's defenses!
 #define SPELL_REFLECT				9082	//%1's spell has been reflected by %2.
 #define NEW_SPELLS_AVAIL			9149	//You have new spells available to you. Check the merchants near your guild master.
+#define SNEAK_RESTRICT				9240	//You can not use this ability because you have not been hidden for long enough.
 #define PET_NOW_FOCUSING			9254	//Focusing on one target, Master.
 #define PET_NOT_FOCUSING			9263	//No longer focusing on one target, Master.
 #define PET_NOT_CASTING				9264	//Not casting spells, Master.
@@ -367,6 +386,7 @@
 #define GROUP_INVITEE_SELF			12270	//12270 You cannot invite yourself.
 #define NOT_IN_CONTROL				12368	//You do not have control of yourself right now.
 #define ALREADY_CASTING				12442	//You are already casting a spell!
+#define SHIMMERS_BRIEFLY			12444	//Your %1 shimmers briefly.
 #define SENSE_CORPSE_NOT_NAME		12446	//You don't sense any corpses of that name.
 #define SENSE_CORPSE_NONE			12447	//You don't sense any corpses.
 #define SCREECH_BUFF_BLOCK			12448	//Your immunity buff protected you from the spell %1!
@@ -390,7 +410,8 @@
 #define SONG_ENDS_OTHER				12688	//%1's song ends.
 #define SONG_ENDS_ABRUPTLY_OTHER	12689	//%1's song ends abruptly.
 #define DIVINE_AURA_NO_ATK			12695	//You can't attack while invulnerable!
-#define TRY_ATTACKING_SOMEONE		12696	//Try attacking someone other than yourself, it's more productive.
+#define TRY_ATTACKING_SOMEONE		12696	//Try attacking someone other than yourself, it's more productive
+#define RANGED_TOO_CLOSE			12698	//Your target is too close to use a ranged weapon!
 #define BACKSTAB_WEAPON				12874	//You need a piercing weapon as your primary weapon in order to backstab
 #define MORE_SKILLED_THAN_I			12931	//%1 tells you, 'You are more skilled than I! What could I possibly teach you?'
 #define SURNAME_EXISTS				12939	//You already have a surname. Operation failed.

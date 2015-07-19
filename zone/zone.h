@@ -18,25 +18,16 @@
 #ifndef ZONE_H
 #define ZONE_H
 
-#include "../common/mutex.h"
-#include "../common/linked_list.h"
-#include "../common/types.h"
 #include "../common/eqtime.h"
-#include "../common/servertalk.h"
+#include "../common/linked_list.h"
 #include "../common/rulesys.h"
-#include "../common/eq_packet_structs.h"
-#include "../common/features.h"
-#include "spawngroup.h"
-//#include "mob.h"
-#include "zonedump.h"
-#include "spawn2.h"
-#include "tasks.h"
-#include "pathing.h"
+#include "../common/types.h"
+#include "../common/random.h"
+#include "../common/string_util.h"
 #include "qglobals.h"
-#include <unordered_map>
-
-class Map;
-class WaterMap;
+#include "spawn2.h"
+#include "spawngroup.h"
+#include "aa_ability.h"
 
 struct ZonePoint
 {
@@ -53,6 +44,7 @@ struct ZonePoint
 	int32 target_zone_instance;
 	uint32 client_version_mask;
 };
+
 struct ZoneClientAuth_Struct {
 	uint32	ip;			// client's IP address
 	uint32	wid;		// client's WorldID#
@@ -78,12 +70,14 @@ struct item_tick_struct {
     std::string qglobal;
 };
 
-extern EntityList entity_list;
-class database;
+class Client;
+class Map;
+class Mob;
 class PathManager;
-struct SendAA_Struct;
-
-class database;
+class WaterMap;
+extern EntityList entity_list;
+struct NPCType;
+struct ServerZoneIncomingClient_Struct;
 
 class Zone
 {
@@ -93,6 +87,10 @@ public:
 
 	Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name);
 	~Zone();
+
+	/* When zone has its own version of time */
+	bool is_zone_time_localized;
+
 	bool	Init(bool iStaticZone);
 	bool	LoadZoneCFG(const char* filename, uint16 instance_id, bool DontLoadDefault = false);
 	bool	SaveZoneCFG();
@@ -104,35 +102,33 @@ public:
 	inline const uint32	GetZoneID() const { return zoneid; }
 	inline const uint32	GetInstanceID() const { return instanceid; }
 	inline const uint16	GetInstanceVersion() const { return instanceversion; }
+	inline const bool IsInstancePersistent() const { return pers_instance; }
 	inline const uint8	GetZoneType() const { return zone_type; }
 
 	inline Timer* GetInstanceTimer() { return Instance_Timer; }
 
-	inline const float&	safe_x()		{ return psafe_x; }
-	inline const float&	safe_y()		{ return psafe_y; }
-	inline const float&	safe_z()		{ return psafe_z; }
+    inline glm::vec3 GetSafePoint() { return m_SafePoint; }
 	inline const uint32& graveyard_zoneid()	{ return pgraveyard_zoneid; }
-	inline const float& graveyard_x()	{ return pgraveyard_x; }
-	inline const float& graveyard_y()	{ return pgraveyard_y; }
-	inline const float& graveyard_z()	{ return pgraveyard_z; }
-	inline const float& graveyard_heading() { return pgraveyard_heading; }
+	inline glm::vec4 GetGraveyardPoint() { return m_Graveyard; }
 	inline const uint32& graveyard_id()	{ return pgraveyard_id; }
 
 	inline const uint32& GetMaxClients() { return pMaxClients; }
 
-	void	LoadAAs();
-	int		GetTotalAAs() { return totalAAs; }
-	SendAA_Struct*	GetAABySequence(uint32 seq) { return aas[seq]; }
-	SendAA_Struct*	FindAA(uint32 id);
-	uint8	GetTotalAALevels(uint32 skill_id);
+	//new AA
+	void LoadAlternateAdvancement();
+	AA::Ability *GetAlternateAdvancementAbility(int id);
+	AA::Ability *GetAlternateAdvancementAbilityByRank(int rank_id);
+	AA::Rank *GetAlternateAdvancementRank(int rank_id);
+	std::pair<AA::Ability*, AA::Rank*> GetAlternateAdvancementAbilityAndRank(int id, int points_spent);
+
 	void	LoadZoneDoors(const char* zone, int16 version);
 	bool	LoadZoneObjects();
 	bool	LoadGroundSpawns();
 	void	ReloadStaticData();
 
 	uint32	CountSpawn2();
-	ZonePoint* GetClosestZonePoint(float x, float y, float z, const char* to_name, Client *client, float max_distance = 40000.0f);
-	ZonePoint* GetClosestZonePoint(float x, float y, float z, uint32	to, Client *client, float max_distance = 40000.0f);
+	ZonePoint* GetClosestZonePoint(const glm::vec3& location, const char* to_name, Client *client, float max_distance = 40000.0f);
+	ZonePoint* GetClosestZonePoint(const glm::vec3& location, uint32	to, Client *client, float max_distance = 40000.0f);
 	ZonePoint* GetClosestZonePointWithoutZone(float x, float y, float z, Client *client, float max_distance = 40000.0f);
 	SpawnGroupList spawn_group_list;
 
@@ -152,7 +148,7 @@ public:
 	void	StartShutdownTimer(uint32 set_time = (RuleI(Zone, AutoShutdownDelay)));
 	void    ChangeWeather();
 	bool	HasWeather();
-	void	AddAuth(ServerZoneIncommingClient_Struct* szic);
+	void	AddAuth(ServerZoneIncomingClient_Struct* szic);
 	void	RemoveAuth(const char* iCharName);
 	void	ResetAuth();
 	bool	GetAuth(uint32 iIP, const char* iCharName, uint32* oWID = 0, uint32* oAccID = 0, uint32* oCharID = 0, int16* oStatus = 0, char* oLSKey = 0, bool* oTellsOff = 0);
@@ -165,7 +161,7 @@ public:
 	inline bool InstantGrids()			{ return(!initgrids_timer.Enabled()); }
 	void		SetStaticZone(bool sz)	{ staticzone = sz; }
 	inline bool	IsStaticZone()			{ return staticzone; }
-	inline void	GotCurTime(bool time)	{ gottime = time; }
+	inline void	SetZoneHasCurrentTime(bool time)	{ zone_has_current_time = time; }
 
 	void	SpawnConditionChanged(const SpawnCondition &c, int16 old_value);
 
@@ -200,6 +196,10 @@ public:
 	char *adv_data;
 	bool did_adventure_actions;
 
+	//new AA
+	std::unordered_map<int, std::unique_ptr<AA::Ability>> aa_abilities;
+	std::unordered_map<int, std::unique_ptr<AA::Rank>> aa_ranks;
+
 	void	DoAdventureCountIncrease();
 	void	DoAdventureAssassinationCountIncrease();
 	void	DoAdventureActions();
@@ -218,7 +218,7 @@ public:
 	EQTime	zone_time;
 	void	GetTimeSync();
 	void	SetDate(uint16 year, uint8 month, uint8 day, uint8 hour, uint8 minute);
-	void	SetTime(uint8 hour, uint8 minute);
+	void SetTime(uint8 hour, uint8 minute, bool update_world = true);
 
 	void	weatherSend();
 	bool	CanBind() const { return(can_bind); }
@@ -240,12 +240,12 @@ public:
 	uint8 lootvar;
 
 	bool	HasGraveyard();
-	void	SetGraveyard(uint32 zoneid, uint32 x, uint32 y, uint32 z, uint32 heading);
+	void	SetGraveyard(uint32 zoneid, const glm::vec4& graveyardPosition);
 
 	void		LoadBlockedSpells(uint32 zoneid);
 	void		ClearBlockedSpells();
-	bool		IsSpellBlocked(uint32 spell_id, float nx, float ny, float nz);
-	const char *GetSpellBlockedMessage(uint32 spell_id, float nx, float ny, float nz);
+	bool		IsSpellBlocked(uint32 spell_id, const glm::vec3& location);
+	const char *GetSpellBlockedMessage(uint32 spell_id, const glm::vec3& location);
 	int			GetTotalBlockedSpells() { return totalBS; }
 	inline bool HasMap() { return zonemap != nullptr; }
 	inline bool HasWaterMap() { return watermap != nullptr; }
@@ -261,10 +261,33 @@ public:
 
 	LinkedList<NPC_Emote_Struct*> NPCEmoteList;
 
-    void    LoadTickItems();
-    uint32  GetSpawnKillCount(uint32 in_spawnid);
-    void    UpdateHotzone();
+	void    LoadTickItems();
+	uint32  GetSpawnKillCount(uint32 in_spawnid);
+	void    UpdateHotzone();
 	std::unordered_map<int, item_tick_struct> tick_items;
+
+	// random object that provides random values for the zone
+	EQEmu::Random random;
+
+	static void GMSayHookCallBackProcess(uint16 log_category, std::string message){
+		/* Cut messages down to 4000 max to prevent client crash */
+		if (!message.empty())
+			message = message.substr(0, 4000);
+
+		/* Replace Occurrences of % or MessageStatus will crash */
+		find_replace(message, std::string("%"), std::string("."));
+
+		if (message.find("\n") != std::string::npos){
+			auto message_split = SplitString(message, '\n');
+			entity_list.MessageStatus(0, 80, Log.GetGMSayColorFromCategory(log_category), "%s", message_split[0].c_str());
+			for (size_t iter = 1; iter < message_split.size(); ++iter) {
+				entity_list.MessageStatus(0, 80, Log.GetGMSayColorFromCategory(log_category), "--- %s", message_split[iter].c_str());
+			}
+		}
+		else{
+			entity_list.MessageStatus(0, 80, Log.GetGMSayColorFromCategory(log_category), "%s", message.c_str());
+		}
+	}
 
 	//MODDING HOOKS
 	void mod_init();
@@ -274,12 +297,13 @@ private:
 	uint32	zoneid;
 	uint32	instanceid;
 	uint16	instanceversion;
+	bool pers_instance;
 	char*	short_name;
 	char	file_name[16];
 	char*	long_name;
 	char*	map_name;
 	bool pvpzone;
-	float	psafe_x, psafe_y, psafe_z;
+	glm::vec3 m_SafePoint;
 	uint32	pMaxClients;
 	bool	can_bind;
 	bool	is_city;
@@ -290,14 +314,11 @@ private:
 	uint8	zone_type;
 	bool	allow_mercs;
 	uint32	pgraveyard_id, pgraveyard_zoneid;
-	float	pgraveyard_x, pgraveyard_y, pgraveyard_z, pgraveyard_heading;
+	glm::vec4 m_Graveyard;
 	int		default_ruleset;
 
 	int	totalBS;
 	ZoneSpellsBlocked *blocked_spells;
-
-	int		totalAAs;
-	SendAA_Struct **aas;	//array of AA structs
 
 	/*
 		Spawn related things
@@ -307,7 +328,7 @@ private:
 
 
 	bool	staticzone;
-	bool	gottime;
+	bool	zone_has_current_time;
 
 	uint32 pQueuedMerchantsWorkID;
 	uint32 pQueuedTempMerchantsWorkID;
@@ -322,7 +343,7 @@ private:
 	Timer*	Instance_Warning_timer;
 	LinkedList<ZoneClientAuth_Struct*> client_auth_list;
 	QGlobalCache *qGlobals;
-	
+
 	Timer	hotzone_timer;
 };
 

@@ -39,7 +39,8 @@ enum {	//values for pTimerType
 	pTimerDisciplineReuseStart = 14,
 	pTimerDisciplineReuseEnd = 24,
 	pTimerCombatAbility = 25,
-	pTimerBeggingPickPocket = 26,
+	pTimerCombatAbility2 = 26, // RoF2+ Tiger Claw is unlinked from other monk skills, generic in case other classes ever need it
+	pTimerBeggingPickPocket = 27,
 
 	pTimerLayHands = 87,		//these IDs are used by client too
 	pTimerHarmTouch = 89,		//so dont change them
@@ -79,6 +80,7 @@ public:
 	inline const uint32 GetTimerTime() const { return timer_time; }
 	inline const uint32 GetStartTime() const { return start_time; }
 	inline const pTimerType GetType() const { return _type; }
+	inline const uint32 GetReadyTimestamp() const { return start_time + timer_time; }
 
 	inline bool Enabled() { return enabled; }
 
@@ -136,9 +138,5 @@ protected:
 
 	std::map<pTimerType, PersistentTimer *> _list;
 };
-
-//code prettying macros
-#define AA_Choose3(val, v1, v2, v3) (val==1?v1:(val==2?v2:v3))
-#define AA_Choose5(val, v1, v2, v3, v4, v5) (val==1?v1:(val==2?v2:(val==3?v3:(val==4?v4:v5))))
 
 #endif

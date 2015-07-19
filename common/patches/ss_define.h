@@ -1,5 +1,5 @@
 
-#define ENCODE(x) void Strategy::Encode_##x(EQApplicationPacket **p, EQStream *dest, bool ack_req)
+#define ENCODE(x) void Strategy::Encode_##x(EQApplicationPacket **p, std::shared_ptr<EQStream> dest, bool ack_req)
 #define DECODE(x) void Strategy::Decode_##x(EQApplicationPacket *__packet)
 
 #define StructDist(in, f1, f2) (uint32(&in->f2)-uint32(&in->f1))
@@ -41,6 +41,11 @@
 	memset(__packet->pBuffer, 0, len); \
 	eq_struct *eq = (eq_struct *) __packet->pBuffer; \
 
+#define ALLOC_LEN_ENCODE(len) \
+	__packet->pBuffer = new unsigned char[len]; \
+	__packet->size = len; \
+	memset(__packet->pBuffer, 0, len); \
+
 //a shorter assignment for direct mode
 #undef OUT
 #define OUT(x) eq->x = emu->x;
@@ -64,16 +69,14 @@
 //check length of packet before decoding. Call before setup.
 #define ENCODE_LENGTH_EXACT(struct_) \
 	if((*p)->size != sizeof(struct_)) { \
-		_log(NET__STRUCTS, "Wrong size on outbound %s (" #struct_ "): Got %d, expected %d", opcodes->EmuToName((*p)->GetOpcode()), (*p)->size, sizeof(struct_)); \
-		_hex(NET__STRUCT_HEX, (*p)->pBuffer, (*p)->size); \
+		Log.Out(Logs::Detail, Logs::Netcode, "Wrong size on outbound %s (" #struct_ "): Got %d, expected %d", opcodes->EmuToName((*p)->GetOpcode()), (*p)->size, sizeof(struct_)); \
 		delete *p; \
 		*p = nullptr; \
 		return; \
 	}
 #define ENCODE_LENGTH_ATLEAST(struct_) \
 	if((*p)->size < sizeof(struct_)) { \
-		_log(NET__STRUCTS, "Wrong size on outbound %s (" #struct_ "): Got %d, expected at least %d", opcodes->EmuToName((*p)->GetOpcode()), (*p)->size, sizeof(struct_)); \
-		_hex(NET__STRUCT_HEX, (*p)->pBuffer, (*p)->size); \
+		Log.Out(Logs::Detail, Logs::Netcode, "Wrong size on outbound %s (" #struct_ "): Got %d, expected at least %d", opcodes->EmuToName((*p)->GetOpcode()), (*p)->size, sizeof(struct_)); \
 		delete *p; \
 		*p = nullptr; \
 		return; \
@@ -126,16 +129,14 @@
 //check length of packet before decoding. Call before setup.
 #define DECODE_LENGTH_EXACT(struct_) \
 	if(__packet->size != sizeof(struct_)) { \
+		Log.Out(Logs::Detail, Logs::Netcode, "Wrong size on incoming %s (" #struct_ "): Got %d, expected %d", opcodes->EmuToName(__packet->GetOpcode()), __packet->size, sizeof(struct_)); \
 		__packet->SetOpcode(OP_Unknown); /* invalidate the packet */ \
-		_log(NET__STRUCTS, "Wrong size on incoming %s (" #struct_ "): Got %d, expected %d", opcodes->EmuToName(__packet->GetOpcode()), __packet->size, sizeof(struct_)); \
-		_hex(NET__STRUCT_HEX, __packet->pBuffer, __packet->size); \
 		return; \
 	}
 #define DECODE_LENGTH_ATLEAST(struct_) \
 	if(__packet->size < sizeof(struct_)) { \
+		Log.Out(Logs::Detail, Logs::Netcode, "Wrong size on incoming %s (" #struct_ "): Got %d, expected at least %d", opcodes->EmuToName(__packet->GetOpcode()), __packet->size, sizeof(struct_)); \
 		__packet->SetOpcode(OP_Unknown); /* invalidate the packet */ \
-		_log(NET__STRUCTS, "Wrong size on incoming %s (" #struct_ "): Got %d, expected at least %d", opcodes->EmuToName(__packet->GetOpcode()), __packet->size, sizeof(struct_)); \
-		_hex(NET__STRUCT_HEX, __packet->pBuffer, __packet->size); \
 		return; \
 	}
 

@@ -23,25 +23,16 @@
 #ifndef __ITEM_H
 #define __ITEM_H
 
-class ItemInst;				// Item belonging to a client (contains info on item, dye, augments, charges, etc)
-class ItemInstQueue;		// Queue of ItemInst objects (i.e., cursor)
-class Inventory;			// Character inventory
 class ItemParse;			// Parses item packets
 class EvolveInfo;			// Stores information about an evolving item family
 
-#include <string>
-#include <vector>
-#include <map>
-#include <list>
-#include "../common/eq_packet_structs.h"
 #include "../common/eq_constants.h"
 #include "../common/item_struct.h"
 #include "../common/timer.h"
 
-// Helper typedefs
-typedef std::list<ItemInst*>::const_iterator				iter_queue;
-typedef std::map<int16, ItemInst*>::const_iterator			iter_inst;
-typedef std::map<uint8, ItemInst*>::const_iterator			iter_contents;
+#include <list>
+#include <map>
+
 
 namespace ItemField
 {
@@ -92,14 +83,17 @@ public:
 	// Public Methods
 	/////////////////////////
 
-	inline iter_queue begin()	{ return m_list.begin(); }
-	inline iter_queue end()		{ return m_list.end(); }
+	inline std::list<ItemInst*>::const_iterator cbegin() { return m_list.cbegin(); }
+	inline std::list<ItemInst*>::const_iterator cend() { return m_list.cend(); }
+
+	inline int size() { return static_cast<int>(m_list.size()); } // TODO: change to size_t
+	inline bool empty() { return m_list.empty(); }
 
 	void push(ItemInst* inst);
 	void push_front(ItemInst* inst);
 	ItemInst* pop();
+	ItemInst* pop_back();
 	ItemInst* peek_front() const;
-	inline int size()		{ return static_cast<int>(m_list.size()); }
 
 protected:
 	/////////////////////////
@@ -107,7 +101,6 @@ protected:
 	/////////////////////////
 
 	std::list<ItemInst*> m_list;
-
 };
 
 // ########################################
@@ -121,11 +114,11 @@ public:
 	// Public Methods
 	///////////////////////////////
 
-	Inventory() { m_version = EQClientUnknown; m_versionset = false; }
+	Inventory() { m_version = ClientVersion::Unknown; m_versionset = false; }
 	~Inventory();
 
 	// Inventory v2 creep
-	bool SetInventoryVersion(EQClientVersion version) {
+	bool SetInventoryVersion(ClientVersion version) {
 		if (!m_versionset) {
 			m_version = version;
 			return (m_versionset = true);
@@ -135,7 +128,7 @@ public:
 		}
 	}
 
-	EQClientVersion GetInventoryVersion() { return m_version; }
+	ClientVersion GetInventoryVersion() { return m_version; }
 
 	static void CleanDirty();
 	static void MarkDirty(ItemInst *inst);
@@ -144,9 +137,11 @@ public:
 	ItemInst* GetItem(int16 slot_id) const;
 	ItemInst* GetItem(int16 slot_id, uint8 bagidx) const;
 
-	inline iter_queue cursor_begin()	{ return m_cursor.begin(); }
-	inline iter_queue cursor_end()		{ return m_cursor.end(); }
-	inline bool CursorEmpty()			{ return (m_cursor.size() == 0); }
+	inline std::list<ItemInst*>::const_iterator cursor_cbegin() { return m_cursor.cbegin(); }
+	inline std::list<ItemInst*>::const_iterator cursor_cend() { return m_cursor.cend(); }
+
+	inline int CursorSize() { return m_cursor.size(); }
+	inline bool CursorEmpty() { return m_cursor.empty(); }
 
 	// Retrieve a read-only item from inventory
 	inline const ItemInst* operator[](int16 slot_id) const { return GetItem(slot_id); }
@@ -156,6 +151,9 @@ public:
 
 	// Add item to cursor queue
 	int16 PushCursor(const ItemInst& inst);
+
+	// Get cursor item in front of queue
+	ItemInst* GetCursorItem();
 
 	// Swap items in inventory
 	bool SwapItem(int16 slot_a, int16 slot_b);
@@ -206,6 +204,8 @@ public:
 
 	int GetSlotByItemInst(ItemInst *inst);
 
+	uint8 FindBrightestLightType();
+
 	void dumpEntireInventory();
 	void dumpWornItems();
 	void dumpInventory();
@@ -224,7 +224,7 @@ protected:
 
 	int GetSlotByItemInstCollection(const std::map<int16, ItemInst*> &collection, ItemInst *inst);
 	void dumpItemCollection(const std::map<int16, ItemInst*> &collection);
-	void dumpBagContents(ItemInst *inst, iter_inst *it);
+	void dumpBagContents(ItemInst *inst, std::map<int16, ItemInst*>::const_iterator *it);
 
 	// Retrieves item within an inventory bucket
 	ItemInst* _GetItem(const std::map<int16, ItemInst*>& bucket, int16 slot_id) const;
@@ -251,7 +251,7 @@ protected:
 
 private:
 	// Active inventory version
-	EQClientVersion m_version;
+	ClientVersion m_version;
 	bool m_versionset;
 };
 
@@ -292,15 +292,15 @@ public:
 	bool IsEquipable(int16 slot_id) const;
 
 	//
-	// Augements
+	// Augments
 	//
-	inline bool IsAugmentable() const { return m_item->AugSlotType[0]!=0 || m_item->AugSlotType[1]!=0 || m_item->AugSlotType[2]!=0 || m_item->AugSlotType[3]!=0 || m_item->AugSlotType[4]!=0; }
+	bool IsAugmentable() const;
 	bool AvailableWearSlot(uint32 aug_wear_slots) const;
 	int8 AvailableAugmentSlot(int32 augtype) const;
 	bool IsAugmentSlotAvailable(int32 augtype, uint8 slot) const;
-	inline int32 GetAugmentType() const { return m_item->AugType; }
+	inline int32 GetAugmentType() const { return ((m_item) ? m_item->AugType : NO_ITEM); }
 
-	inline bool IsExpendable() const { return ((m_item->Click.Type == ET_Expendable ) || (m_item->ItemType == ItemTypePotion)); }
+	inline bool IsExpendable() const { return ((m_item) ? ((m_item->Click.Type == ET_Expendable ) || (m_item->ItemType == ItemTypePotion)) : false); }
 
 	//
 	// Contents
@@ -329,14 +329,17 @@ public:
 	void DeleteAugment(uint8 slot);
 	ItemInst* RemoveAugment(uint8 index);
 	bool IsAugmented();
-
+	ItemInst* GetOrnamentationAug(int32 ornamentationAugtype) const;
+	bool UpdateOrnamentationInfo();
+	static bool CanTransform(const Item_Struct *ItemToTry, const Item_Struct *Container, bool AllowAll = false);
+	
 	// Has attack/delay?
 	bool IsWeapon() const;
 	bool IsAmmo() const;
 
 	// Accessors
-	const uint32 GetID() const { return m_item->ID; }
-	const uint32 GetItemScriptID() const { return m_item->ScriptFileID; }
+	const uint32 GetID() const { return ((m_item) ? m_item->ID : NO_ITEM); }
+	const uint32 GetItemScriptID() const { return ((m_item) ? m_item->ScriptFileID : NO_ITEM); }
 	const Item_Struct* GetItem() const;
 	const Item_Struct* GetUnscaledItem() const;
 
@@ -349,18 +352,18 @@ public:
 	void SetColor(uint32 color)				{ m_color = color; }
 	uint32 GetColor() const					{ return m_color; }
 
-	uint32 GetMerchantSlot() const				{ return m_merchantslot; }
+	uint32 GetMerchantSlot() const			{ return m_merchantslot; }
 	void SetMerchantSlot(uint32 slot)		{ m_merchantslot = slot; }
 
-	int32 GetMerchantCount() const				{ return m_merchantcount; }
+	int32 GetMerchantCount() const			{ return m_merchantcount; }
 	void SetMerchantCount(int32 count)		{ m_merchantcount = count; }
 
 	int16 GetCurrentSlot() const			{ return m_currentslot; }
 	void SetCurrentSlot(int16 curr_slot)	{ m_currentslot = curr_slot; }
 
 	// Is this item already attuned?
-	bool IsInstNoDrop() const { return m_instnodrop; }
-	void SetInstNoDrop(bool flag) { m_instnodrop=flag; }
+	bool IsAttuned() const					{ return m_attuned; }
+	void SetAttuned(bool flag)				{ m_attuned=flag; }
 
 	std::string GetCustomDataString() const;
 	std::string GetCustomData(std::string identifier);
@@ -391,6 +394,14 @@ public:
 	void SetActivated(bool activated)	{ m_activated = activated; }
 	int8 GetEvolveLvl() const			{ return m_evolveLvl; }
 	void SetScaling(bool v)				{ m_scaling = v; }
+	uint32 GetOrnamentationIcon() const							{ return m_ornamenticon; }
+	void SetOrnamentIcon(uint32 ornament_icon)					{ m_ornamenticon = ornament_icon; }
+	uint32 GetOrnamentationIDFile() const						{ return m_ornamentidfile; }
+	void SetOrnamentationIDFile(uint32 ornament_idfile)			{ m_ornamentidfile = ornament_idfile; }
+	uint32 GetOrnamentHeroModel(int32 material_slot = -1) const;
+	void SetOrnamentHeroModel(uint32 ornament_hero_model)		{ m_ornament_hero_model = ornament_hero_model; }
+	uint32 GetRecastTimestamp() const							{ return m_recast_timestamp; }
+	void SetRecastTimestamp(uint32 in)							{ m_recast_timestamp = in; }
 
 	void Initialize(SharedDatabase *db = nullptr);
 	void ScaleItem();
@@ -411,8 +422,8 @@ protected:
 	//////////////////////////
 	// Protected Members
 	//////////////////////////
-	iter_contents _begin()		{ return m_contents.begin(); }
-	iter_contents _end()		{ return m_contents.end(); }
+	std::map<uint8, ItemInst*>::const_iterator _cbegin() { return m_contents.cbegin(); }
+	std::map<uint8, ItemInst*>::const_iterator _cend() { return m_contents.cend(); }
 
 	friend class Inventory;
 
@@ -426,7 +437,7 @@ protected:
 	uint32				m_color;
 	uint32				m_merchantslot;
 	int16				m_currentslot;
-	bool				m_instnodrop;
+	bool				m_attuned;
 	int32				m_merchantcount;		//number avaliable on the merchant, -1=unlimited
 	int32				m_SerialNumber;	// Unique identifier for this instance of an item. Needed for Bazaar.
 	uint32				m_exp;
@@ -435,6 +446,10 @@ protected:
 	Item_Struct*		m_scaledItem;
 	EvolveInfo*			m_evolveInfo;
 	bool				m_scaling;
+	uint32				m_ornamenticon;
+	uint32				m_ornamentidfile;
+	uint32				m_ornament_hero_model;
+	uint32				m_recast_timestamp;
 
 	//
 	// Items inside of this item (augs or contents);
@@ -455,6 +470,45 @@ public:
 	EvolveInfo();
 	EvolveInfo(uint32 first, uint8 max, bool allkills, uint32 L2, uint32 L3, uint32 L4, uint32 L5, uint32 L6, uint32 L7, uint32 L8, uint32 L9, uint32 L10);
 	~EvolveInfo();
+};
+
+struct LightProfile_Struct
+{
+	/*
+	Current criteria (light types):
+	Equipment:	{ 0 .. 15 }
+	General:	{ 9 .. 13 }
+
+	Notes:
+	- Initial character load and item movement updates use different light source update behaviors
+	-- Server procedure matches the item movement behavior since most updates occur post-character load
+	- MainAmmo is not considered when determining light sources
+	- No 'Sub' or 'Aug' items are recognized as light sources
+	- Light types '< 9' and '> 13' are not considered for general (carried) light sources
+	- If values > 0x0F are valid, then assignment limiters will need to be removed
+	- MainCursor 'appears' to be a valid light source update slot..but, have not experienced updates during debug sessions
+	- All clients have a bug regarding stackable items (light and sound updates are not processed when picking up an item)
+	-- The timer-based update cancels out the invalid light source
+	*/
+
+	static uint8 TypeToLevel(uint8 lightType);
+	static bool IsLevelGreater(uint8 leftType, uint8 rightType);
+
+	// Light types (classifications)
+	struct {
+		uint8 Innate;		// Defined by db field `npc_types`.`light` - where appropriate
+		uint8 Equipment;	// Item_Struct::light value of worn/carried equipment
+		uint8 Spell;		// Set value of any light-producing spell (can be modded to mimic equip_light behavior)
+		uint8 Active;		// Highest value of all light sources
+	} Type;
+
+	// Light levels (intensities) - used to determine which light source should be active
+	struct {
+		uint8 Innate;
+		uint8 Equipment;
+		uint8 Spell;
+		uint8 Active;
+	} Level;
 };
 
 #endif // #define __ITEM_H

@@ -12,7 +12,7 @@
 #include "zonedb.h"
 #include "string_ids.h"
 #include "../common/misc_functions.h"
-#include "../common/debug.h"
+#include "../common/global_define.h"
 #include "guild_mgr.h"
 #include "worldserver.h"
 
@@ -60,6 +60,7 @@ enum SpellTypeIndex {
 };
 
 class Bot : public NPC {
+	friend class Mob;
 public:
 	// Class enums
 	enum BotfocusType {	//focus types
@@ -154,7 +155,7 @@ public:
 	// Class Methods
 	bool IsValidRaceClassCombo();
 	bool IsValidName();
-	bool IsBotNameAvailable(std::string* errorMessage);
+	static bool IsBotNameAvailable(char *botName, std::string* errorMessage);
 	bool DeleteBot(std::string* errorMessage);
 	void Spawn(Client* botCharacterOwner, std::string* errorMessage);
 	virtual void SetLevel(uint8 in_level, bool command = false);
@@ -168,14 +169,13 @@ public:
 	uint16 BotGetSpellType(int spellslot) { return AIspells[spellslot].type; }
 	uint16 BotGetSpellPriority(int spellslot) { return AIspells[spellslot].priority; }
 	virtual float GetProcChances(float ProcBonus, uint16 hand);
-	virtual bool AvoidDamage(Mob* other, int32 &damage, bool CanRiposte);
 	virtual int GetMonkHandToHandDamage(void);
 	virtual bool TryFinishingBlow(Mob *defender, SkillUseTypes skillinuse);
 	virtual void DoRiposte(Mob* defender);
-	inline virtual int16 GetATK() const { return ATK + itembonuses.ATK + spellbonuses.ATK + ((GetSTR() + GetSkill(SkillOffense)) * 9 / 10); }
-	inline virtual int16 GetATKBonus() const { return itembonuses.ATK + spellbonuses.ATK; }
-	uint16 GetTotalATK();
-	uint16 GetATKRating();
+	inline virtual int32 GetATK() const { return ATK + itembonuses.ATK + spellbonuses.ATK + ((GetSTR() + GetSkill(SkillOffense)) * 9 / 10); }
+	inline virtual int32 GetATKBonus() const { return itembonuses.ATK + spellbonuses.ATK; }
+	uint32 GetTotalATK();
+	uint32 GetATKRating();
 	uint16 GetPrimarySkillValue();
 	uint16	MaxSkill(SkillUseTypes skillid, uint16 class_, uint16 level) const;
 	inline	uint16	MaxSkill(SkillUseTypes skillid) const { return MaxSkill(skillid, GetClass(), GetLevel()); }
@@ -190,7 +190,9 @@ public:
 	bool CanDoSpecialAttack(Mob *other);
 	virtual int32 CheckAggroAmount(uint16 spellid);
 	virtual void CalcBonuses();
-	void CalcItemBonuses();
+	void CalcItemBonuses(StatBonuses* newbon);
+	void AddItemBonuses(const ItemInst *inst, StatBonuses* newbon, bool isAug = false, bool isTribute = false);
+	int CalcRecommendedLevelBonus(uint8 level, uint8 reclevel, int basestat);
 	virtual void MakePet(uint16 spell_id, const char* pettype, const char *petname = nullptr);
 	virtual FACTION_VALUE GetReverseFactionCon(Mob* iOther);
 	inline virtual bool IsPet() { return false; }
@@ -198,7 +200,7 @@ public:
 	virtual Mob* GetOwner();
 	virtual Mob* GetOwnerOrSelf();
 	inline virtual bool HasOwner() { return (GetBotOwner() ? true : false); }
-	virtual int32 CheckHealAggroAmount(uint16 spellid, uint32 heal_possible = 0);
+	virtual int32 CheckHealAggroAmount(uint16 spellid, Mob *target, uint32 heal_possible = 0);
 	virtual int32 CalcMaxMana();
 	virtual void SetAttackTimer();
 	uint32 GetClassHPFactor();
@@ -208,7 +210,7 @@ public:
 	bool DoFinishedSpellGroupTarget(uint16 spell_id, Mob* spellTarget, uint16 slot, bool &stopLogic);
 	void SendBotArcheryWearChange(uint8 material_slot, uint32 material, uint32 color);
 	void Camp(bool databaseSave = true);
-	virtual void AddToHateList(Mob* other, int32 hate = 0, int32 damage = 0, bool iYellForHelp = true, bool bFrenzy = false, bool iBuffTic = false);
+	virtual void AddToHateList(Mob* other, uint32 hate = 0, int32 damage = 0, bool iYellForHelp = true, bool bFrenzy = false, bool iBuffTic = false);
 	virtual void SetTarget(Mob* mob);
 	virtual void Zone();
 	std::vector<AISpells_Struct> GetBotSpells() { return AIspells; }
@@ -238,35 +240,35 @@ public:
 	void ClearHealRotationLeader() { _healRotationLeader = 0; }
 	void ClearHealRotationMembers();
 	void ClearHealRotationTargets();
-	inline virtual int16	GetMaxStat();
-	inline virtual int16	GetMaxResist();
-	inline virtual int16	GetMaxSTR();
-	inline virtual int16	GetMaxSTA();
-	inline virtual int16	GetMaxDEX();
-	inline virtual int16	GetMaxAGI();
-	inline virtual int16	GetMaxINT();
-	inline virtual int16	GetMaxWIS();
-	inline virtual int16	GetMaxCHA();
-	inline virtual int16	GetMaxMR();
-	inline virtual int16	GetMaxPR();
-	inline virtual int16	GetMaxDR();
-	inline virtual int16	GetMaxCR();
-	inline virtual int16	GetMaxFR();
-	inline virtual int16	GetMaxCorrup();
-	int16	CalcATK();
-	int16	CalcSTR();
-	int16	CalcSTA();
-	int16	CalcDEX();
-	int16	CalcAGI();
-	int16	CalcINT();
-	int16	CalcWIS();
-	int16	CalcCHA();
-	int16	CalcMR();
-	int16	CalcFR();
-	int16	CalcDR();
-	int16	CalcPR();
-	int16	CalcCR();
-	int16	CalcCorrup();
+	inline virtual int32	GetMaxStat();
+	inline virtual int32	GetMaxResist();
+	inline virtual int32	GetMaxSTR();
+	inline virtual int32	GetMaxSTA();
+	inline virtual int32	GetMaxDEX();
+	inline virtual int32	GetMaxAGI();
+	inline virtual int32	GetMaxINT();
+	inline virtual int32	GetMaxWIS();
+	inline virtual int32	GetMaxCHA();
+	inline virtual int32	GetMaxMR();
+	inline virtual int32	GetMaxPR();
+	inline virtual int32	GetMaxDR();
+	inline virtual int32	GetMaxCR();
+	inline virtual int32	GetMaxFR();
+	inline virtual int32	GetMaxCorrup();
+	int32	CalcATK();
+	int32	CalcSTR();
+	int32	CalcSTA();
+	int32	CalcDEX();
+	int32	CalcAGI();
+	int32	CalcINT();
+	int32	CalcWIS();
+	int32	CalcCHA();
+	int32	CalcMR();
+	int32	CalcFR();
+	int32	CalcDR();
+	int32	CalcPR();
+	int32	CalcCR();
+	int32	CalcCorrup();
 	int32	CalcHPRegenCap();
 	int32	CalcManaRegenCap();
 	int32	LevelRegen();
@@ -310,12 +312,13 @@ public:
 	virtual int32 GetActSpellDuration(uint16 spell_id, int32 duration);
 	virtual float GetAOERange(uint16 spell_id);
 	virtual bool SpellEffect(Mob* caster, uint16 spell_id, float partial = 100);
-	virtual void DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caster_level, Mob* caster = 0);
-	virtual bool CastSpell(uint16 spell_id, uint16 target_id, uint16 slot = USE_ITEM_SPELL_SLOT, int32 casttime = -1, int32 mana_cost = -1, uint32* oSpellWillFinish = 0, uint32 item_slot = 0xFFFFFFFF, int16 *resist_adjust = nullptr);
+	virtual void DoBuffTic(const Buffs_Struct &buff, int slot, Mob* caster = nullptr);
+	virtual bool CastSpell(uint16 spell_id, uint16 target_id, uint16 slot = USE_ITEM_SPELL_SLOT, int32 casttime = -1, int32 mana_cost = -1, uint32* oSpellWillFinish = 0,
+						   uint32 item_slot = 0xFFFFFFFF, int16 *resist_adjust = nullptr, uint32 aa_id = 0);
 	virtual bool SpellOnTarget(uint16 spell_id, Mob* spelltar);
 	virtual bool IsImmuneToSpell(uint16 spell_id, Mob *caster);
 	virtual bool DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_center, CastAction_type &CastAction);
-	virtual bool DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot = USE_ITEM_SPELL_SLOT, int32 casttime = -1, int32 mana_cost = -1, uint32* oSpellWillFinish = 0, uint32 item_slot = 0xFFFFFFFF);
+	virtual bool DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot = USE_ITEM_SPELL_SLOT, int32 casttime = -1, int32 mana_cost = -1, uint32* oSpellWillFinish = 0, uint32 item_slot = 0xFFFFFFFF, uint32 aa_id = 0);
 
 	// Bot Action Command Methods
 	bool MesmerizeTarget(Mob* target);
@@ -332,6 +335,7 @@ public:
 	void EquipBot(std::string* errorMessage);
 	bool CheckLoreConflict(const Item_Struct* item);
 	uint32 GetEquipmentColor(uint8 material_slot) const;
+	virtual void UpdateEquipmentLight() { m_Light.Type.Equipment = m_inv.FindBrightestLightType(); m_Light.Level.Equipment = m_Light.TypeToLevel(m_Light.Type.Equipment); }
 
 	// Static Class Methods
 	static void SaveBotGroup(Group* botGroup, std::string botGroupName, std::string* errorMessage);
@@ -444,14 +448,8 @@ public:
 	bool IsBotWISCaster() { return (GetClass() == CLERIC || GetClass() == DRUID || GetClass() == SHAMAN); }
 	bool CanHeal();
 	int GetRawACNoShield(int &shield_ac);
-	void LoadAAs();
-	uint32 GetAA(uint32 aa_id);
-	void ApplyAABonuses(uint32 aaid, uint32 slots, StatBonuses* newbon);
 	bool GetHasBeenSummoned() { return _hasBeenSummoned; }
-	float GetPreSummonX() { return _preSummonX; }
-	float GetPreSummonY() { return _preSummonY; }
-	float GetPreSummonZ() { return _preSummonZ; }
-	bool GetGroupMessagesOn() { return _groupMessagesOn; }
+	const glm::vec3 GetPreSummonLocation() const { return m_PreSummonLocation; }
 	bool GetInHealRotation() { return _isInHealRotation; }
 	bool GetHealRotationActive() { return (GetInHealRotation() && _isHealRotationActive); }
 	bool GetHealRotationUseFastHeals() { return _healRotationUseFastHeals; }
@@ -465,57 +463,58 @@ public:
 	uint32 GetHealRotationNextHealTime() { return _healRotationNextHeal; }
 	uint32 GetHealRotationTimer () { return _healRotationTimer; }
 	bool GetBardUseOutOfCombatSongs() { return _bardUseOutOfCombatSongs;}
-	inline virtual int16	GetAC()	const { return AC; }
-	inline virtual int16	GetSTR()	const { return STR; }
-	inline virtual int16	GetSTA()	const { return STA; }
-	inline virtual int16	GetDEX()	const { return DEX; }
-	inline virtual int16	GetAGI()	const { return AGI; }
-	inline virtual int16	GetINT()	const { return INT; }
-	inline virtual int16	GetWIS()	const { return WIS; }
-	inline virtual int16	GetCHA()	const { return CHA; }
-	inline virtual int16	GetMR()	const { return MR; }
-	inline virtual int16	GetFR()	const { return FR; }
-	inline virtual int16	GetDR()	const { return DR; }
-	inline virtual int16	GetPR()	const { return PR; }
-	inline virtual int16	GetCR()	const { return CR; }
-	inline virtual int16	GetCorrup()	const { return Corrup; }
+	bool GetShowHelm() { return _showhelm; }
+	inline virtual int32	GetAC()	const { return AC; }
+	inline virtual int32	GetSTR()	const { return STR; }
+	inline virtual int32	GetSTA()	const { return STA; }
+	inline virtual int32	GetDEX()	const { return DEX; }
+	inline virtual int32	GetAGI()	const { return AGI; }
+	inline virtual int32	GetINT()	const { return INT; }
+	inline virtual int32	GetWIS()	const { return WIS; }
+	inline virtual int32	GetCHA()	const { return CHA; }
+	inline virtual int32	GetMR()	const { return MR; }
+	inline virtual int32	GetFR()	const { return FR; }
+	inline virtual int32	GetDR()	const { return DR; }
+	inline virtual int32	GetPR()	const { return PR; }
+	inline virtual int32	GetCR()	const { return CR; }
+	inline virtual int32	GetCorrup()	const { return Corrup; }
 	//Heroic
-	inline virtual int16	GetHeroicSTR()	const { return itembonuses.HeroicSTR; }
-	inline virtual int16	GetHeroicSTA()	const { return itembonuses.HeroicSTA; }
-	inline virtual int16	GetHeroicDEX()	const { return itembonuses.HeroicDEX; }
-	inline virtual int16	GetHeroicAGI()	const { return itembonuses.HeroicAGI; }
-	inline virtual int16	GetHeroicINT()	const { return itembonuses.HeroicINT; }
-	inline virtual int16	GetHeroicWIS()	const { return itembonuses.HeroicWIS; }
-	inline virtual int16	GetHeroicCHA()	const { return itembonuses.HeroicCHA; }
-	inline virtual int16	GetHeroicMR()	const { return itembonuses.HeroicMR; }
-	inline virtual int16	GetHeroicFR()	const { return itembonuses.HeroicFR; }
-	inline virtual int16	GetHeroicDR()	const { return itembonuses.HeroicDR; }
-	inline virtual int16	GetHeroicPR()	const { return itembonuses.HeroicPR; }
-	inline virtual int16	GetHeroicCR()	const { return itembonuses.HeroicCR; }
-	inline virtual int16	GetHeroicCorrup()	const { return itembonuses.HeroicCorrup; }
+	inline virtual int32	GetHeroicSTR()	const { return itembonuses.HeroicSTR; }
+	inline virtual int32	GetHeroicSTA()	const { return itembonuses.HeroicSTA; }
+	inline virtual int32	GetHeroicDEX()	const { return itembonuses.HeroicDEX; }
+	inline virtual int32	GetHeroicAGI()	const { return itembonuses.HeroicAGI; }
+	inline virtual int32	GetHeroicINT()	const { return itembonuses.HeroicINT; }
+	inline virtual int32	GetHeroicWIS()	const { return itembonuses.HeroicWIS; }
+	inline virtual int32	GetHeroicCHA()	const { return itembonuses.HeroicCHA; }
+	inline virtual int32	GetHeroicMR()	const { return itembonuses.HeroicMR; }
+	inline virtual int32	GetHeroicFR()	const { return itembonuses.HeroicFR; }
+	inline virtual int32	GetHeroicDR()	const { return itembonuses.HeroicDR; }
+	inline virtual int32	GetHeroicPR()	const { return itembonuses.HeroicPR; }
+	inline virtual int32	GetHeroicCR()	const { return itembonuses.HeroicCR; }
+	inline virtual int32	GetHeroicCorrup()	const { return itembonuses.HeroicCorrup; }
 	// Mod2
-	inline virtual int16	GetShielding()		const { return itembonuses.MeleeMitigation; }
-	inline virtual int16	GetSpellShield()	const { return itembonuses.SpellShield; }
-	inline virtual int16	GetDoTShield()		const { return itembonuses.DoTShielding; }
-	inline virtual int16	GetStunResist()		const { return itembonuses.StunResist; }
-	inline virtual int16	GetStrikeThrough()	const { return itembonuses.StrikeThrough; }
-	inline virtual int16	GetAvoidance()		const { return itembonuses.AvoidMeleeChance; }
-	inline virtual int16	GetAccuracy()		const { return itembonuses.HitChance; }
-	inline virtual int16	GetCombatEffects()	const { return itembonuses.ProcChance; }
-	inline virtual int16	GetDS()				const { return itembonuses.DamageShield; }
+	inline virtual int32	GetShielding()		const { return itembonuses.MeleeMitigation; }
+	inline virtual int32	GetSpellShield()	const { return itembonuses.SpellShield; }
+	inline virtual int32	GetDoTShield()		const { return itembonuses.DoTShielding; }
+	inline virtual int32	GetStunResist()		const { return itembonuses.StunResist; }
+	inline virtual int32	GetStrikeThrough()	const { return itembonuses.StrikeThrough; }
+	inline virtual int32	GetAvoidance()		const { return itembonuses.AvoidMeleeChance; }
+	inline virtual int32	GetAccuracy()		const { return itembonuses.HitChance; }
+	inline virtual int32	GetCombatEffects()	const { return itembonuses.ProcChance; }
+	inline virtual int32	GetDS()				const { return itembonuses.DamageShield; }
 	// Mod3
-	inline virtual int16	GetHealAmt()		const { return itembonuses.HealAmt; }
-	inline virtual int16	GetSpellDmg()		const { return itembonuses.SpellDmg; }
-	inline virtual int16	GetClair()			const { return itembonuses.Clairvoyance; }
-	inline virtual int16	GetDSMit()			const { return itembonuses.DSMitigation; }
+	inline virtual int32	GetHealAmt()		const { return itembonuses.HealAmt; }
+	inline virtual int32	GetSpellDmg()		const { return itembonuses.SpellDmg; }
+	inline virtual int32	GetClair()			const { return itembonuses.Clairvoyance; }
+	inline virtual int32	GetDSMit()			const { return itembonuses.DSMitigation; }
 
-	inline virtual int16	GetSingMod()		const { return itembonuses.singingMod; }
-	inline virtual int16	GetBrassMod()		const { return itembonuses.brassMod; }
-	inline virtual int16	GetPercMod()		const { return itembonuses.percussionMod; }
-	inline virtual int16	GetStringMod()		const { return itembonuses.stringedMod; }
-	inline virtual int16	GetWindMod()		const { return itembonuses.windMod; }
+	inline virtual int32	GetSingMod()		const { return itembonuses.singingMod; }
+	inline virtual int32	GetBrassMod()		const { return itembonuses.brassMod; }
+	inline virtual int32	GetPercMod()		const { return itembonuses.percussionMod; }
+	inline virtual int32	GetStringMod()		const { return itembonuses.stringedMod; }
+	inline virtual int32	GetWindMod()		const { return itembonuses.windMod; }
 
-	inline virtual int16	GetDelayDeath()		const { return aabonuses.DelayDeath + spellbonuses.DelayDeath + itembonuses.DelayDeath; }
+	inline virtual int32	GetDelayDeath()		const { return aabonuses.DelayDeath + spellbonuses.DelayDeath + itembonuses.DelayDeath; }
 
 	inline InspectMessage_Struct& GetInspectMessage() { return _botInspectMessage; }
 	inline const InspectMessage_Struct& GetInspectMessage() const { return _botInspectMessage; }
@@ -535,10 +534,7 @@ public:
 	void SetSpellRecastTimer(int timer_index, int32 recast_delay);
 	void SetDisciplineRecastTimer(int timer_index, int32 recast_delay);
 	void SetHasBeenSummoned(bool s);
-	void SetPreSummonX(float x) { _preSummonX = x; }
-	void SetPreSummonY(float y) { _preSummonY = y; }
-	void SetPreSummonZ(float z) { _preSummonZ = z; }
-	void SetGroupMessagesOn(bool groupMessagesOn) { _groupMessagesOn = groupMessagesOn; }
+	void SetPreSummonLocation(const glm::vec3& location) { m_PreSummonLocation = location; }
 	void SetInHealRotation( bool inRotation ) { _isInHealRotation = inRotation; }
 	void SetHealRotationActive( bool isActive ) { _isHealRotationActive = isActive; }
 	void SetHealRotationUseFastHeals( bool useFastHeals ) { _healRotationUseFastHeals = useFastHeals; }
@@ -550,19 +546,22 @@ public:
 	void SetHealRotationTimer( uint32 timer ) { _healRotationTimer = timer; }
 	void SetNumHealRotationMembers( uint8 numMembers ) { _numHealRotationMembers = numMembers; }
 	void SetBardUseOutOfCombatSongs(bool useOutOfCombatSongs) { _bardUseOutOfCombatSongs = useOutOfCombatSongs;}
+	void SetShowHelm(bool showhelm) { _showhelm = showhelm; }
+
+	std::string CreateSayLink(Client* botOwner, const char* message, const char* name);
 
 	// Class Destructors
 	virtual ~Bot();
 
 protected:
 	virtual void PetAIProcess();
-	static NPCType FillNPCTypeStruct(uint32 botSpellsID, std::string botName, std::string botLastName, uint8 botLevel, uint16 botRace, uint8 botClass, uint8 gender, float size, uint32 face, uint32 hairStyle, uint32 hairColor, uint32 eyeColor, uint32 eyeColor2, uint32 beardColor, uint32 beard, uint32 drakkinHeritage, uint32 drakkinTattoo, uint32 drakkinDetails, int32 hp, int32 mana, int16 mr, int16 cr, int16 dr, int16 fr, int16 pr, int16 corrup, int16 ac, uint16 str, uint16 sta, uint16 dex, uint16 agi, uint16 _int, uint16 wis, uint16 cha, uint16 attack);
+	static NPCType FillNPCTypeStruct(uint32 botSpellsID, std::string botName, std::string botLastName, uint8 botLevel, uint16 botRace, uint8 botClass, uint8 gender, float size, uint32 face, uint32 hairStyle, uint32 hairColor, uint32 eyeColor, uint32 eyeColor2, uint32 beardColor, uint32 beard, uint32 drakkinHeritage, uint32 drakkinTattoo, uint32 drakkinDetails, int32 hp, int32 mana, int32 mr, int32 cr, int32 dr, int32 fr, int32 pr, int32 corrup, int32 ac, uint32 str, uint32 sta, uint32 dex, uint32 agi, uint32 _int, uint32 wis, uint32 cha, uint32 attack);
 	virtual void BotMeditate(bool isSitting);
 	virtual void BotRangedAttack(Mob* other);
 	virtual bool CheckBotDoubleAttack(bool Triple = false);
-	virtual int16 GetBotFocusEffect(BotfocusType bottype, uint16 spell_id);
-	virtual int16 CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spell_id, bool best_focus=false);
-	virtual int16 CalcBotAAFocus(BotfocusType type, uint32 aa_ID, uint16 spell_id);
+	virtual int32 GetBotFocusEffect(BotfocusType bottype, uint16 spell_id);
+	virtual int32 CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spell_id, bool best_focus=false);
+	virtual int32 CalcBotAAFocus(BotfocusType type, uint32 aa_ID, uint32 points, uint16 spell_id);
 	virtual void PerformTradeWithClient(int16 beginSlotID, int16 endSlotID, Client* client);
 	virtual bool AIDoSpellCast(uint8 i, Mob* tar, int32 mana_cost, uint32* oDontDoAgainBefore = 0);
 	virtual float GetMaxMeleeRangeToTarget(Mob* target);
@@ -601,14 +600,11 @@ private:
 	int32	base_end;
 	int32	cur_end;
 	int32	max_end;
-	int16	end_regen;
+	int32	end_regen;
 	uint32 timers[MaxTimer];
 	bool _hasBeenSummoned;
-	float _preSummonX;
-	float _preSummonY;
-	float _preSummonZ;
+	glm::vec3 m_PreSummonLocation;
 	uint8 _spellCastingChances[MaxStances][MaxSpellTypes];
-	bool _groupMessagesOn;
 	bool _isInHealRotation;
 	bool _isHealRotationActive;
 	bool _healRotationUseFastHeals;
@@ -624,33 +620,34 @@ private:
 	std::map<uint32, BotAA> botAAs;
 	InspectMessage_Struct _botInspectMessage;
 	bool _bardUseOutOfCombatSongs;
+	bool _showhelm;
 
 	// Private "base stats" Members
-	int16 _baseMR;
-	int16 _baseCR;
-	int16 _baseDR;
-	int16 _baseFR;
-	int16 _basePR;
-	int16 _baseCorrup;
-	int _baseAC;
-	int16 _baseSTR;
-	int16 _baseSTA;
-	int16 _baseDEX;
-	int16 _baseAGI;
-	int16 _baseINT;
-	int16 _baseWIS;
-	int16 _baseCHA;
-	int16 _baseATK;
+	int32 _baseMR;
+	int32 _baseCR;
+	int32 _baseDR;
+	int32 _baseFR;
+	int32 _basePR;
+	int32 _baseCorrup;
+	int32 _baseAC;
+	int32 _baseSTR;
+	int32 _baseSTA;
+	int32 _baseDEX;
+	int32 _baseAGI;
+	int32 _baseINT;
+	int32 _baseWIS;
+	int32 _baseCHA;
+	int32 _baseATK;
 	uint16 _baseRace;	// Necessary to preserve the race otherwise bots get their race updated in the db when they get an illusion.
 	uint8 _baseGender;	// Bots gender. Necessary to preserve the original value otherwise it can be changed by illusions.
 
 	// Class Methods
-	int16 acmod();
+	void LoadAAs();
+	int32 acmod();
 	void GenerateBaseStats();
 	void GenerateAppearance();
 	void GenerateArmorClass();
 	int32 GenerateBaseHitPoints();
-	void GenerateAABonuses(StatBonuses* newbon);
 	int32 GenerateBaseManaPoints();
 	void GenerateSpecialAttacks();
 	void SetBotID(uint32 botID);
@@ -670,8 +667,8 @@ private:
 	void SavePetBuffs(SpellBuff_Struct* petBuffs, uint32 botPetSaveId);
 	void LoadPetItems(uint32* petItems, uint32 botPetSaveId);
 	void SavePetItems(uint32* petItems, uint32 botPetSaveId);
-	void LoadPetStats(std::string* petName, uint16* petMana, uint16* petHitPoints, uint32* botPetId, uint32 botPetSaveId);
-	uint32 SavePetStats(std::string petName, uint16 petMana, uint16 petHitPoints, uint32 botPetId);
+	void LoadPetStats(std::string* petName, uint32* petMana, uint32* petHitPoints, uint32* botPetId, uint32 botPetSaveId);
+	uint32 SavePetStats(std::string petName, uint32 petMana, uint32 petHitPoints, uint32 botPetId);
 	void LoadPet();	// Load and spawn bot pet if there is one
 	void SavePet();	// Save and depop bot pet if there is one
 	uint32 GetPetSaveId();

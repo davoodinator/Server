@@ -1,5 +1,5 @@
-#ifndef SoF_STRUCTS_H_
-#define SoF_STRUCTS_H_
+#ifndef SOF_STRUCTS_H_
+#define SOF_STRUCTS_H_
 
 namespace SoF {
 	namespace structs {
@@ -103,73 +103,74 @@ struct AdventureInfo {
 */
 struct Color_Struct
 {
-	union
-	{
-		struct
-		{
-			uint8	blue;
-			uint8	green;
-			uint8	red;
-			uint8	use_tint;	// if there's a tint this is FF
-		} rgb;
-		uint32 color;
+	union {
+		struct {
+			uint8 Blue;
+			uint8 Green;
+			uint8 Red;
+			uint8 UseTint;	// if there's a tint this is FF
+		} RGB;
+		uint32 Color;
 	};
 };
 
-struct CharSelectEquip {
-	//totally guessed;
-	uint32 equip0;
-	uint32 equip1;
-	uint32 itemid;
-	Color_Struct color;
+struct CharSelectEquip
+{
+	uint32 Material;
+	uint32 Unknown1;
+	uint32 EliteMaterial;
+	Color_Struct Color;
 };
 
-struct CharacterSelectEntry_Struct {
-/*0000*/	uint8 level;				//
-/*0000*/	uint8 hairstyle;			//
-/*0002*/	uint8 gender;				//
-/*0003*/	char name[1];				//variable length, edi+0
-/*0000*/	uint8 beard;				//
-/*0001*/	uint8 haircolor;			//
-/*0000*/	uint8 face;					//
-/*0000*/	CharSelectEquip	equip[9];
-/*0000*/	uint32 primary;				//
-/*0000*/	uint32 secondary;			//
-/*0000*/	uint8 u15;					// 0xff
-/*0000*/	uint32 deity;				//
-/*0000*/	uint16 zone;				//
-/*0000*/	uint16 instance;
-/*0000*/	uint8 gohome;				//
-/*0000*/	uint8 u19;					// 0xff
-/*0000*/	uint32 race;				//
-/*0000*/	uint8 tutorial;				//
-/*0000*/	uint8 class_;				//
-/*0000*/	uint8 eyecolor1;			//
-/*0000*/	uint8 beardcolor;			//
-/*0000*/	uint8 eyecolor2;			//
-/*0000*/	uint32 drakkin_heritage;	// Drakkin Heritage
-/*0000*/	uint32 drakkin_tattoo;		// Drakkin Tattoo
-/*0000*/	uint32 drakkin_details;		// Drakkin Details (Facial Spikes)
+struct CharacterSelectEntry_Struct
+{
+/*0000*/	uint8 Level;				//
+/*0000*/	uint8 HairStyle;			//
+/*0002*/	uint8 Gender;				//
+/*0003*/	char Name[1];				// variable length, edi+0
+/*0000*/	uint8 Beard;				//
+/*0001*/	uint8 HairColor;			//
+/*0000*/	uint8 Face;					//
+/*0000*/	CharSelectEquip	Equip[9];
+/*0000*/	uint32 PrimaryIDFile;		//
+/*0000*/	uint32 SecondaryIDFile;		//
+/*0000*/	uint8 Unknown15;			// 0xff
+/*0000*/	uint32 Deity;				//
+/*0000*/	uint16 Zone;				//
+/*0000*/	uint16 Instance;
+/*0000*/	uint8 GoHome;				//
+/*0000*/	uint8 Unknown19;			// 0xff
+/*0000*/	uint32 Race;				//
+/*0000*/	uint8 Tutorial;				//
+/*0000*/	uint8 Class;				//
+/*0000*/	uint8 EyeColor1;			//
+/*0000*/	uint8 BeardColor;			//
+/*0000*/	uint8 EyeColor2;			//
+/*0000*/	uint32 DrakkinHeritage;		// Drakkin Heritage
+/*0000*/	uint32 DrakkinTattoo;		// Drakkin Tattoo
+/*0000*/	uint32 DrakkinDetails;		// Drakkin Details (Facial Spikes)
 };
 
 /*
 ** Character Selection Struct
 **
 */
-struct CharacterSelect_Struct {
-/*0000*/	uint32	char_count;		//number of chars in this packet
-/*0004*/	uint32	total_chars;	//total number of chars allowed?
-/*0008*/	CharacterSelectEntry_Struct entries[0];
+struct CharacterSelect_Struct
+{
+/*0000*/	uint32 CharCount;	//number of chars in this packet
+/*0004*/	uint32 TotalChars;	//total number of chars allowed?
+/*0008*/	CharacterSelectEntry_Struct Entries[0];
 };
 
 /*
 * Visible equiptment.
 * Size: 12 Octets
 */
-struct EquipStruct {
-/*00*/ uint32 equip0;
-/*04*/ uint32 equip1;
-/*08*/ uint32 itemId;
+struct EquipStruct
+{
+/*00*/ uint32 Material;
+/*04*/ uint32 Unknown1;
+/*08*/ uint32 EliteMaterial;
 /*12*/
 };
 
@@ -240,7 +241,8 @@ struct Spawn_Struct {
 /*0506*/ uint8  light;				// Spawn's lightsource
 /*0507*/ uint8  unknown0507[4];
 /*0511*/ uint8  level;				// Spawn Level
-/*0512*/ uint8  unknown0512[16];
+/*0512*/ uint32 PlayerState;
+/*0516*/ uint8  unknown0516[12];
 /*0528*/ uint8  lfg;
 /*0529*/ uint8  unknown0529[4];
 /*0533*/ uint8  hairstyle;			// Sets the style of hair
@@ -516,7 +518,7 @@ struct SpawnAppearance_Struct
 };
 
 
-// solar: this is used inside profile
+// this is used inside profile
 struct SpellBuff_Struct
 {
 /*000*/	uint8	slotid;		//badly named... seems to be 2 for a real buff, 0 otherwise
@@ -524,7 +526,7 @@ struct SpellBuff_Struct
 /*002*/	uint8	bard_modifier;
 /*003*/	uint8	effect;			//not real
 /*004*/	uint32	spellid;
-/*008*/ uint32	duration;
+/*008*/ int32	duration;
 /*012*/	uint32	counters;
 /*016*/ uint32  unknown004;    //Might need to be swapped with player_id
 /*020*/ uint32	player_id;	//'global' ID of the caster, for wearoff messages
@@ -541,7 +543,7 @@ struct SpellBuffFade_Struct {
 /*006*/	uint8 effect;
 /*007*/	uint8 unknown7;
 /*008*/	uint32 spellid;
-/*012*/	uint32 duration;
+/*012*/	int32 duration;
 /*016*/	uint32 unknown016;
 /*020*/	uint32 unknown020;	//prolly global player ID
 /*024*/ uint32 playerId;       // Player id who cast the buff
@@ -554,8 +556,8 @@ struct GMTrainee_Struct
 {
 	/*000*/ uint32 npcid;
 	/*004*/ uint32 playerid;
-	/*008*/ uint32 skills[73];
-	/*300*/ uint8 unknown300[148];
+	/*008*/ uint32 skills[PACKET_SKILL_ARRAY_SIZE];
+	/*408*/ uint8 unknown408[40];
 	/*448*/
 };
 
@@ -643,7 +645,7 @@ struct AA_Array
 {
 	uint32 AA;
 	uint32 value;
-	uint32 unknown08;	// Looks like AA_Array is now 12 bytes in Live
+	uint32 charges;	// expendable charges
 };
 
 
@@ -654,9 +656,6 @@ struct Disciplines_Struct {
 };
 
 static const uint32 MAX_PLAYER_TRIBUTES = 5;
-static const uint32 MAX_PLAYER_BANDOLIER = 20;
-static const uint32 MAX_PLAYER_BANDOLIER_ITEMS = 4;
-static const uint32 MAX_POTIONS_IN_BELT = 5;
 static const uint32 TRIBUTE_NONE = 0xFFFFFFFF;
 
 struct Tribute_Struct {
@@ -664,39 +663,103 @@ struct Tribute_Struct {
 	uint32 tier;
 };
 
-//len = 72
-struct BandolierItem_Struct {
-	uint32 item_id;
-	uint32 icon;
-	char item_name[64];
-};
-
-//len = 320
-enum { //bandolier item positions
-	bandolierMainHand = 0,
-	bandolierOffHand,
+// Bandolier item positions
+enum
+{
+	bandolierPrimary = 0,
+	bandolierSecondary,
 	bandolierRange,
 	bandolierAmmo
 };
-struct Bandolier_Struct {
-	char name[32];
-	BandolierItem_Struct items[MAX_PLAYER_BANDOLIER_ITEMS];
+
+//len = 72
+struct BandolierItem_Struct
+{
+	uint32 ID;
+	uint32 Icon;
+	char Name[64];
 };
-struct PotionBelt_Struct {
-	BandolierItem_Struct items[MAX_POTIONS_IN_BELT];
+
+//len = 320
+struct Bandolier_Struct
+{
+	char Name[32];
+	BandolierItem_Struct Items[consts::BANDOLIER_ITEM_COUNT];
+};
+
+//len = 72
+struct PotionBeltItem_Struct
+{
+	uint32 ID;
+	uint32 Icon;
+	char Name[64];
+};
+
+//len = 288
+struct PotionBelt_Struct
+{
+	PotionBeltItem_Struct Items[consts::POTION_BELT_ITEM_COUNT];
 };
 
 static const uint32 MAX_GROUP_LEADERSHIP_AA_ARRAY = 16;
 static const uint32 MAX_RAID_LEADERSHIP_AA_ARRAY = 16;
 static const uint32 MAX_LEADERSHIP_AA_ARRAY = (MAX_GROUP_LEADERSHIP_AA_ARRAY+MAX_RAID_LEADERSHIP_AA_ARRAY);
-struct LeadershipAA_Struct {
-	uint32 ranks[MAX_LEADERSHIP_AA_ARRAY];
-};
 struct GroupLeadershipAA_Struct {
-	uint32 ranks[MAX_GROUP_LEADERSHIP_AA_ARRAY];
+	union {
+		struct {
+			uint32 groupAAMarkNPC;
+			uint32 groupAANPCHealth;
+			uint32 groupAADelegateMainAssist;
+			uint32 groupAADelegateMarkNPC;
+			uint32 groupAA4;
+			uint32 groupAA5;
+			uint32 groupAAInspectBuffs;
+			uint32 groupAA7;
+			uint32 groupAASpellAwareness;
+			uint32 groupAAOffenseEnhancement;
+			uint32 groupAAManaEnhancement;
+			uint32 groupAAHealthEnhancement;
+			uint32 groupAAHealthRegeneration;
+			uint32 groupAAFindPathToPC;
+			uint32 groupAAHealthOfTargetsTarget;
+			uint32 groupAA15;
+		};
+		uint32 ranks[MAX_GROUP_LEADERSHIP_AA_ARRAY];
+	};
 };
+
 struct RaidLeadershipAA_Struct {
-	uint32 ranks[MAX_RAID_LEADERSHIP_AA_ARRAY];
+	union {
+		struct {
+			uint32 raidAAMarkNPC;
+			uint32 raidAANPCHealth;
+			uint32 raidAADelegateMainAssist;
+			uint32 raidAADelegateMarkNPC;
+			uint32 raidAA4;
+			uint32 raidAA5;
+			uint32 raidAA6;
+			uint32 raidAASpellAwareness;
+			uint32 raidAAOffenseEnhancement;
+			uint32 raidAAManaEnhancement;
+			uint32 raidAAHealthEnhancement;
+			uint32 raidAAHealthRegeneration;
+			uint32 raidAAFindPathToPC;
+			uint32 raidAAHealthOfTargetsTarget;
+			uint32 raidAA14;
+			uint32 raidAA15;
+		};
+		uint32 ranks[MAX_RAID_LEADERSHIP_AA_ARRAY];
+	};
+};
+
+struct LeadershipAA_Struct {
+	union {
+		struct {
+			GroupLeadershipAA_Struct group;
+			RaidLeadershipAA_Struct raid;
+		};
+		uint32 ranks[MAX_LEADERSHIP_AA_ARRAY];
+	};
 };
 
  /**
@@ -722,7 +785,7 @@ struct BindStruct {
 static const uint32 MAX_PP_LANGUAGE		= 25; //
 static const uint32 MAX_PP_SPELLBOOK	= 480; // Confirmed 60 pages on Live now
 static const uint32 MAX_PP_MEMSPELL		= 10; //was 9 now 10 on Live
-static const uint32 MAX_PP_SKILL		= _SkillPacketArraySize;	// 100 - actual skills buffer size
+static const uint32 MAX_PP_SKILL		= PACKET_SKILL_ARRAY_SIZE;	// 100 - actual skills buffer size
 static const uint32 MAX_PP_AA_ARRAY		= 300; //was 299
 static const uint32 MAX_GROUP_MEMBERS	= 6;
 static const uint32 MAX_RECAST_TYPES	= 20;
@@ -854,7 +917,7 @@ struct PlayerProfile_Struct //23576 Octets
 /*08288*/ uint32  aapoints_spent;		// Number of spent AA points
 /*08292*/ uint32  aapoints;				// Unspent AA points
 /*08296*/ uint8 unknown06160[4];
-/*08300*/ Bandolier_Struct bandoliers[MAX_PLAYER_BANDOLIER]; // [6400] bandolier contents
+/*08300*/ Bandolier_Struct bandoliers[consts::BANDOLIERS_SIZE]; // [6400] bandolier contents
 /*14700*/ PotionBelt_Struct  potionbelt;	// [360] potion belt 72 extra octets by adding 1 more belt slot
 /*15060*/ uint8 unknown12852[8];
 /*15068*/ uint32 available_slots;
@@ -1006,7 +1069,7 @@ struct TargetReject_Struct {
 
 struct PetCommand_Struct {
 /*000*/ uint32	command;
-/*004*/ uint32	unknown;
+/*004*/ uint32	target;
 };
 
 /*
@@ -1120,12 +1183,12 @@ struct RequestClientZoneChange_Struct {
 
 struct Animation_Struct {
 /*00*/	uint16 spawnid;
-/*02*/	uint8 action;
-/*03*/	uint8 value;
+/*02*/	uint8 speed;
+/*03*/	uint8 action;
 /*04*/
 };
 
-// solar: this is what causes the caster to animate and the target to
+// this is what causes the caster to animate and the target to
 // get the particle effects around them when a spell is cast
 // also causes a buff icon
 struct Action_Struct
@@ -1177,7 +1240,7 @@ struct ActionAlt_Struct // ActionAlt_Struct - Size: 56 bytes
 /*0056*/
 };
 
-// solar: this is what prints the You have been struck. and the regular
+// this is what prints the You have been struck. and the regular
 // melee messages like You try to pierce, etc.  It's basically the melee
 // and spell damage message
 struct CombatDamage_Struct
@@ -1187,9 +1250,10 @@ struct CombatDamage_Struct
 /* 04 */	uint8	type;			//slashing, etc.  231 (0xE7) for spells
 /* 05 */	uint16	spellid;
 /* 07 */	int32	damage;
-/* 11 */	float	unknown11;		// cd cc cc 3d
-/* 15 */	float	sequence;		// see above notes in Action_Struct
-/* 19 */	uint8	unknown19[9];	// was [9]
+/* 11 */	float	force;		// cd cc cc 3d
+/* 15 */	float	meleepush_xy;		// see above notes in Action_Struct
+/* 19 */	float	meleepush_z;
+/* 23 */	uint8	unknown23[5];	// was [9]
 /* 28 */
 };
 
@@ -1721,7 +1785,7 @@ struct RandomReq_Struct {
 	uint32 high;
 };
 
-/* solar: 9/23/03 reply to /random command; struct from Zaphod */
+/* 9/23/03 reply to /random command */
 struct RandomReply_Struct {
 /* 00 */	uint32 low;
 /* 04 */	uint32 high;
@@ -2243,7 +2307,7 @@ struct BookRequest_Struct {
 **
 */
 struct Object_Struct {
-/*00*/	uint32	linked_list_addr[2];// <Zaphod> They are, get this, prev and next, ala linked list
+/*00*/	uint32	linked_list_addr[2];// They are, get this, prev and next, ala linked list
 /*08*/	uint32	unknown008;			// Something related to the linked list?
 /*12*/	uint32	drop_id;			// Unique object id for zone
 /*16*/	uint16	zone_id;			// Redudant, but: Zone the object appears in
@@ -2263,8 +2327,8 @@ struct Object_Struct {
 /*100*/	uint32	spawn_id;			// Spawn Id of client interacting with object
 /*104*/
 };
-//<Zaphod> 01 = generic drop, 02 = armor, 19 = weapon
-//[13:40] <Zaphod> and 0xff seems to be indicative of the tradeskill/openable items that end up returning the old style item type in the OP_OpenObject
+//01 = generic drop, 02 = armor, 19 = weapon
+//[13:40] and 0xff seems to be indicative of the tradeskill/openable items that end up returning the old style item type in the OP_OpenObject
 
 /*
 ** Click Object Struct
@@ -2577,8 +2641,8 @@ struct MobHealth
 };
 
 struct Track_Struct {
-	uint16 entityid;
-	uint16 padding002;
+	uint32 entityid;
+	//uint16 padding002;
 	float distance;
 };
 
@@ -3430,6 +3494,16 @@ struct RaidMOTD_Struct {
 /*140*/ char motd[0]; // max size 1024, but reply is variable
 };
 
+struct RaidLeadershipUpdate_Struct {
+/*000*/	uint32 action;
+/*004*/	char player_name[64];
+/*068*/	uint32 Unknown068;
+/*072*/	char leader_name[64];
+/*136*/	GroupLeadershipAA_Struct group; //unneeded
+/*200*/	RaidLeadershipAA_Struct raid;
+/*264*/	char Unknown264[128];
+};
+
 struct RaidAdd_Struct {
 /*000*/	uint32		action;	//=0
 /*004*/	char		player_name[64];	//should both be the player's name
@@ -3491,30 +3565,35 @@ struct DynamicWall_Struct {
 /*80*/
 };
 
-enum {	//bandolier actions
-	BandolierCreate = 0,
-	BandolierRemove = 1,
-	BandolierSet = 2
+// Bandolier actions
+enum
+{
+	bandolierCreate = 0,
+	bandolierRemove,
+	bandolierSet
 };
 
-struct BandolierCreate_Struct {
-/*00*/	uint32	action;	//0 for create
-/*04*/	uint8	number;
-/*05*/	char	name[32];
-/*37*/	uint16	unknown37;	//seen 0x93FD
-/*39*/	uint8	unknown39;	//0
+struct BandolierCreate_Struct
+{
+	/*00*/	uint32 Action;		//0 for create
+	/*04*/	uint8 Number;
+	/*05*/	char Name[32];
+	/*37*/	uint16 Unknown37;	//seen 0x93FD
+	/*39*/	uint8 Unknown39;	//0
 };
 
-struct BandolierDelete_Struct {
-/*00*/	uint32	action;
-/*04*/	uint8	number;
-/*05*/	uint8	unknown05[35];
+struct BandolierDelete_Struct
+{
+	/*00*/	uint32 Action;
+	/*04*/	uint8 Number;
+	/*05*/	uint8 Unknown05[35];
 };
 
-struct BandolierSet_Struct {
-/*00*/	uint32	action;
-/*04*/	uint8	number;
-/*05*/	uint8	unknown05[35];
+struct BandolierSet_Struct
+{
+	/*00*/	uint32 Action;
+	/*04*/	uint8 Number;
+	/*05*/	uint8 Unknown05[35];
 };
 
 struct Arrow_Struct {
@@ -3598,16 +3677,19 @@ struct SendAA_Struct {
 /*0049*/	uint32 spellid;
 /*0053*/	uint32 spell_type;
 /*0057*/	uint32 spell_refresh;
-/*0061*/	uint16 classes;
-/*0063*/	uint16 berserker; //seems to be 1 if its a berserker ability
+/*0061*/	uint32 classes;
 /*0065*/	uint32 max_level;
 /*0069*/	uint32 last_id;
 /*0073*/	uint32 next_id;
 /*0077*/	uint32 cost2;
-/*0081*/	uint8 unknown80[7];
+/*0081*/	uint8 unknown81;
+/*0082*/	uint8 grant_only; // VetAAs, progression, etc
+/*0083*/	uint8 unknown83; // 1 for skill cap increase AAs, Mystical Attuning, and RNG attack inc, doesn't seem to matter though
+/*0084*/	uint32 expendable_charges; // max charges of the AA
 /*0088*/	uint32 aa_expansion;
 /*0092*/	uint32 special_category;
-/*0096*/	uint16 unknown0096;
+/*0096*/	uint8 shroud;
+/*0097*/	uint8 unknown97;
 /*0098*/	uint32 total_abilities;
 /*0102*/	AA_Ability abilities[0];
 };
@@ -3619,14 +3701,8 @@ struct AA_List {
 struct AA_Action {
 /*00*/	uint32	action;
 /*04*/	uint32	ability;
-/*08*/	uint32	unknown08;
+/*08*/	uint32	target_id;
 /*12*/	uint32	exp_value;
-};
-
-struct AA_Skills {		//this should be removed and changed to AA_Array
-/*00*/	uint32	aa_skill;						// Total AAs Spent
-/*04*/  uint32	aa_value;
-/*08*/  uint32	unknown08;
 };
 
 struct AAExpUpdate_Struct {
@@ -3646,12 +3722,12 @@ struct AltAdvStats_Struct {
 };
 
 struct PlayerAA_Struct {
-	AA_Skills aa_list[MAX_PP_AA_ARRAY];
+	AA_Array aa_list[MAX_PP_AA_ARRAY];
 };
 
 struct AATable_Struct {
 /*00*/ int32	aa_spent;						// Total AAs Spent
-/*04*/ AA_Skills aa_list[MAX_PP_AA_ARRAY];
+/*04*/ AA_Array aa_list[MAX_PP_AA_ARRAY];
 };
 
 struct Weather_Struct {
@@ -3731,7 +3807,7 @@ struct ItemSerializationHeader
 	uint32 slot;
 	uint32 price;
 	uint32 merchant_slot; //1 if not a merchant item
-	uint32 unknown020; //0
+	uint32 scaled_value; //0
 	uint32 instance_id; //unique instance id if not merchant item, else is merchant slot
 	uint32 unknown028; //0
 	uint32 last_cast_time;	// Unix Time from PP of last cast for this recast type if recast delay > 0
@@ -3969,9 +4045,9 @@ struct ItemQuaternaryBodyStruct
 struct AugmentInfo_Struct
 {
 /*000*/ uint32	itemid;			// id of the solvent needed
-/*004*/ uint8	window;			// window to display the information in
-/*005*/ uint8	unknown005[71];	// total packet length 76, all the rest were always 00
-/*076*/
+/*004*/ uint32	window;			// window to display the information in
+/*008*/ char	augment_info[64];	// total packet length 76, all the rest were always 00
+/*072*/ uint32	unknown072;
 };
 
 struct VeteranRewardItem
@@ -4058,18 +4134,7 @@ struct AltCurrencySellItem_Struct {
 /*010*/ uint32 cost;
 };
 
-
 	};	//end namespace structs
 };	//end namespace SoF
 
-#endif /*SoF_STRUCTS_H_*/
-
-
-
-
-
-
-
-
-
-
+#endif /*SOF_STRUCTS_H_*/

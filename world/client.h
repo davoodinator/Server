@@ -24,7 +24,7 @@
 #include "../common/linked_list.h"
 #include "../common/timer.h"
 //#include "zoneserver.h"
-#include "../common/logsys.h"
+
 #include "../common/eq_packet_structs.h"
 #include "cliententry.h"
 
@@ -41,7 +41,7 @@ public:
 	bool	Process();
 	void	ReceiveData(uchar* buf, int len);
 	void	SendCharInfo();
-	void	SendMaxCharCreate(int max_chars);
+	void	SendMaxCharCreate();
 	void	SendMembership();
 	void	SendMembershipSettings();
 	void	EnterWorld(bool TryBootup = true);
@@ -84,7 +84,8 @@ private:
 	uint32	pwaitingforbootup;
 
 	bool StartInTutorial;
-	uint32 ClientVersionBit;
+	ClientVersion m_ClientVersion;
+	uint32 m_ClientVersionBit;
 	bool OPCharCreate(char *name, CharCreate_Struct *cc);
 
 	void SetClassStartingSkills( PlayerProfile_Struct *pp );
@@ -109,7 +110,7 @@ private:
 	bool HandleDeleteCharacterPacket(const EQApplicationPacket *app);
 	bool HandleZoneChangePacket(const EQApplicationPacket *app);
 
-	EQStreamInterface* const eqs;
+	EQStreamInterface* eqs;
 };
 
 bool CheckCharCreateInfoSoF(CharCreate_Struct *cc);

@@ -73,9 +73,10 @@ public:
 	void SetEXP(uint32 set_exp, uint32 set_aaxp, bool resexp);
 	void SetBindPoint();
 	void SetBindPoint(int to_zone);
-	void SetBindPoint(int to_zone, float new_x);
-	void SetBindPoint(int to_zone, float new_x, float new_y);
-	void SetBindPoint(int to_zone, float new_x, float new_y, float new_z);
+	void SetBindPoint(int to_zone, int to_instance);
+	void SetBindPoint(int to_zone, int to_instance, float new_x);
+	void SetBindPoint(int to_zone, int to_instance, float new_x, float new_y);
+	void SetBindPoint(int to_zone, int to_instance, float new_x, float new_y, float new_z);
 	float GetBindX();
 	float GetBindX(int index);
 	float GetBindY();
@@ -165,9 +166,9 @@ public:
 	void SummonItem(uint32 item_id, int charges, uint32 aug1, uint32 aug2, uint32 aug3);
 	void SummonItem(uint32 item_id, int charges, uint32 aug1, uint32 aug2, uint32 aug3, uint32 aug4);
 	void SummonItem(uint32 item_id, int charges, uint32 aug1, uint32 aug2, uint32 aug3, uint32 aug4, uint32 aug5);
-	void SummonItem(uint32 item_id, int charges, uint32 aug1, uint32 aug2, uint32 aug3, uint32 aug4, uint32 aug5, 
+	void SummonItem(uint32 item_id, int charges, uint32 aug1, uint32 aug2, uint32 aug3, uint32 aug4, uint32 aug5,
 		bool attuned);
-	void SummonItem(uint32 item_id, int charges, uint32 aug1, uint32 aug2, uint32 aug3, uint32 aug4, uint32 aug5, 
+	void SummonItem(uint32 item_id, int charges, uint32 aug1, uint32 aug2, uint32 aug3, uint32 aug4, uint32 aug5,
 		bool attuned, int to_slot);
 	void SetStats(int type, int value);
 	void IncStats(int type, int value);
@@ -232,6 +233,8 @@ public:
 	void AddLevelBasedExp(int exp_pct);
 	void AddLevelBasedExp(int exp_pct, int max_level);
 	void IncrementAA(int aa);
+	bool GrantAlternateAdvancementAbility(int aa_id, int points);
+	bool GrantAlternateAdvancementAbility(int aa_id, int points, bool ignore_cost);
 	void MarkSingleCompassLoc(float in_x, float in_y, float in_z);
 	void MarkSingleCompassLoc(float in_x, float in_y, float in_z, int count);
 	int GetNextAvailableSpellBookSlot();
@@ -239,6 +242,7 @@ public:
 	int FindSpellBookSlotBySpellID(int spell_id);
 	void UpdateTaskActivity(int task, int activity, int count);
 	void AssignTask(int task, int npc_id);
+	void AssignTask(int task, int npc_id, bool enforce_level_requirement);
 	void FailTask(int task);
 	bool IsTaskCompleted(int task);
 	bool IsTaskActive(int task);
@@ -259,6 +263,7 @@ public:
 	bool HasSpellScribed(int spell_id);
 	void SetAccountFlag(std::string flag, std::string val);
 	std::string GetAccountFlag(std::string flag);
+	int GetAccountAge();
 	Lua_Group GetGroup();
 	Lua_Raid GetRaid();
 	bool PutItemInInventory(int slot_id, Lua_ItemInst inst);
@@ -277,6 +282,14 @@ public:
 	void SendMarqueeMessage(uint32 type, uint32 priority, uint32 fade_in, uint32 fade_out, uint32 duration, std::string msg);
 	void SendColoredText(uint32 type, std::string msg);
 	void PlayMP3(std::string file);
+	void QuestReward(Lua_Mob target);
+	void QuestReward(Lua_Mob target, uint32 copper);
+	void QuestReward(Lua_Mob target, uint32 copper, uint32 silver);
+	void QuestReward(Lua_Mob target, uint32 copper, uint32 silver, uint32 gold);
+	void QuestReward(Lua_Mob target, uint32 copper, uint32 silver, uint32 gold, uint32 platinum);
+	void QuestReward(Lua_Mob target, uint32 copper, uint32 silver, uint32 gold, uint32 platinum, uint32 itemid);
+	void QuestReward(Lua_Mob target, uint32 copper, uint32 silver, uint32 gold, uint32 platinum, uint32 itemid, uint32 exp);
+	void QuestReward(Lua_Mob target, uint32 copper, uint32 silver, uint32 gold, uint32 platinum, uint32 itemid, uint32 exp, bool faction);
 };
 
 #endif

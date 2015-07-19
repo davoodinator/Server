@@ -22,6 +22,7 @@
 #include "lua_door.h"
 #include "lua_object.h"
 #include "lua_packet.h"
+#include "lua_encounter.h"
 #include "zone.h"
 #include "lua_parser_events.h"
 
@@ -56,7 +57,7 @@ void handle_npc_event_trade(QuestInterface *parse, lua_State* L, NPC* npc, Mob *
 	if(extra_pointers) {
 		size_t sz = extra_pointers->size();
 		for(size_t i = 0; i < sz; ++i) {
-			std::string prefix = "item" + std::to_string(static_cast<long long>(i + 1));
+			std::string prefix = "item" + std::to_string(i + 1);
 			ItemInst *inst = EQEmu::any_cast<ItemInst*>(extra_pointers->at(i));
 
 			Lua_ItemInst l_inst = inst;
@@ -244,6 +245,19 @@ void handle_player_say(QuestInterface *parse, lua_State* L, Client* client, std:
 
 	lua_pushinteger(L, extra_data);
 	lua_setfield(L, -2, "language");
+}
+
+void handle_player_environmental_damage(QuestInterface *parse, lua_State* L, Client* client, std::string data, uint32 extra_data,
+	std::vector<EQEmu::Any> *extra_pointers){
+	Seperator sep(data.c_str());
+	lua_pushinteger(L, std::stoi(sep.arg[0]));
+	lua_setfield(L, -2, "env_damage");
+
+	lua_pushinteger(L, std::stoi(sep.arg[1]));
+	lua_setfield(L, -2, "env_damage_type");
+
+	lua_pushinteger(L, std::stoi(sep.arg[2]));
+	lua_setfield(L, -2, "env_final_damage");
 }
 
 void handle_player_death(QuestInterface *parse, lua_State* L, Client* client, std::string data, uint32 extra_data,
@@ -689,6 +703,41 @@ void handle_translocate_finish(QuestInterface *parse, lua_State* L, NPC* npc, Cl
 
 void handle_spell_null(QuestInterface *parse, lua_State* L, NPC* npc, Client* client, uint32 spell_id, uint32 extra_data,
 					   std::vector<EQEmu::Any> *extra_pointers) {
+}
+
+void handle_encounter_timer(QuestInterface *parse, lua_State* L, Encounter* encounter, std::string data, uint32 extra_data,
+							std::vector<EQEmu::Any> *extra_pointers) {
+	lua_pushstring(L, data.c_str());
+	lua_setfield(L, -2, "timer");
+}
+
+void handle_encounter_load(QuestInterface *parse, lua_State* L, Encounter* encounter, std::string data, uint32 extra_data,
+									 std::vector<EQEmu::Any> *extra_pointers) {
+	if (encounter) {
+		Lua_Encounter l_enc(encounter);
+		luabind::adl::object l_enc_o = luabind::adl::object(L, l_enc);
+		l_enc_o.push(L);
+		lua_setfield(L, -2, "encounter");
+	}
+	if (extra_pointers) {
+		std::string *str = EQEmu::any_cast<std::string*>(extra_pointers->at(0));
+		lua_pushstring(L, str->c_str());
+		lua_setfield(L, -2, "data");
+	}
+}
+
+void handle_encounter_unload(QuestInterface *parse, lua_State* L, Encounter* encounter, std::string data, uint32 extra_data,
+	std::vector<EQEmu::Any> *extra_pointers) {
+	if (extra_pointers) {
+		std::string *str = EQEmu::any_cast<std::string*>(extra_pointers->at(0));
+		lua_pushstring(L, str->c_str());
+		lua_setfield(L, -2, "data");
+	}
+}
+
+void handle_encounter_null(QuestInterface *parse, lua_State* L, Encounter* encounter, std::string data, uint32 extra_data,
+						   std::vector<EQEmu::Any> *extra_pointers) {
+
 }
 
 #endif

@@ -16,7 +16,8 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "../common/debug.h"
+#include "../common/global_define.h"
+#include "../common/eqemu_logsys.h"
 #include "../common/eqemu_config.h"
 #include "zone_launch.h"
 #include "worldserver.h"
@@ -33,10 +34,11 @@ void ZoneLaunch::InitStartTimer() {
 }
 
 ZoneLaunch::ZoneLaunch(WorldServer *world, const char *launcher_name,
-const char *zone_name, const EQEmuConfig *config)
+const char *zone_name, uint16 port, const EQEmuConfig *config)
 : m_state(StateStartPending),
 	m_world(world),
 	m_zone(zone_name),
+	m_port(port),
 	m_launcherName(launcher_name),
 	m_config(config),
 	m_timer(config->RestartWait),
@@ -60,10 +62,14 @@ void ZoneLaunch::SendStatus() const {
 void ZoneLaunch::Start() {
 	ProcLauncher::Spec *spec = new ProcLauncher::Spec();
 	spec->program = m_config->ZoneExe;
-//	if(m_zone.substr(0,7) == "dynamic")
-//		spec->args.push_back(".");
-//	else
-	spec->args.push_back(m_zone);
+
+	if(m_port) {
+		std::string arg = m_zone + std::string(":") + std::to_string(m_port);
+		spec->args.push_back(arg);
+	} else {
+		spec->args.push_back(m_zone);
+	}
+
 	spec->args.push_back(m_launcherName);
 	spec->handler = this;
 	spec->logFile = m_config->LogPrefix + m_zone + m_config->LogSuffix;
@@ -71,7 +77,7 @@ void ZoneLaunch::Start() {
 	//spec is consumed, even on failure
 	m_ref = ProcLauncher::get()->Launch(spec);
 	if(m_ref == ProcLauncher::ProcError) {
-		_log(LAUNCHER__ERROR, "Failure to launch '%s %s %s'. ", m_config->ZoneExe.c_str(), m_zone.c_str(), m_launcherName);
+		Log.Out(Logs::Detail, Logs::Launcher, "Failure to launch '%s %s %s'. ", m_config->ZoneExe.c_str(), m_zone.c_str(), m_launcherName);
 		m_timer.Start(m_config->RestartWait);
 		return;
 	}
@@ -83,17 +89,17 @@ void ZoneLaunch::Start() {
 
 	SendStatus();
 
-	_log(LAUNCHER__STATUS, "Zone %s has been started.", m_zone.c_str());
+	Log.Out(Logs::Detail, Logs::Launcher, "Zone %s has been started.", m_zone.c_str());
 }
 
 void ZoneLaunch::Restart() {
 	switch(m_state) {
 	case StateRestartPending:
-		_log(LAUNCHER__STATUS, "Restart of zone %s requested when a restart is already pending.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Restart of zone %s requested when a restart is already pending.", m_zone.c_str());
 		break;
 	case StateStartPending:
 		//we havent started yet, do nothing
-		_log(LAUNCHER__STATUS, "Restart of %s before it has started. Ignoring.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Restart of %s before it has started. Ignoring.", m_zone.c_str());
 		break;
 	case StateStarted:
 		//process is running along, kill it off..
@@ -101,20 +107,20 @@ void ZoneLaunch::Restart() {
 			break;	//we have no proc ref... cannot stop..
 		if(!ProcLauncher::get()->Terminate(m_ref, true)) {
 			//failed to terminate the process, its not likely that it will work if we try again, so give up.
-			_log(LAUNCHER__ERROR, "Failed to terminate zone %s. Giving up and moving to stopped.", m_zone.c_str());
+			Log.Out(Logs::Detail, Logs::Launcher, "Failed to terminate zone %s. Giving up and moving to stopped.", m_zone.c_str());
 			m_state = StateStopped;
 			break;
 		}
-		_log(LAUNCHER__STATUS, "Termination signal sent to zone %s.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Termination signal sent to zone %s.", m_zone.c_str());
 		m_timer.Start(m_config->TerminateWait);
 		m_state = StateRestartPending;
 		break;
 	case StateStopPending:
-		_log(LAUNCHER__STATUS, "Restart of zone %s requested when a stop is pending. Ignoring.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Restart of zone %s requested when a stop is pending. Ignoring.", m_zone.c_str());
 		break;
 	case StateStopped:
 		//process is already stopped... nothing to do..
-		_log(LAUNCHER__STATUS, "Restart requested when zone %s is already stopped.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Restart requested when zone %s is already stopped.", m_zone.c_str());
 		break;
 	}
 }
@@ -123,7 +129,7 @@ void ZoneLaunch::Stop(bool graceful) {
 	switch(m_state) {
 	case StateStartPending:
 		//we havent started yet, transition directly to stopped.
-		_log(LAUNCHER__STATUS, "Stopping zone %s before it has started.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Stopping zone %s before it has started.", m_zone.c_str());
 		m_state = StateStopped;
 		break;
 	case StateStarted:
@@ -133,17 +139,17 @@ void ZoneLaunch::Stop(bool graceful) {
 			break;	//we have no proc ref... cannot stop..
 		if(!ProcLauncher::get()->Terminate(m_ref, graceful)) {
 			//failed to terminate the process, its not likely that it will work if we try again, so give up.
-			_log(LAUNCHER__ERROR, "Failed to terminate zone %s. Giving up and moving to stopped.", m_zone.c_str());
+			Log.Out(Logs::Detail, Logs::Launcher, "Failed to terminate zone %s. Giving up and moving to stopped.", m_zone.c_str());
 			m_state = StateStopped;
 			break;
 		}
-		_log(LAUNCHER__STATUS, "Termination signal sent to zone %s.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Termination signal sent to zone %s.", m_zone.c_str());
 		m_timer.Start(m_config->TerminateWait);
 		m_state = StateStopPending;
 		break;
 	case StateStopped:
 		//process is already stopped... nothing to do..
-		_log(LAUNCHER__STATUS, "Stop requested when zone %s is already stopped.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Stop requested when zone %s is already stopped.", m_zone.c_str());
 		break;
 	}
 }
@@ -163,17 +169,17 @@ bool ZoneLaunch::Process() {
 			m_timer.Disable();
 
 			//actually start up the program
-			_log(LAUNCHER__STATUS, "Starting zone %s", m_zone.c_str());
+			Log.Out(Logs::Detail, Logs::Launcher, "Starting zone %s", m_zone.c_str());
 			Start();
 
 			//now update the shared timer to reflect the proper start interval.
 			if(s_running == 1) {
 				//we are the first zone started. wait that interval.
-				_log(LAUNCHER__STATUS, "Waiting %d milliseconds before booting the second zone.", m_config->InitialBootWait);
+				Log.Out(Logs::Detail, Logs::Launcher, "Waiting %d milliseconds before booting the second zone.", m_config->InitialBootWait);
 				s_startTimer.Start(m_config->InitialBootWait);
 			} else {
 				//just some follow on zone, use that interval.
-				_log(LAUNCHER__STATUS, "Waiting %d milliseconds before booting the next zone.", m_config->ZoneBootInterval);
+				Log.Out(Logs::Detail, Logs::Launcher, "Waiting %d milliseconds before booting the next zone.", m_config->ZoneBootInterval);
 				s_startTimer.Start(m_config->ZoneBootInterval);
 			}
 
@@ -186,7 +192,7 @@ bool ZoneLaunch::Process() {
 		//waiting for notification that our child has died..
 		if(m_timer.Check()) {
 			//we have timed out, try to kill the child again
-			_log(LAUNCHER__STATUS, "Zone %s refused to die, killing again.", m_zone.c_str());
+			Log.Out(Logs::Detail, Logs::Launcher, "Zone %s refused to die, killing again.", m_zone.c_str());
 			Restart();
 		}
 		break;
@@ -196,12 +202,12 @@ bool ZoneLaunch::Process() {
 			//we have timed out, try to kill the child again
 			m_killFails++;
 			if(m_killFails > 5) {	//should get this number from somewhere..
-				_log(LAUNCHER__STATUS, "Zone %s refused to die, giving up and acting like its dead.", m_zone.c_str());
+				Log.Out(Logs::Detail, Logs::Launcher, "Zone %s refused to die, giving up and acting like its dead.", m_zone.c_str());
 				m_state = StateStopped;
 				s_running--;
 				SendStatus();
 			} else {
-				_log(LAUNCHER__STATUS, "Zone %s refused to die, killing again.", m_zone.c_str());
+				Log.Out(Logs::Detail, Logs::Launcher, "Zone %s refused to die, killing again.", m_zone.c_str());
 				Stop(false);
 			}
 		}
@@ -220,29 +226,29 @@ void ZoneLaunch::OnTerminate(const ProcLauncher::ProcRef &ref, const ProcLaunche
 
 	switch(m_state) {
 	case StateStartPending:
-		_log(LAUNCHER__STATUS, "Zone %s has gone down before we started it..?? Restart timer started.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Zone %s has gone down before we started it..?? Restart timer started.", m_zone.c_str());
 		m_state = StateStartPending;
 		m_timer.Start(m_config->RestartWait);
 		break;
 	case StateStarted:
 		//something happened to our happy process...
-		_log(LAUNCHER__STATUS, "Zone %s has gone down. Restart timer started.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Zone %s has gone down. Restart timer started.", m_zone.c_str());
 		m_state = StateStartPending;
 		m_timer.Start(m_config->RestartWait);
 		break;
 	case StateRestartPending:
 		//it finally died, start it on up again
-		_log(LAUNCHER__STATUS, "Zone %s has terminated. Transitioning to starting state.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Zone %s has terminated. Transitioning to starting state.", m_zone.c_str());
 		m_state = StateStartPending;
 		break;
 	case StateStopPending:
 		//it finally died, transition to close.
-		_log(LAUNCHER__STATUS, "Zone %s has terminated. Transitioning to stopped state.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Zone %s has terminated. Transitioning to stopped state.", m_zone.c_str());
 		m_state = StateStopped;
 		break;
 	case StateStopped:
 		//we already thought it was stopped... dont care...
-		_log(LAUNCHER__STATUS, "Notified of zone %s terminating when we thought it was stopped.", m_zone.c_str());
+		Log.Out(Logs::Detail, Logs::Launcher, "Notified of zone %s terminating when we thought it was stopped.", m_zone.c_str());
 		break;
 	}
 

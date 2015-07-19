@@ -1,22 +1,26 @@
 #ifndef _EQSTREAM_H
 #define _EQSTREAM_H
 
-#include <string>
 #include <vector>
 #include <map>
 #include <queue>
 #include <deque>
+
 #ifndef WIN32
 #include <netinet/in.h>
 #endif
-#include "eq_stream_type.h"
+
+#include "../common/misc.h"
+#include "../common/opcodemgr.h"
+#include "../common/timer.h"
+
 #include "eq_packet.h"
 #include "eq_stream_intf.h"
+#include "eq_stream_type.h"
 #include "mutex.h"
-#include "../common/opcodemgr.h"
-#include "../common/misc.h"
-#include "../common/condition.h"
-#include "../common/timer.h"
+
+class EQApplicationPacket;
+class EQProtocolPacket;
 
 #define FLAG_COMPRESSED	0x01
 #define FLAG_ENCODED	0x04
@@ -45,6 +49,10 @@
 #define RETRANSMIT_ACKED_PACKETS true
 #endif
 
+#ifndef MAX_SESSION_RETRIES
+#define MAX_SESSION_RETRIES 30
+#endif
+
 #pragma pack(1)
 struct SessionRequest {
 	uint32 UnknownA;
@@ -63,7 +71,7 @@ struct SessionResponse {
 };
 
 //Deltas are in ms, representing round trip times
-struct SessionStats {
+struct ClientSessionStats {
 /*000*/	uint16 RequestID;
 /*002*/	uint32 last_local_delta;
 /*006*/	uint32 average_delta;
@@ -75,10 +83,19 @@ struct SessionStats {
 /*038*/
 };
 
+struct ServerSessionStats {
+/*000*/	uint16 RequestID;
+/*002*/	uint32 ServerTime;
+/*006*/	uint64 packets_sent_echo;
+/*014*/	uint64 packets_received_echo;
+/*022*/	uint64 packets_sent;
+/*030*/	uint64 packets_received;
+/*038*/
+};
+
 #pragma pack()
 
 class OpcodeManager;
-class EQStreamPair;
 class EQRawApplicationPacket;
 
 class EQStream : public EQStreamInterface {
@@ -100,6 +117,9 @@ class EQStream : public EQStreamInterface {
 		bool compressed,encoded;
 		uint32 retransmittimer;
 		uint32 retransmittimeout;
+
+		uint16 sessionAttempts;
+		bool streamactive;
 
 		//uint32 buffer_len;
 
@@ -148,6 +168,9 @@ class EQStream : public EQStreamInterface {
 
 		int32 BytesWritten;
 
+		uint64 sent_packet_count;
+		uint64 received_packet_count;
+
 		Mutex MRate;
 		int32 RateThreshold;
 		int32 DecayRate;
@@ -194,10 +217,16 @@ class EQStream : public EQStreamInterface {
 
 		void _SendDisconnect();
 
-		void init();
+		void init(bool resetSession=true);
 	public:
-		EQStream() { init(); remote_ip = 0; remote_port = 0; State=UNESTABLISHED; StreamType=UnknownStream; compressed=true; encoded=false; app_opcode_size=2; bytes_sent=0; bytes_recv=0; create_time=Timer::GetTimeSeconds(); }
-		EQStream(sockaddr_in addr) { init(); remote_ip=addr.sin_addr.s_addr; remote_port=addr.sin_port; State=UNESTABLISHED; StreamType=UnknownStream; compressed=true; encoded=false; app_opcode_size=2; bytes_sent=0; bytes_recv=0; create_time=Timer::GetTimeSeconds(); }
+		EQStream() { init(); remote_ip = 0; remote_port = 0; State = UNESTABLISHED; 
+			StreamType = UnknownStream; compressed = true; encoded = false; app_opcode_size = 2; 
+			bytes_sent = 0; bytes_recv = 0; create_time = Timer::GetTimeSeconds(); sessionAttempts = 0; 
+			streamactive = false; }
+		EQStream(sockaddr_in addr) { init(); remote_ip = addr.sin_addr.s_addr; 
+			remote_port = addr.sin_port; State = UNESTABLISHED; StreamType = UnknownStream; 
+			compressed = true; encoded = false; app_opcode_size = 2; bytes_sent = 0; bytes_recv = 0; 
+			create_time = Timer::GetTimeSeconds(); }
 		virtual ~EQStream() { RemoveData(); SetState(CLOSED); }
 		void SetMaxLen(uint32 length) { MaxLen=length; }
 
@@ -220,6 +249,9 @@ class EQStream : public EQStreamInterface {
 		void Process(const unsigned char *data, const uint32 length);
 		void SetLastPacketTime(uint32 t) {LastPacket=t;}
 		void Write(int eq_fd);
+
+		// whether or not the stream has been assigned (we passed our stream match)
+		void SetActive(bool val) { streamactive = val; }
 
 		//
 		inline bool IsInUse() { bool flag; MInUse.lock(); flag=(active_users>0); MInUse.unlock(); return flag; }
@@ -246,11 +278,13 @@ class EQStream : public EQStreamInterface {
 		void AddBytesSent(uint32 bytes)
 		{
 			bytes_sent += bytes;
+			++sent_packet_count;
 		}
 
 		void AddBytesRecv(uint32 bytes)
 		{
 			bytes_recv += bytes;
+			++received_packet_count;
 		}
 
 		virtual const uint32 GetBytesSent() const { return bytes_sent; }
@@ -268,6 +302,9 @@ class EQStream : public EQStreamInterface {
 				return 0;
 			return bytes_recv / (Timer::GetTimeSeconds() - create_time);
 		}
+
+		const uint64 GetPacketsSent() { return sent_packet_count; }
+		const uint64 GetPacketsReceived() { return received_packet_count; }
 
 		//used for dynamic stream identification
 		class Signature {

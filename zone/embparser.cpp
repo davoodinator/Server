@@ -18,7 +18,7 @@
 
 #ifdef EMBPERL
 
-#include "../common/debug.h"
+#include "../common/global_define.h"
 #include "../common/seperator.h"
 #include "../common/misc_functions.h"
 #include "../common/string_util.h"
@@ -65,6 +65,7 @@ const char *QuestEventSubroutines[_LargestEventID] = {
 	"EVENT_AGGRO_SAY",
 	"EVENT_PLAYER_PICKUP",
 	"EVENT_POPUPRESPONSE",
+	"EVENT_ENVIRONMENTAL_DAMAGE",
 	"EVENT_PROXIMITY_SAY",
 	"EVENT_CAST",
 	"EVENT_CAST_BEGIN",
@@ -140,7 +141,7 @@ void PerlembParser::ReloadQuests() {
 			perl = nullptr;
 		}
 
-		LogFile->write(EQEMuLog::Status, "Error re-initializing perlembed: %s", e.what());
+		Log.Out(Logs::General, Logs::Status, "Error re-initializing perlembed: %s", e.what());
 		throw e.what();
 	}
 
@@ -232,6 +233,7 @@ int PerlembParser::EventGlobalPlayer(QuestEventID evt, Client *client, std::stri
 
 int PerlembParser::EventItem(QuestEventID evt, Client *client, ItemInst *item, Mob *mob, std::string data, uint32 extra_data,
 							std::vector<EQEmu::Any> *extra_pointers) {
+	// needs pointer validation on 'item' argument
 	return EventCommon(evt, item->GetID(), nullptr, nullptr, item, client, extra_data, false, extra_pointers);
 }
 
@@ -333,6 +335,9 @@ bool PerlembParser::ItemHasQuestSub(ItemInst *itm, QuestEventID evt) {
 	package_name << "qst_item_" << itm->GetID();
 
 	if(!perl)
+		return false;
+
+	if (itm == nullptr)
 		return false;
 
 	if(evt >= _LargestEventID)
@@ -449,6 +454,9 @@ void PerlembParser::LoadGlobalPlayerScript(std::string filename) {
 }
 
 void PerlembParser::LoadItemScript(std::string filename, ItemInst *item) {
+	if (item == nullptr)
+		return;
+
 	std::stringstream package_name;
 	package_name << "qst_item_" << item->GetID();
 	
@@ -855,6 +863,7 @@ void PerlembParser::GetQuestPackageName(bool &isPlayerQuest, bool &isGlobalPlaye
 		}
 	}
 	else if(isItemQuest) {
+		// need a valid ItemInst pointer check here..unsure how to cancel this process
 		const Item_Struct* item = iteminst->GetItem();
 		package_name = "qst_item_";
 		package_name += itoa(item->ID);
@@ -1063,7 +1072,7 @@ void PerlembParser::ExportZoneVariables(std::string &package_name) {
 		ExportVar(package_name.c_str(), "instanceid", zone->GetInstanceID());
 		ExportVar(package_name.c_str(), "instanceversion", zone->GetInstanceVersion());
 		TimeOfDay_Struct eqTime;
-		zone->zone_time.getEQTimeOfDay( time(0), &eqTime);
+		zone->zone_time.GetCurrentEQTimeOfDay( time(0), &eqTime);
 		ExportVar(package_name.c_str(), "zonehour", eqTime.hour - 1);
 		ExportVar(package_name.c_str(), "zonemin", eqTime.minute);
 		ExportVar(package_name.c_str(), "zonetime", (eqTime.hour - 1) * 100 + eqTime.minute);
@@ -1135,7 +1144,7 @@ void PerlembParser::ExportEventVariables(std::string &package_name, QuestEventID
 					ItemInst *inst = EQEmu::any_cast<ItemInst*>(extra_pointers->at(i));
 
 					std::string var_name = "item";
-					var_name += std::to_string(static_cast<long long>(i + 1));
+					var_name += std::to_string(i + 1);
 
 					if(inst) {
 						ExportVar(package_name.c_str(), var_name.c_str(), inst->GetItem()->ID);
@@ -1146,7 +1155,7 @@ void PerlembParser::ExportEventVariables(std::string &package_name, QuestEventID
 
 						temp_var_name = var_name;
 						temp_var_name += "_attuned";
-						ExportVar(package_name.c_str(), temp_var_name.c_str(), inst->IsInstNoDrop());
+						ExportVar(package_name.c_str(), temp_var_name.c_str(), inst->IsAttuned());
 					} else {
 						ExportVar(package_name.c_str(), var_name.c_str(), 0);
 
@@ -1268,6 +1277,7 @@ void PerlembParser::ExportEventVariables(std::string &package_name, QuestEventID
 
 		case EVENT_PLAYER_PICKUP:{
 			ExportVar(package_name.c_str(), "picked_up_id", data);
+			ExportVar(package_name.c_str(), "picked_up_entity_id", extradata);
 			break;		
 		}
 
@@ -1282,6 +1292,13 @@ void PerlembParser::ExportEventVariables(std::string &package_name, QuestEventID
 			ExportVar(package_name.c_str(), "popupid", data);
 			break;
 		}
+		case EVENT_ENVIRONMENTAL_DAMAGE:{
+			Seperator sep(data);
+			ExportVar(package_name.c_str(), "env_damage", sep.arg[0]);
+			ExportVar(package_name.c_str(), "env_damage_type", sep.arg[1]);
+			ExportVar(package_name.c_str(), "env_final_damage", sep.arg[2]);
+			break;
+		}
 
 		case EVENT_PROXIMITY_SAY: {
 			ExportVar(package_name.c_str(), "data", objid);
@@ -1292,6 +1309,7 @@ void PerlembParser::ExportEventVariables(std::string &package_name, QuestEventID
 
 		case EVENT_SCALE_CALC:
 		case EVENT_ITEM_ENTER_ZONE: {
+			// need a valid ItemInst pointer check here..unsure how to cancel this process
 			ExportVar(package_name.c_str(), "itemid", objid);
 			ExportVar(package_name.c_str(), "itemname", iteminst->GetItem()->Name);
 			break;
@@ -1299,9 +1317,11 @@ void PerlembParser::ExportEventVariables(std::string &package_name, QuestEventID
 
 		case EVENT_ITEM_CLICK_CAST:
 		case EVENT_ITEM_CLICK: {
+			// need a valid ItemInst pointer check here..unsure how to cancel this process
 			ExportVar(package_name.c_str(), "itemid", objid);
 			ExportVar(package_name.c_str(), "itemname", iteminst->GetItem()->Name);
 			ExportVar(package_name.c_str(), "slotid", extradata);
+			ExportVar(package_name.c_str(), "spell_id", iteminst->GetItem()->Click.Effect);
 			break;
 		}
 
@@ -1349,6 +1369,7 @@ void PerlembParser::ExportEventVariables(std::string &package_name, QuestEventID
 
 		case EVENT_CLICK_OBJECT: {
 			ExportVar(package_name.c_str(), "objectid", data);
+			ExportVar(package_name.c_str(), "clicker_id", extradata);
 			break;
 		}
 
@@ -1377,6 +1398,14 @@ void PerlembParser::ExportEventVariables(std::string &package_name, QuestEventID
 			ExportVar(package_name.c_str(), "killer_damage", sep.arg[1]);
 			ExportVar(package_name.c_str(), "killer_spell", sep.arg[2]);
 			ExportVar(package_name.c_str(), "killer_skill", sep.arg[3]);
+			break;
+		}
+		case EVENT_DROP_ITEM: {
+			ExportVar(package_name.c_str(), "quantity", iteminst->IsStackable() ? iteminst->GetCharges() : 1);
+			ExportVar(package_name.c_str(), "itemname", iteminst->GetItem()->Name);
+			ExportVar(package_name.c_str(), "itemid", iteminst->GetItem()->ID);
+			ExportVar(package_name.c_str(), "spell_id", iteminst->GetItem()->Click.Effect);
+			ExportVar(package_name.c_str(), "slotid", extradata);
 			break;
 		}
 

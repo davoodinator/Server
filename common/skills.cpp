@@ -15,6 +15,7 @@
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
+
 #include "types.h"
 #include "skills.h"
 
@@ -49,6 +50,57 @@ bool EQEmu::IsSpecializedSkill(SkillUseTypes skill)
 	case SkillSpecializeConjuration:
 	case SkillSpecializeDivination:
 	case SkillSpecializeEvocation:
+		return true;
+	default:
+		return false;
+	}
+}
+
+float EQEmu::GetSkillMeleePushForce(SkillUseTypes skill)
+{
+	// This is the force/magnitude of the push from an attack of this skill type
+	// You can find these numbers in the clients skill struct
+	switch (skill) {
+	case Skill1HBlunt:
+	case Skill1HSlashing:
+	case SkillHandtoHand:
+	case SkillThrowing:
+		return 0.1f;
+	case Skill2HBlunt:
+	case Skill2HSlashing:
+	case SkillEagleStrike:
+	case SkillKick:
+	case SkillTigerClaw:
+	//case Skill2HPiercing:
+		return 0.2f;
+	case SkillArchery:
+		return 0.15f;
+	case SkillBackstab:
+	case SkillBash:
+		return 0.3f;
+	case SkillDragonPunch:
+	case SkillRoundKick:
+		return 0.25f;
+	case SkillFlyingKick:
+		return 0.4f;
+	case Skill1HPiercing:
+	case SkillFrenzy:
+		return 0.05f;
+	case SkillIntimidation:
+		return 2.5f;
+	default:
+		return 0.0f;
+	}
+}
+
+bool EQEmu::IsBardInstrumentSkill(SkillUseTypes skill)
+{
+	switch (skill) {
+	case SkillBrassInstruments:
+	case SkillSinging:
+	case SkillStringedInstruments:
+	case SkillWindInstruments:
+	case SkillPercussionInstruments:
 		return true;
 	default:
 		return false;

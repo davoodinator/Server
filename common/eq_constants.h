@@ -19,6 +19,54 @@
 #define EQ_CONSTANTS_H
 
 #include "skills.h"
+#include "types.h"
+
+/*
+** Light Types
+**
+*/
+enum LightTypes
+{
+	lightTypeNone = 0,
+	lightTypeCandle,
+	lightTypeTorch,
+	lightTypeTinyGlowingSkull,
+	lightTypeSmallLantern,
+	lightTypeSteinOfMoggok,
+	lightTypeLargeLantern,
+	lightTypeFlamelessLantern,
+	lightTypeGlobeOfStars,
+	lightTypeLightGlobe,
+	lightTypeLightstone,
+	lightTypeGreaterLightstone,
+	lightTypeFireBeetleEye,
+	lightTypeColdlight,
+	lightTypeUnknown1,
+	lightTypeUnknown2
+};
+
+#define LIGHT_TYPES_COUNT 16
+
+/*
+** Light Levels
+**
+*/
+enum LightLevels
+{
+	lightLevelUnlit = 0,
+	lightLevelCandle,
+	lightLevelTorch,
+	lightLevelSmallMagic,
+	lightLevelRedLight,
+	lightLevelBlueLight,
+	lightLevelSmallLantern,
+	lightLevelMagicLantern,
+	lightLevelLargeLantern,
+	lightLevelLargeMagic,
+	lightLevelBrilliant
+};
+
+#define LIGHT_LEVELS_COUNT 11
 
 /*
 **	Item attributes
@@ -54,7 +102,7 @@ enum ItemClassTypes
 **
 **	(ref: database and eqstr_us.txt)
 **
-**	(Looking at a recent database, it's possible that some of the item values may be off [10-27-2013] -U)
+**	(Looking at a recent database, it's possible that some of the item values may be off [10-27-2013])
 */
 enum ItemUseTypes : uint8
 {
@@ -367,7 +415,7 @@ enum {
 #define AT_DamageState	44	// The damage state of a destructible object (0 through 4)
 //#define AT_Trader		300	// Bazzar Trader Mode
 
-// solar: animations for AT_Anim
+// animations for AT_Anim
 #define ANIM_FREEZE	102
 #define	ANIM_STAND		0x64
 #define	ANIM_SIT		0x6e
@@ -967,5 +1015,7 @@ namespace legacy {
 		SLOT_WORLD_END		= 4009
 	} InventorySlot;
 }
+
+static const uint32 MAX_SPELL_DB_ID_VAL = 65535;
 
 #endif

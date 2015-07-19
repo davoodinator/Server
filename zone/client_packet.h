@@ -1,4 +1,4 @@
-	// connecting opcode handlers
+	/* Connecting OpCode Handlers */
 	void Handle_Connect_0x3e33(const EQApplicationPacket *app);
 	void Handle_Connect_OP_ApproveZone(const EQApplicationPacket *app);
 	void Handle_Connect_OP_ClientError(const EQApplicationPacket *app);
@@ -20,7 +20,7 @@
 	void Handle_Connect_OP_WorldObjectsSent(const EQApplicationPacket *app);
 	void Handle_Connect_OP_ZoneComplete(const EQApplicationPacket *app);
 	void Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app);
-	// connected opcode handlers
+	/* Connected opcode handlers*/
 	void Handle_0x0193(const EQApplicationPacket *app);
 	void Handle_0x01e7(const EQApplicationPacket *app);
 	void Handle_OP_AAAction(const EQApplicationPacket *app);
@@ -138,6 +138,7 @@
 	void Handle_OP_GroupInvite(const EQApplicationPacket *app);
 	void Handle_OP_GroupInvite2(const EQApplicationPacket *app);
 	void Handle_OP_GroupMakeLeader(const EQApplicationPacket *app);
+	void Handle_OP_GroupMentor(const EQApplicationPacket *app);
 	void Handle_OP_GroupRoles(const EQApplicationPacket *app);
 	void Handle_OP_GroupUpdate(const EQApplicationPacket *app);
 	void Handle_OP_GuildBank(const EQApplicationPacket *app);
@@ -217,6 +218,8 @@
 	void Handle_OP_PetitionRefresh(const EQApplicationPacket *app);
 	void Handle_OP_PetitionResolve(const EQApplicationPacket *app);
 	void Handle_OP_PetitionUnCheckout(const EQApplicationPacket *app);
+	void Handle_OP_PlayerStateAdd(const EQApplicationPacket *app);
+	void Handle_OP_PlayerStateRemove(const EQApplicationPacket *app);
 	void Handle_OP_PickPocket(const EQApplicationPacket *app);
 	void Handle_OP_PopupResponse(const EQApplicationPacket *app);
 	void Handle_OP_PotionBelt(const EQApplicationPacket *app);
@@ -292,3 +295,4 @@
 	void Handle_OP_XTargetRequest(const EQApplicationPacket *app);
 	void Handle_OP_YellForHelp(const EQApplicationPacket *app);
 	void Handle_OP_ZoneChange(const EQApplicationPacket *app);
+	void Handle_OP_ResetAA(const EQApplicationPacket *app);

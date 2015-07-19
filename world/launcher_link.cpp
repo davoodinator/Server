@@ -16,11 +16,11 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "../common/debug.h"
+#include "../common/global_define.h"
 #include "launcher_link.h"
 #include "launcher_list.h"
 #include "world_config.h"
-#include "../common/logsys.h"
+
 #include "../common/md5.h"
 #include "../common/packet_dump.h"
 #include "../common/servertalk.h"
@@ -60,7 +60,7 @@ bool LauncherLink::Process() {
 		end = m_states.end();
 		for(; cur != end; ++cur) {
 			if(!cur->second.up) {
-				StartZone(cur->first.c_str());
+				StartZone(cur->first.c_str(), cur->second.port);
 			}
 		}
 		m_bootTimer.Disable();
@@ -68,7 +68,6 @@ bool LauncherLink::Process() {
 
 	ServerPacket *pack = 0;
 	while((pack = tcpc->PopPacket())) {
-		_hex(WORLD__ZONE_TRACE,pack->pBuffer,pack->size);
 		if (!authenticated) {
 			if (WorldConfig::get()->SharedKey.length() > 0) {
 				if (pack->opcode == ServerOP_ZAAuth && pack->size == 16) {
@@ -79,8 +78,8 @@ bool LauncherLink::Process() {
 					else {
 						struct in_addr in;
 						in.s_addr = GetIP();
-						_log(WORLD__LAUNCH_ERR, "Launcher authorization failed.");
-						ServerPacket* pack = new ServerPacket(ServerOP_ZAAuthFailed);
+						Log.Out(Logs::Detail, Logs::World_Server, "Launcher authorization failed.");
+						auto pack = new ServerPacket(ServerOP_ZAAuthFailed);
 						SendPacket(pack);
 						delete pack;
 						Disconnect();
@@ -90,8 +89,8 @@ bool LauncherLink::Process() {
 				else {
 					struct in_addr in;
 					in.s_addr = GetIP();
-					_log(WORLD__LAUNCH_ERR, "Launcher authorization failed.");
-					ServerPacket* pack = new ServerPacket(ServerOP_ZAAuthFailed);
+					Log.Out(Logs::Detail, Logs::World_Server, "Launcher authorization failed.");
+					auto pack = new ServerPacket(ServerOP_ZAAuthFailed);
 					SendPacket(pack);
 					delete pack;
 					Disconnect();
@@ -100,7 +99,7 @@ bool LauncherLink::Process() {
 			}
 			else
 			{
-				_log(WORLD__LAUNCH,"**WARNING** You have not configured a world shared key in your config file. You should add a <key>STRING</key> element to your <world> element to prevent unauthroized zone access.");
+				Log.Out(Logs::Detail, Logs::World_Server,"**WARNING** You have not configured a world shared key in your config file. You should add a <key>STRING</key> element to your <world> element to prevent unauthroized zone access.");
 				authenticated = true;
 			}
 			delete pack;
@@ -114,25 +113,25 @@ bool LauncherLink::Process() {
 			break;
 		}
 		case ServerOP_ZAAuth: {
-			_log(WORLD__LAUNCH, "Got authentication from %s when they are already authenticated.", m_name.c_str());
+			Log.Out(Logs::Detail, Logs::World_Server, "Got authentication from %s when they are already authenticated.", m_name.c_str());
 			break;
 		}
 		case ServerOP_LauncherConnectInfo: {
 			const LauncherConnectInfo *it = (const LauncherConnectInfo *) pack->pBuffer;
 			if(HasName()) {
-				_log(WORLD__LAUNCH_ERR, "Launcher '%s' received an additional connect packet with name '%s'. Ignoring.", m_name.c_str(), it->name);
+				Log.Out(Logs::Detail, Logs::World_Server, "Launcher '%s' received an additional connect packet with name '%s'. Ignoring.", m_name.c_str(), it->name);
 				break;
 			}
 			m_name = it->name;
 
 			EQLConfig *config = launcher_list.GetConfig(m_name.c_str());
 			if(config == nullptr) {
-				_log(WORLD__LAUNCH, "Unknown launcher '%s' connected. Disconnecting.", it->name);
+				Log.Out(Logs::Detail, Logs::World_Server, "Unknown launcher '%s' connected. Disconnecting.", it->name);
 				Disconnect();
 				break;
 			}
 
-			_log(WORLD__LAUNCH, "Launcher Identified itself as '%s'. Loading zone list.", it->name);
+			Log.Out(Logs::Detail, Logs::World_Server, "Launcher Identified itself as '%s'. Loading zone list.", it->name);
 
 			std::vector<LauncherZone> result;
 			//database.GetLauncherZones(it->name, result);
@@ -146,7 +145,7 @@ bool LauncherLink::Process() {
 				zs.port = cur->port;
 				zs.up = false;
 				zs.starts = 0;
-				_log(WORLD__LAUNCH_TRACE, "%s: Loaded zone '%s' on port %d", m_name.c_str(), cur->name.c_str(), zs.port);
+				Log.Out(Logs::Detail, Logs::World_Server, "%s: Loaded zone '%s' on port %d", m_name.c_str(), cur->name.c_str(), zs.port);
 				m_states[cur->name] = zs;
 			}
 
@@ -162,17 +161,17 @@ bool LauncherLink::Process() {
 			std::map<std::string, ZoneState>::iterator res;
 			res = m_states.find(it->short_name);
 			if(res == m_states.end()) {
-				_log(WORLD__LAUNCH_ERR, "%s: reported state for zone %s which it does not have.", m_name.c_str(), it->short_name);
+				Log.Out(Logs::Detail, Logs::World_Server, "%s: reported state for zone %s which it does not have.", m_name.c_str(), it->short_name);
 				break;
 			}
-			_log(WORLD__LAUNCH, "%s: %s reported state %s (%d starts)", m_name.c_str(), it->short_name, it->running?"STARTED":"STOPPED", it->start_count);
+			Log.Out(Logs::Detail, Logs::World_Server, "%s: %s reported state %s (%d starts)", m_name.c_str(), it->short_name, it->running?"STARTED":"STOPPED", it->start_count);
 			res->second.up = it->running;
 			res->second.starts = it->start_count;
 			break;
 		}
 		default:
 		{
-			_log(WORLD__LAUNCH_ERR, "Unknown ServerOPcode from launcher 0x%04x, size %d",pack->opcode,pack->size);
+			Log.Out(Logs::Detail, Logs::World_Server, "Unknown ServerOPcode from launcher 0x%04x, size %d",pack->opcode,pack->size);
 			DumpPacket(pack->pBuffer, pack->size);
 			break;
 		}
@@ -185,14 +184,6 @@ bool LauncherLink::Process() {
 
 bool LauncherLink::ContainsZone(const char *short_name) const {
 	return(m_states.find(short_name) != m_states.end());
-
-	/*
-	* std::map<std::string, bool>::const_iterator cur, end;
-	cur = m_states.begin();
-	end = m_states.end();
-	for(; cur != end; cur++) {
-		if(
-	}*/
 }
 
 void LauncherLink::BootZone(const char *short_name, uint16 port) {
@@ -200,40 +191,47 @@ void LauncherLink::BootZone(const char *short_name, uint16 port) {
 	zs.port = port;
 	zs.up = false;
 	zs.starts = 0;
-	_log(WORLD__LAUNCH_TRACE, "%s: Loaded zone '%s' on port %d", m_name.c_str(), short_name, zs.port);
+	Log.Out(Logs::Detail, Logs::World_Server, "%s: Loaded zone '%s' on port %d", m_name.c_str(), short_name, zs.port);
 	m_states[short_name] = zs;
 
-	StartZone(short_name);
+	StartZone(short_name, port);
 }
 
 void LauncherLink::StartZone(const char *short_name) {
-	ServerPacket* pack = new ServerPacket(ServerOP_LauncherZoneRequest, sizeof(LauncherZoneRequest));
+	StartZone(short_name, 0);
+}
+
+void LauncherLink::StartZone(const char *short_name, uint16 port) {
+	auto pack = new ServerPacket(ServerOP_LauncherZoneRequest, sizeof(LauncherZoneRequest));
 	LauncherZoneRequest* s = (LauncherZoneRequest *) pack->pBuffer;
 
 	strn0cpy(s->short_name, short_name, 32);
 	s->command = ZR_Start;
+	s->port = port;
 
 	SendPacket(pack);
 	delete pack;
 }
 
 void LauncherLink::RestartZone(const char *short_name) {
-	ServerPacket* pack = new ServerPacket(ServerOP_LauncherZoneRequest, sizeof(LauncherZoneRequest));
+	auto pack = new ServerPacket(ServerOP_LauncherZoneRequest, sizeof(LauncherZoneRequest));
 	LauncherZoneRequest* s = (LauncherZoneRequest *) pack->pBuffer;
 
 	strn0cpy(s->short_name, short_name, 32);
 	s->command = ZR_Restart;
+	s->port = 0;
 
 	SendPacket(pack);
 	delete pack;
 }
 
 void LauncherLink::StopZone(const char *short_name) {
-	ServerPacket* pack = new ServerPacket(ServerOP_LauncherZoneRequest, sizeof(LauncherZoneRequest));
+	auto pack = new ServerPacket(ServerOP_LauncherZoneRequest, sizeof(LauncherZoneRequest));
 	LauncherZoneRequest* s = (LauncherZoneRequest *) pack->pBuffer;
 
 	strn0cpy(s->short_name, short_name, 32);
 	s->command = ZR_Stop;
+	s->port = 0;
 
 	SendPacket(pack);
 	delete pack;
@@ -329,39 +327,7 @@ void LauncherLink::GetZoneDetails(const char *short_name, std::map<std::string,s
 }
 
 void LauncherLink::Shutdown() {
-	ServerPacket* pack = new ServerPacket(ServerOP_ShutdownAll);
+	auto pack = new ServerPacket(ServerOP_ShutdownAll);
 	SendPacket(pack);
 	delete pack;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

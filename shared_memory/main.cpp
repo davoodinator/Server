@@ -17,13 +17,16 @@
 */
 
 #include <stdio.h>
-#include "../common/debug.h"
+
+#include "../common/eqemu_logsys.h"
+#include "../common/global_define.h"
 #include "../common/shareddb.h"
 #include "../common/eqemu_config.h"
 #include "../common/platform.h"
 #include "../common/crash.h"
 #include "../common/rulesys.h"
 #include "../common/eqemu_exception.h"
+#include "../common/string_util.h"
 #include "items.h"
 #include "npc_faction.h"
 #include "loot.h"
@@ -31,30 +34,35 @@
 #include "spells.h"
 #include "base_data.h"
 
+EQEmuLogSys Log;
+
 int main(int argc, char **argv) {
 	RegisterExecutablePlatform(ExePlatformSharedMemory);
+	Log.LoadLogSettingsDefaults();
 	set_exception_handler();
 
-	LogFile->write(EQEMuLog::Status, "Shared Memory Loader Program");
+	Log.Out(Logs::General, Logs::Status, "Shared Memory Loader Program");
 	if(!EQEmuConfig::LoadConfig()) {
-		LogFile->write(EQEMuLog::Error, "Unable to load configuration file.");
+		Log.Out(Logs::General, Logs::Error, "Unable to load configuration file.");
 		return 1;
 	}
 
 	const EQEmuConfig *config = EQEmuConfig::get();
-	if(!load_log_settings(config->LogSettingsFile.c_str())) {
-		LogFile->write(EQEMuLog::Error, "Warning: unable to read %s.", config->LogSettingsFile.c_str());
-	}
 
 	SharedDatabase database;
-	LogFile->write(EQEMuLog::Status, "Connecting to database...");
+	Log.Out(Logs::General, Logs::Status, "Connecting to database...");
 	if(!database.Connect(config->DatabaseHost.c_str(), config->DatabaseUsername.c_str(),
 		config->DatabasePassword.c_str(), config->DatabaseDB.c_str(), config->DatabasePort)) {
-		LogFile->write(EQEMuLog::Error, "Unable to connect to the database, cannot continue without a "
+		Log.Out(Logs::General, Logs::Error, "Unable to connect to the database, cannot continue without a "
 			"database connection");
 		return 1;
 	}
 
+	/* Register Log System and Settings */
+	database.LoadLogSettings(Log.log_settings);
+	Log.StartFileLogs();
+
+	std::string hotfix_name = "";
 	bool load_all = true;
 	bool load_items = false;
 	bool load_factions = false;
@@ -63,110 +71,125 @@ int main(int argc, char **argv) {
 	bool load_spells = false;
 	bool load_bd = false;
 	if(argc > 1) {
-		load_all = false;
-
 		for(int i = 1; i < argc; ++i) {
-			switch(argv[i][0]) {
-			case 'a':
-				if(strcasecmp("all", argv[i]) == 0) {
-					load_all = true;
-				}
-				break;
-
+			switch(argv[i][0]) {	
 			case 'b':
 				if(strcasecmp("base_data", argv[i]) == 0) {
 					load_bd = true;
+					load_all = false;
 				}
 				break;
-
+	
 			case 'i':
 				if(strcasecmp("items", argv[i]) == 0) {
 					load_items = true;
+					load_all = false;
 				}
 				break;
-
+	
 			case 'f':
 				if(strcasecmp("factions", argv[i]) == 0) {
 					load_factions = true;
+					load_all = false;
 				}
 				break;
-
+	
 			case 'l':
 				if(strcasecmp("loot", argv[i]) == 0) {
 					load_loot = true;
+					load_all = false;
 				}
 				break;
-
+	
 			case 's':
 				if(strcasecmp("skill_caps", argv[i]) == 0) {
 					load_skill_caps = true;
+					load_all = false;
 				} else if(strcasecmp("spells", argv[i]) == 0) {
 					load_spells = true;
+					load_all = false;
 				}
 				break;
+			case '-': {
+				auto split = SplitString(argv[i], '=');
+				if(split.size() >= 2) {
+					auto command = split[0];
+					auto argument = split[1];
+					if(strcasecmp("-hotfix", command.c_str()) == 0) {
+						hotfix_name = argument;
+						load_all = true;
+					}
+				}
+				break;
+			}
 			}
 		}
 	}
 
+	if(hotfix_name.length() > 0) {
+		Log.Out(Logs::General, Logs::Status, "Writing data for hotfix '%s'", hotfix_name.c_str());
+	}
+	
 	if(load_all || load_items) {
-		LogFile->write(EQEMuLog::Status, "Loading items...");
+		Log.Out(Logs::General, Logs::Status, "Loading items...");
 		try {
-			LoadItems(&database);
+			LoadItems(&database, hotfix_name);
 		} catch(std::exception &ex) {
-			LogFile->write(EQEMuLog::Error, "%s", ex.what());
+			Log.Out(Logs::General, Logs::Error, "%s", ex.what());
 			return 1;
 		}
 	}
-
+	
 	if(load_all || load_factions) {
-		LogFile->write(EQEMuLog::Status, "Loading factions...");
+		Log.Out(Logs::General, Logs::Status, "Loading factions...");
 		try {
-			LoadFactions(&database);
+			LoadFactions(&database, hotfix_name);
 		} catch(std::exception &ex) {
-			LogFile->write(EQEMuLog::Error, "%s", ex.what());
+			Log.Out(Logs::General, Logs::Error, "%s", ex.what());
 			return 1;
 		}
 	}
-
+	
 	if(load_all || load_loot) {
-		LogFile->write(EQEMuLog::Status, "Loading loot...");
+		Log.Out(Logs::General, Logs::Status, "Loading loot...");
 		try {
-			LoadLoot(&database);
+			LoadLoot(&database, hotfix_name);
 		} catch(std::exception &ex) {
-			LogFile->write(EQEMuLog::Error, "%s", ex.what());
+			Log.Out(Logs::General, Logs::Error, "%s", ex.what());
 			return 1;
 		}
 	}
-
+	
 	if(load_all || load_skill_caps) {
-		LogFile->write(EQEMuLog::Status, "Loading skill caps...");
+		Log.Out(Logs::General, Logs::Status, "Loading skill caps...");
 		try {
-			LoadSkillCaps(&database);
+			LoadSkillCaps(&database, hotfix_name);
 		} catch(std::exception &ex) {
-			LogFile->write(EQEMuLog::Error, "%s", ex.what());
+			Log.Out(Logs::General, Logs::Error, "%s", ex.what());
 			return 1;
 		}
 	}
-
+	
 	if(load_all || load_spells) {
-		LogFile->write(EQEMuLog::Status, "Loading spells...");
+		Log.Out(Logs::General, Logs::Status, "Loading spells...");
 		try {
-			LoadSpells(&database);
+			LoadSpells(&database, hotfix_name);
 		} catch(std::exception &ex) {
-			LogFile->write(EQEMuLog::Error, "%s", ex.what());
+			Log.Out(Logs::General, Logs::Error, "%s", ex.what());
 			return 1;
 		}
 	}
-
+	
 	if(load_all || load_bd) {
-		LogFile->write(EQEMuLog::Status, "Loading base data...");
+		Log.Out(Logs::General, Logs::Status, "Loading base data...");
 		try {
-			LoadBaseData(&database);
+			LoadBaseData(&database, hotfix_name);
 		} catch(std::exception &ex) {
-			LogFile->write(EQEMuLog::Error, "%s", ex.what());
+			Log.Out(Logs::General, Logs::Error, "%s", ex.what());
 			return 1;
 		}
 	}
-
+	
+	Log.CloseFileLogs();
 	return 0;
 }

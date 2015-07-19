@@ -1,7 +1,7 @@
 /*
 EQEMu:  Everquest Server Emulator
 
-Copyright (C) 2001-2014 EQEMu Development Team (http://eqemulator.net)
+Copyright (C) 2001-2015 EQEMu Development Team (http://eqemulator.net)
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,13 +26,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "eq_constants.h"
 #include "clientversions.h"
 #include <string>
-#include "../common/patches/client62_constants.h"
 #include "../common/patches/titanium_constants.h"
 #include "../common/patches/sof_constants.h"
 #include "../common/patches/sod_constants.h"
-#include "../common/patches/underfoot_constants.h"
+#include "../common/patches/uf_constants.h"
 #include "../common/patches/rof_constants.h"
-//#include "../common/patches/rof2_constants.h"
+#include "../common/patches/rof2_constants.h"
 
 // *** DO NOT CHANGE without a full understanding of the consequences..the server is set up to use these settings explicitly!! ***
 // *** You will cause compilation failures and corrupt your database if partial or incorrect attempts to change them are made!! ***
@@ -43,19 +42,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //using namespace RoF2::maps;	// server inventory maps enumeration (code and database sync'd to reference)
 //using namespace RoF::slots;	// server possessions slots enumeration (code and database sync'd to reference)
 
-class EmuConstants {
+class EmuConstants
+{
 	// an immutable value is required to initialize arrays, etc... use this class as a repository for those
 public:
 	// database
-	static const EQClientVersion CHARACTER_CREATION_CLIENT = EQClientRoF; // adjust according to starting item placement and target client
+	static const ClientVersion CHARACTER_CREATION_CLIENT = ClientVersion::RoF2; // adjust according to starting item placement and target client
+
+	static const size_t CHARACTER_CREATION_LIMIT = RoF2::consts::CHARACTER_CREATION_LIMIT;
 
 	// inventory
-	static uint16 InventoryMapSize(int16 map);
+	static uint16 InventoryMapSize(int16 indexMap);
 	//static std::string InventoryLocationName(Location_Struct location);
-	static std::string InventoryMapName(int16 map);
-	static std::string InventoryMainName(int16 main);
-	static std::string InventorySubName(int16 sub);
-	static std::string InventoryAugName(int16 aug);
+	static std::string InventoryMapName(int16 indexMap);
+	static std::string InventoryMainName(int16 indexMain);
+	static std::string InventorySubName(int16 indexSub);
+	static std::string InventoryAugName(int16 indexAug);
 
 	// these are currently hard-coded for existing inventory system..do not use in place of special client version handlers until ready
 	static const uint16	MAP_POSSESSIONS_SIZE = _MainCount;
@@ -138,68 +140,60 @@ public:
 
 	// items
 	// common and container sizes will not increase until the new 'location' struct is implemented
-	static const uint16 ITEM_COMMON_SIZE = Underfoot::consts::ITEM_COMMON_SIZE;
-	static const uint16 ITEM_CONTAINER_SIZE = Underfoot::consts::ITEM_CONTAINER_SIZE;
+	static const uint16 ITEM_COMMON_SIZE = RoF::consts::ITEM_COMMON_SIZE;
+	static const uint16 ITEM_CONTAINER_SIZE = Titanium::consts::ITEM_CONTAINER_SIZE;
 
-	// player profile
-	//static const uint32 CLASS_BITMASK = 0;	// needs value
-	//static const uint32 RACE_BITMASK = 0;	// needs value
+	// BANDOLIERS_SIZE sets maximum limit..active limit will need to be handled by the appropriate AA or spell (or item?)
+	static const size_t BANDOLIERS_SIZE = RoF2::consts::BANDOLIERS_SIZE;			// number of bandolier instances
+	static const size_t BANDOLIER_ITEM_COUNT = RoF2::consts::BANDOLIER_ITEM_COUNT;	// number of equipment slots in bandolier instance
 
-	// BANDOLIERS_COUNT sets maximum limit..active limit will need to be handled by the appropriate AA
-	static const uint32 BANDOLIERS_COUNT = Titanium::consts::BANDOLIERS_COUNT;	// count = number of bandolier instances
-	static const uint32 BANDOLIER_SIZE = Titanium::consts::BANDOLIER_SIZE;		// size = number of equipment slots in bandolier instance
-	static const uint32 POTION_BELT_SIZE = Titanium::consts::POTION_BELT_SIZE;
+	// POTION_BELT_SIZE sets maximum limit..active limit will need to be handled by the appropriate AA or spell (or item?)
+	static const size_t POTION_BELT_ITEM_COUNT = RoF2::consts::POTION_BELT_ITEM_COUNT;
 
-	// legacy-related functions
-	//static int ServerToPerlSlot(int slot);	// encode
-	//static int PerlToServerSlot(int slot);	// decode
+	static const size_t TEXT_LINK_BODY_LENGTH = RoF2::consts::TEXT_LINK_BODY_LENGTH;
 };
 
-class EQLimits {
+class EQLimits
+{
 	// values should default to a non-beneficial value..unless value conflicts with intended operation
 	//
 	// EmuConstants may be used as references..but, not every reference needs to be in EmuConstants (i.e., AllowsEmptyBagInBag(), CoinHasWeight(), etc...)
 public:
 	// client version validation (checks to avoid crashing zone server when accessing reference arrays)
 	// use this inside of class Client (limits to actual clients)
-	static bool				IsValidClientVersion(uint32 version);
-	static uint32			ValidateClientVersion(uint32 version);
-	static EQClientVersion	ValidateClientVersion(EQClientVersion version);
+	static bool IsValidPCClientVersion(ClientVersion clientVersion);
+	static ClientVersion ValidatePCClientVersion(ClientVersion clientVersion);
 
 	// basically..any non-client classes - do not when setting a valid client
-	static bool				IsValidNPCVersion(uint32 version);
-	static uint32			ValidateNPCVersion(uint32 version);
-	static EQClientVersion	ValidateNPCVersion(EQClientVersion version);
+	static bool IsValidNPCClientVersion(ClientVersion clientVersion);
+	static ClientVersion ValidateNPCClientVersion(ClientVersion clientVersion);
 
 	// these are 'universal' - do not when setting a valid client
-	static bool				IsValidMobVersion(uint32 version);
-	static uint32			ValidateMobVersion(uint32 version);
-	static EQClientVersion	ValidateMobVersion(EQClientVersion version);
+	static bool IsValidMobClientVersion(ClientVersion clientVersion);
+	static ClientVersion ValidateMobClientVersion(ClientVersion clientVersion);
+
+	// database
+	static size_t CharacterCreationLimit(ClientVersion clientVersion);
 
 	// inventory
-	static uint16	InventoryMapSize(int16 map, uint32 version);
-	static uint64	PossessionsBitmask(uint32 version);
-	static uint64	EquipmentBitmask(uint32 version);
-	static uint64	GeneralBitmask(uint32 version);
-	static uint64	CursorBitmask(uint32 version);
+	static uint16 InventoryMapSize(int16 indexMap, ClientVersion clientVersion);
+	static uint64 PossessionsBitmask(ClientVersion clientVersion);
+	static uint64 EquipmentBitmask(ClientVersion clientVersion);
+	static uint64 GeneralBitmask(ClientVersion clientVersion);
+	static uint64 CursorBitmask(ClientVersion clientVersion);
 
-	static bool	AllowsEmptyBagInBag(uint32 version);
-	static bool AllowsClickCastFromBag(uint32 version);
+	static bool AllowsEmptyBagInBag(ClientVersion clientVersion);
+	static bool AllowsClickCastFromBag(ClientVersion clientVersion);
 
 	// items
-	static uint16	ItemCommonSize(uint32 version);
-	static uint16	ItemContainerSize(uint32 version);
+	static uint16 ItemCommonSize(ClientVersion clientVersion);
+	static uint16 ItemContainerSize(ClientVersion clientVersion);
 
 	// player profile
-	static bool	CoinHasWeight(uint32 version);
-
-	static uint32	BandoliersCount(uint32 version);
-	static uint32	BandolierSize(uint32 version);
-
-	static uint32	PotionBeltSize(uint32 version);
+	static bool CoinHasWeight(ClientVersion clientVersion);
 };
 
-#endif /* EQ_LIMITS_H */
+#endif /* EQ_DICTIONARY_H */
 
 /*
 Working Notes:

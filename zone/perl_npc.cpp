@@ -27,7 +27,7 @@
 
 #include "../common/features.h"
 #ifdef EMBPERL_XS_CLASSES
-#include "../common/debug.h"
+#include "../common/global_define.h"
 #include "embperl.h"
 
 #ifdef seed
@@ -795,6 +795,42 @@ XS(XS_NPC_IsOnHatelist)
 	XSRETURN(1);
 }
 
+XS(XS_NPC_RemoveFromHateList); /* prototype to pass -Wmissing-prototypes */
+XS(XS_NPC_RemoveFromHateList)
+{
+	dXSARGS;
+	if (items != 2)
+		Perl_croak(aTHX_ "Usage: NPC::RemoveFromHateList(THIS, ent)");
+	{
+		NPC *		THIS;
+		Mob*		ent;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		if (sv_derived_from(ST(1), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(1)));
+			ent = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "ent  is not of type Mob");
+		if(ent == nullptr)
+			Perl_croak(aTHX_ "ent  is nullptr, avoiding crash.");
+
+		THIS->RemoveFromHateList(ent);
+
+	}
+	XSRETURN_EMPTY;
+}
+
+
+
 XS(XS_NPC_SetNPCFactionID); /* prototype to pass -Wmissing-prototypes */
 XS(XS_NPC_SetNPCFactionID)
 {
@@ -1345,7 +1381,8 @@ XS(XS_NPC_MoveTo)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		THIS->MoveTo(mtx, mty, mtz, mth, saveguard);
+        auto position = glm::vec4(mtx, mty, mtz, mth);
+		THIS->MoveTo(position, saveguard);
 	}
 	XSRETURN_EMPTY;
 }
@@ -1545,7 +1582,7 @@ XS(XS_NPC_GetSpawnPointX)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 
-		RETVAL = THIS->GetSpawnPointX();
+		RETVAL = THIS->GetSpawnPoint().x;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -1572,7 +1609,7 @@ XS(XS_NPC_GetSpawnPointY)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 
-		RETVAL = THIS->GetSpawnPointY();
+		RETVAL = THIS->GetSpawnPoint().y;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -1599,7 +1636,7 @@ XS(XS_NPC_GetSpawnPointZ)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 
-		RETVAL = THIS->GetSpawnPointZ();
+		RETVAL = THIS->GetSpawnPoint().z;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -1626,7 +1663,7 @@ XS(XS_NPC_GetSpawnPointH)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 
-		RETVAL = THIS->GetSpawnPointH();
+		RETVAL = THIS->GetSpawnPoint().w;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -1653,7 +1690,7 @@ XS(XS_NPC_GetGuardPointX)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 
-		RETVAL = THIS->GetGuardPointX();
+		RETVAL = THIS->GetGuardPoint().x;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -1680,7 +1717,7 @@ XS(XS_NPC_GetGuardPointY)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 
-		RETVAL = THIS->GetGuardPointY();
+		RETVAL = THIS->GetGuardPoint().y;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -1707,7 +1744,7 @@ XS(XS_NPC_GetGuardPointZ)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 
-		RETVAL = THIS->GetGuardPointZ();
+		RETVAL = THIS->GetGuardPoint().z;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -2075,7 +2112,7 @@ XS(XS_NPC_GetSlowMitigation)
 		Perl_croak(aTHX_ "Usage: NPC::GetSlowMitigation(THIS)");
 	{
 		NPC *		THIS;
-		int16		RETVAL;
+		float		RETVAL;
 		dXSTARG;
 
 		if (sv_derived_from(ST(0), "NPC")) {
@@ -2088,7 +2125,7 @@ XS(XS_NPC_GetSlowMitigation)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 		RETVAL = THIS->GetSlowMitigation();
-		XSprePUSH; PUSHn((UV)RETVAL);
+		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
 }
@@ -2119,6 +2156,32 @@ XS(XS_NPC_GetAttackSpeed)
 	XSRETURN(1);
 }
 
+XS(XS_NPC_GetAttackDelay); /* prototype to pass -Wmissing-prototypes */
+XS(XS_NPC_GetAttackDelay)
+{
+	dXSARGS;
+	if (items != 1)
+		Perl_croak(aTHX_ "Usage: NPC::GetAttackDelay(THIS)");
+	{
+		NPC *		THIS;
+		float		RETVAL;
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		RETVAL = THIS->GetAttackDelay();
+		XSprePUSH; PUSHn((double)RETVAL);
+	}
+	XSRETURN(1);
+}
+
 XS(XS_NPC_GetAccuracyRating); /* prototype to pass -Wmissing-prototypes */
 XS(XS_NPC_GetAccuracyRating)
 {
@@ -2140,6 +2203,32 @@ XS(XS_NPC_GetAccuracyRating)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 		RETVAL = THIS->GetAccuracyRating();
+		XSprePUSH; PUSHu((UV)RETVAL);
+	}
+	XSRETURN(1);
+}
+
+XS(XS_NPC_GetAvoidanceRating); /* prototype to pass -Wmissing-prototypes */
+XS(XS_NPC_GetAvoidanceRating)
+{
+	dXSARGS;
+	if (items != 1)
+		Perl_croak(aTHX_ "Usage: NPC::GetAvoidanceyRating(THIS)");
+	{
+		NPC *		THIS;
+		int32		RETVAL;
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		RETVAL = THIS->GetAvoidanceRating();
 		XSprePUSH; PUSHu((UV)RETVAL);
 	}
 	XSRETURN(1);
@@ -2245,6 +2334,228 @@ XS(XS_NPC_GetMerchantProbability) {
 	XSRETURN(1);
 }
 
+XS(XS_NPC_AddMeleeProc);
+XS(XS_NPC_AddMeleeProc) {
+	dXSARGS;
+	if (items != 3)
+		Perl_croak(aTHX_ "Usage: NPC::AddMeleeProc(THIS,spellid,chance)");
+	{
+		NPC * THIS;
+		int	spell_id = (int)SvIV(ST(1));
+		int	chance = (int)SvIV(ST(2));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->AddProcToWeapon(spell_id, true, chance);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_NPC_AddRangedProc);
+XS(XS_NPC_AddRangedProc) {
+	dXSARGS;
+	if (items != 3)
+		Perl_croak(aTHX_ "Usage: NPC::AddRangedProc(THIS,spellid,chance)");
+	{
+		NPC * THIS;
+		int	spell_id = (int)SvIV(ST(1));
+		int	chance = (int)SvIV(ST(2));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->AddRangedProc(spell_id,chance);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_NPC_AddDefensiveProc);
+XS(XS_NPC_AddDefensiveProc) {
+	dXSARGS;
+	if (items != 3)
+		Perl_croak(aTHX_ "Usage: NPC::AddDefensiveProc(THIS,spellid,chance)");
+	{
+		NPC * THIS;
+		int	spell_id = (int)SvIV(ST(1));
+		int	chance = (int)SvIV(ST(2));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->AddDefensiveProc(spell_id,chance);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_NPC_RemoveMeleeProc);
+XS(XS_NPC_RemoveMeleeProc) {
+	dXSARGS;
+	if (items != 2)
+		Perl_croak(aTHX_ "Usage: NPC::RemoveMeleeProc(THIS,spellid)");
+	{
+		NPC * THIS;
+		int	spell_id = (int)SvIV(ST(1));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->RemoveProcFromWeapon(spell_id, false);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_NPC_RemoveRangedProc);
+XS(XS_NPC_RemoveRangedProc) {
+	dXSARGS;
+	if (items != 2)
+		Perl_croak(aTHX_ "Usage: NPC::RemoveRangedProc(THIS,spellid)");
+	{
+		NPC * THIS;
+		int	spell_id = (int)SvIV(ST(1));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->RemoveRangedProc(spell_id, false);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_NPC_RemoveDefensiveProc);
+XS(XS_NPC_RemoveDefensiveProc) {
+	dXSARGS;
+	if (items != 2)
+		Perl_croak(aTHX_ "Usage: NPC::RemoveDefensiveProc(THIS,spellid)");
+	{
+		NPC * THIS;
+		int	spell_id = (int)SvIV(ST(1));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->RemoveDefensiveProc(spell_id, false);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_NPC_ChangeLastName); /* prototype to pass -Wmissing-prototypes */
+XS(XS_NPC_ChangeLastName)
+{
+	dXSARGS;
+	if (items < 1 || items > 2)
+		Perl_croak(aTHX_ "Usage: Mob::ChangeLastName(THIS, name)");
+	{
+		NPC *		THIS;
+		char *		name = nullptr;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		if (items > 1)	{	name = (char *)SvPV_nolen(ST(1));	}
+
+		THIS->ChangeLastName(name);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_NPC_ClearLastName); /* prototype to pass -Wmissing-prototypes */
+XS(XS_NPC_ClearLastName)
+{
+	dXSARGS;
+	if (items != 1)
+		Perl_croak(aTHX_ "Usage: Mob::ClearLastName(THIS)");
+	{
+		NPC *		THIS;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		THIS->ClearLastName();
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_NPC_GetCombatState); /* prototype to pass -Wmissing-prototypes */
+XS(XS_NPC_GetCombatState)
+{
+	dXSARGS;
+	if (items != 1)
+		Perl_croak(aTHX_ "Usage: NPC::GetCombatState(THIS)");
+	{
+		NPC *		THIS;
+		bool		RETVAL;
+
+		if (sv_derived_from(ST(0), "NPC")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(NPC *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type NPC");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		RETVAL = THIS->GetCombatEvent();
+		ST(0) = boolSV(RETVAL);
+		sv_2mortal(ST(0));
+	}
+	XSRETURN(1);
+}
+
 #ifdef __cplusplus
 extern "C"
 #endif
@@ -2292,6 +2603,7 @@ XS(boot_NPC)
 		newXSproto(strcpy(buf, "GetPrimaryFaction"), XS_NPC_GetPrimaryFaction, file, "$");
 		newXSproto(strcpy(buf, "GetNPCHate"), XS_NPC_GetNPCHate, file, "$$");
 		newXSproto(strcpy(buf, "IsOnHatelist"), XS_NPC_IsOnHatelist, file, "$$");
+		newXSproto(strcpy(buf, "RemoveFromHateList"), XS_NPC_RemoveFromHateList, file, "$$");
 		newXSproto(strcpy(buf, "SetNPCFactionID"), XS_NPC_SetNPCFactionID, file, "$$");
 		newXSproto(strcpy(buf, "GetMaxDMG"), XS_NPC_GetMaxDMG, file, "$");
 		newXSproto(strcpy(buf, "GetMinDMG"), XS_NPC_GetMinDMG, file, "$");
@@ -2342,11 +2654,22 @@ XS(boot_NPC)
 		newXSproto(strcpy(buf, "GetSpellFocusHeal"), XS_NPC_GetSpellFocusHeal, file, "$");
 		newXSproto(strcpy(buf, "GetSlowMitigation"), XS_NPC_GetSlowMitigation, file, "$");
 		newXSproto(strcpy(buf, "GetAttackSpeed"), XS_NPC_GetAttackSpeed, file, "$");
+		newXSproto(strcpy(buf, "GetAttackDelay"), XS_NPC_GetAttackDelay, file, "$");
 		newXSproto(strcpy(buf, "GetAccuracyRating"), XS_NPC_GetAccuracyRating, file, "$");
+		newXSproto(strcpy(buf, "GetAvoidanceRating"), XS_NPC_GetAvoidanceRating, file, "$");
 		newXSproto(strcpy(buf, "GetSpawnKillCount"), XS_NPC_GetSpawnKillCount, file, "$");
 		newXSproto(strcpy(buf, "GetScore"), XS_NPC_GetScore, file, "$");
 		newXSproto(strcpy(buf, "SetMerchantProbability"), XS_NPC_SetMerchantProbability, file, "$$");
 		newXSproto(strcpy(buf, "GetMerchantProbability"), XS_NPC_GetMerchantProbability, file, "$");
+		newXSproto(strcpy(buf, "AddMeleeProc"), XS_NPC_AddMeleeProc, file, "$$$");
+		newXSproto(strcpy(buf, "AddRangedProc"), XS_NPC_AddRangedProc, file, "$$$");
+		newXSproto(strcpy(buf, "AddDefensiveProc"), XS_NPC_AddDefensiveProc, file, "$$$");
+		newXSproto(strcpy(buf, "RemoveMeleeProc"), XS_NPC_RemoveMeleeProc, file, "$$");
+		newXSproto(strcpy(buf, "RemoveRangedProc"), XS_NPC_RemoveRangedProc, file, "$$");
+		newXSproto(strcpy(buf, "RemoveDefensiveProc"), XS_NPC_RemoveDefensiveProc, file, "$$");
+		newXSproto(strcpy(buf, "ChangeLastName"), XS_NPC_ChangeLastName, file, "$:$");
+		newXSproto(strcpy(buf, "ClearLastName"), XS_NPC_ClearLastName, file, "$");
+		newXSproto(strcpy(buf, "GetCombatState"), XS_NPC_GetCombatState, file, "$");
 	XSRETURN_YES;
 }
 

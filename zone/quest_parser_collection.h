@@ -20,18 +20,32 @@
 #define _EQE_QUESTPARSERCOLLECTION_H
 
 #include "../common/types.h"
-#include "../common/item.h"
 
-#include "masterentity.h"
+#include "encounter.h"
+#include "beacon.h"
+#include "client.h"
+#include "corpse.h"
+#include "doors.h"
+#include "groups.h"
+#include "mob.h"
+#include "object.h"
+#include "raids.h"
+#include "trap.h"
+
 #include "quest_interface.h"
 
-#include <string.h>
-#include <string>
 #include <list>
 #include <map>
 
 #define QuestFailedToLoad 0xFFFFFFFF
 #define QuestUnloaded 0x00
+
+class Client;
+class ItemInst;
+class Mob;
+class NPC;
+class QuestInterface;
+namespace EQEmu { class Any; }
 
 class QuestParserCollection {
 public:
@@ -58,7 +72,7 @@ public:
 		std::vector<EQEmu::Any> *extra_pointers = nullptr);
 	int EventSpell(QuestEventID evt, NPC* npc, Client *client, uint32 spell_id, uint32 extra_data,
 		std::vector<EQEmu::Any> *extra_pointers = nullptr);
-	int EventEncounter(QuestEventID evt, std::string encounter_name, uint32 extra_data,
+	int EventEncounter(QuestEventID evt, std::string encounter_name, std::string data, uint32 extra_data,
 		std::vector<EQEmu::Any> *extra_pointers = nullptr);
 	
 	void GetErrors(std::list<std::string> &err);

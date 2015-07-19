@@ -16,17 +16,16 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "../common/debug.h"
+#include "../common/global_define.h"
 #include "../common/misc_functions.h"
 #include "../common/features.h"
+
 #include "quest_parser_collection.h"
 #include "quest_interface.h"
 #include "zone.h"
 #include "questmgr.h"
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
 
 extern Zone* zone;
 extern void MapOpcodes();
@@ -201,14 +200,17 @@ bool QuestParserCollection::SpellHasQuestSub(uint32 spell_id, QuestEventID evt) 
 }
 
 bool QuestParserCollection::ItemHasQuestSub(ItemInst *itm, QuestEventID evt) {
+	if (itm == nullptr)
+		return false;
+
 	std::string item_script;
 	if(itm->GetItem()->ScriptFileID != 0) {
 		item_script = "script_";
-		item_script += std::to_string(static_cast<long long>(itm->GetItem()->ScriptFileID));
+		item_script += std::to_string(itm->GetItem()->ScriptFileID);
 	} else if(strlen(itm->GetItem()->CharmFile) > 0) {
 		item_script = itm->GetItem()->CharmFile;
 	} else {
-		item_script = std::to_string(static_cast<long long>(itm->GetID()));
+		item_script = std::to_string(itm->GetID());
 	}
 
 	uint32 item_id = itm->GetID();
@@ -351,14 +353,16 @@ int QuestParserCollection::EventPlayerGlobal(QuestEventID evt, Client *client, s
 
 int QuestParserCollection::EventItem(QuestEventID evt, Client *client, ItemInst *item, Mob *mob, std::string data, uint32 extra_data,
 									 std::vector<EQEmu::Any> *extra_pointers) {
+	// needs pointer validation check on 'item' argument
+	
 	std::string item_script;
 	if(item->GetItem()->ScriptFileID != 0) {
 		item_script = "script_";
-		item_script += std::to_string(static_cast<long long>(item->GetItem()->ScriptFileID));
+		item_script += std::to_string(item->GetItem()->ScriptFileID);
 	} else if(strlen(item->GetItem()->CharmFile) > 0) {
 		item_script = item->GetItem()->CharmFile;
 	} else {
-		item_script = std::to_string(static_cast<long long>(item->GetID()));
+		item_script = std::to_string(item->GetID());
 	}
 
 	uint32 item_id = item->GetID();
@@ -430,14 +434,14 @@ int QuestParserCollection::EventSpell(QuestEventID evt, NPC* npc, Client *client
 	return 0;
 }
 
-int QuestParserCollection::EventEncounter(QuestEventID evt, std::string encounter_name, uint32 extra_data,
+int QuestParserCollection::EventEncounter(QuestEventID evt, std::string encounter_name, std::string data, uint32 extra_data,
 										  std::vector<EQEmu::Any> *extra_pointers) {
 	auto iter = _encounter_quest_status.find(encounter_name);
 	if(iter != _encounter_quest_status.end()) {
 		//loaded or failed to load
 		if(iter->second != QuestFailedToLoad) {
 			std::map<uint32, QuestInterface*>::iterator qiter = _interfaces.find(iter->second);
-			return qiter->second->EventEncounter(evt, encounter_name, extra_data, extra_pointers);
+			return qiter->second->EventEncounter(evt, encounter_name, data, extra_data, extra_pointers);
 		}
 	} else {
 		std::string filename;
@@ -445,7 +449,7 @@ int QuestParserCollection::EventEncounter(QuestEventID evt, std::string encounte
 		if(qi) {
 			_encounter_quest_status[encounter_name] = qi->GetIdentifier();
 			qi->LoadEncounterScript(filename, encounter_name);
-			return qi->EventEncounter(evt, encounter_name, extra_data, extra_pointers);
+			return qi->EventEncounter(evt, encounter_name, data, extra_data, extra_pointers);
 		} else {
 			_encounter_quest_status[encounter_name] = QuestFailedToLoad;
 		}
@@ -479,7 +483,7 @@ QuestInterface *QuestParserCollection::GetQIByNPCQuest(uint32 npcid, std::string
 	}
 
 	//second look for /quests/zone/npcname.ext (precedence)
-	const NPCType *npc_type = database.GetNPCType(npcid);
+	const NPCType *npc_type = database.LoadNPCTypesData(npcid);
 	if(!npc_type) {
 		return nullptr;
 	}

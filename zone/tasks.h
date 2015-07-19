@@ -21,9 +21,8 @@ Copyright (C) 2001-2004 EQEMu Development Team (http://eqemulator.net)
 #define TASKS_H
 
 #include "../common/types.h"
-#include "mob.h"
+
 #include <vector>
-#include <queue>
 
 #define MAXTASKS 10000
 #define MAXTASKSETS 1000
@@ -44,6 +43,7 @@ Copyright (C) 2001-2004 EQEMu Development Team (http://eqemulator.net)
 #define RELOADTASKSETS		3
 
 class Client;
+class Mob;
 
 struct TaskGoalList_Struct {
 	int ListID;
@@ -168,14 +168,14 @@ public:
 	int GetTaskActivityDoneCount(int index, int ActivityID);
 	int GetTaskActivityDoneCountFromTaskID(int TaskID, int ActivityID);
 	int GetTaskStartTime(int index);
-	void AcceptNewTask(Client *c, int TaskID, int NPCID);
+	void AcceptNewTask(Client *c, int TaskID, int NPCID, bool enforce_level_requirement = false);
 	void FailTask(Client *c, int TaskID);
 	int TaskTimeLeft(int TaskID);
 	int IsTaskCompleted(int TaskID);
 	bool IsTaskActive(int TaskID);
 	bool IsTaskActivityActive(int TaskID, int ActivityID);
 	ActivityState GetTaskActivityState(int index, int ActivityID);
-	void UpdateTaskActivity(Client *c, int TaskID, int ActivityID, int Count);
+	void UpdateTaskActivity(Client *c, int TaskID, int ActivityID, int Count, bool ignore_quest_update = false);
 	void ResetTaskActivity(Client *c, int TaskID, int ActivityID);
 	void CancelTask(Client *c, int SequenceNumber, bool RemoveFromDB = true);
 	void CancelAllTasks(Client *c);
@@ -204,7 +204,7 @@ public:
 
 private:
 	bool UnlockActivities(int CharID, int TaskIndex);
-	void IncrementDoneCount(Client *c, TaskInformation *Task, int TaskIndex, int ActivityID, int Count=1);
+	void IncrementDoneCount(Client *c, TaskInformation *Task, int TaskIndex, int ActivityID, int Count = 1, bool ignore_quest_update = false);
 	int ActiveTaskCount;
 	ClientTaskInformation ActiveTasks[MAXACTIVETASKS];
 	std::vector<int>EnabledTasks;
@@ -230,6 +230,8 @@ public:
 	void SendTaskSelector(Client *c, Mob *mob, int TaskCount, int *TaskList);
 	void SendTaskSelectorNew(Client *c, Mob *mob, int TaskCount, int *TaskList);
 	bool AppropriateLevel(int TaskID, int PlayerLevel);
+	int GetTaskMinLevel(int TaskID);
+	int GetTaskMaxLevel(int TaskID);
 	void TaskSetSelector(Client *c, ClientTaskState *state, Mob *mob, int TaskSetID);
 	void SendActiveTasksToClient(Client *c, bool TaskComplete=false);
 	void SendSingleActiveTaskToClient(Client *c, int TaskIndex, bool TaskComplete, bool BringUpTaskJournal=false);
